@@ -1,0 +1,39 @@
+One of the main goals of porting micropolis is to 
+understand a semi-complex simulation system:
+        - city transportation network
+        - rci demand
+
+Next:
+- try putting all tiles in batch only once.
+    - signal which tiles to update when something changes; only update specific tiles.
+    - try using opengl functions: glTranslatef.
+        - need to set up opengl viewport probobly
+        - might be too slow to update the whole maps tiles every frame
+            - might need to update all tiles with 16 pixel tile size and maximized window,
+                but with keeping track and only updating certain tiles, might not be too slow.
+        - keep track of which tiles are in view and only actively update those,
+            - also would need to update tiles when viewport is changed
+            - use events
+    
+-------------   Plan For Micropylis Development  --------------
+
+- set up git and start versioning ********
+- get simple gui going
+    - make mockup
+    - use modified version of kytten
+        - all controls can go in kytten dialogs
+            - tool select
+            - pause/play
+            - save/load/new
+            - info
+- make simulation work part by part
+    - decide first part (residential and roads?) (map scanning?)  ******
+
+-----------  BUGS  -----------
+
+- half of bottom row of tiles are cut off
+        
+---------- Q 'n A -----------
+
+- what does band do in Engine.simulate()?
+    - 
