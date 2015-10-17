@@ -51,8 +51,8 @@ object instead of a filename::
 The hint helps the module locate an appropriate decoder to use based on the
 file extension.  It is optional.
 
-Once loaded, images can be used directly by most other modules of pyglet.  All
-images have a width and height you can access::
+Once loaded, _images can be used directly by most other modules of pyglet.  All
+_images have a width and height you can access::
 
     width, height = pic.width, pic.height
 
@@ -63,7 +63,7 @@ the memory is shared efficiently)::
 
 Remember that y-coordinates are always increasing upwards.
 
-Drawing images
+Drawing _images
 --------------
 
 To draw an image at some point on the screen::
@@ -72,7 +72,7 @@ To draw an image at some point on the screen::
 
 This assumes an appropriate view transform and projection have been applied.
 
-Some images have an intrinsic "anchor point": this is the point which will be
+Some _images have an intrinsic "anchor point": this is the point which will be
 aligned to the ``x`` and ``y`` coordinates when the image is drawn.  By
 default the anchor point is the lower-left corner of the image.  You can use
 the anchor point to center an image at a given point, for example::
@@ -88,7 +88,7 @@ If you are using OpenGL directly, you can access the image as a texture::
 
     texture = pic.get_texture()
 
-(This is the most efficient way to obtain a texture; some images are
+(This is the most efficient way to obtain a texture; some _images are
 immediately loaded as textures, whereas others go through an intermediate
 form).  To use a texture with pyglet.gl::
 
@@ -349,7 +349,7 @@ class AbstractImage(object):
         '''A `Texture` view of this image.  
 
         By default, textures are created with dimensions that are powers of
-        two.  Smaller images will return a `TextureRegion` that covers just
+        two.  Smaller _images will return a `TextureRegion` that covers just
         the image portion of the larger texture.  This restriction is required
         on older video cards, and for compressed textures, or where texture
         repeat modes will be used, or where mipmapping is desired.
@@ -489,7 +489,7 @@ class AbstractImage(object):
         would cause the copy to go out of bounds) then you must pass a
         region of `source` to this method, typically using get_region().
         '''
-        raise ImageException('Cannot blit images onto %r.' % self)
+        raise ImageException('Cannot blit _images onto %r.' % self)
 
     def blit_to_texture(self, target, level, x, y, z=0):
         '''Draw this image on the currently bound texture at `target`.
@@ -502,7 +502,7 @@ class AbstractImage(object):
         raise ImageException('Cannot blit %r to a texture.' % self)
 
 class AbstractImageSequence(object):
-    '''Abstract sequence of images.
+    '''Abstract sequence of _images.
 
     The sequence is useful for storing image animations or slices of a volume.
     For efficient access, use the `texture_sequence` member.  The class
@@ -550,7 +550,7 @@ class AbstractImageSequence(object):
         raise NotImplementedError('abstract')
 
     def __setitem__(self, slice, image):
-        '''Replace one or more images in the sequence.
+        '''Replace one or more _images in the sequence.
         
         :Parameters:
             `image` : `AbstractImage`
@@ -564,7 +564,7 @@ class AbstractImageSequence(object):
         raise NotImplementedError('abstract')
 
     def __iter__(self):
-        '''Iterate over the images in sequence.
+        '''Iterate over the _images in sequence.
 
         :rtype: Iterator
 
@@ -822,7 +822,7 @@ class ImageData(AbstractImage):
         '''Return a Texture with mipmaps.  
         
         If `set_mipmap_image` has been called with at least one image, the set
-        of images defined will be used.  Otherwise, mipmaps will be
+        of _images defined will be used.  Otherwise, mipmaps will be
         automatically generated.
 
         The texture dimensions must be powers of 2 to use mipmaps.
@@ -1413,7 +1413,7 @@ class Texture(AbstractImage):
     tex_coords = (0., 0., 0., 1., 0., 0., 1., 1., 0., 0., 1., 0.)
     tex_coords_order = (0, 1, 2, 3)
     level = 0
-    images = 1
+    _images = 1
     x = y = z = 0
 
     def __init__(self, width, height, target, id):
@@ -1614,13 +1614,13 @@ class Texture(AbstractImage):
         glPushClientAttrib(GL_CLIENT_PIXEL_STORE_BIT)
         glPixelStorei(GL_PACK_ALIGNMENT, 1)
         buffer = \
-            (GLubyte * (self.width * self.height * self.images * len(format)))()
+            (GLubyte * (self.width * self.height * self._images * len(format)))()
         glGetTexImage(self.target, self.level, 
                       gl_format, GL_UNSIGNED_BYTE, buffer)
         glPopClientAttrib()
 
         data = ImageData(self.width, self.height, format, buffer)
-        if self.images > 1:
+        if self._images > 1:
             data = data.get_region(0, z * self.height, self.width, self.height)
         return data
 
@@ -1765,7 +1765,7 @@ class TextureRegion(Texture):
         v1 = y / owner.height * scale_v + owner_v1
         u2 = (x + width) / owner.width * scale_u + owner_u1
         v2 = (y + height) / owner.height * scale_v + owner_v1
-        r = z / owner.images + owner.tex_coords[2]
+        r = z / owner._images + owner.tex_coords[2]
         self.tex_coords = (u1, v1, r, u2, v1, r, u2, v2, r, u1, v2, r)
 
     def get_image_data(self):
@@ -1815,13 +1815,13 @@ class Texture3D(Texture, UniformTextureSequence):
             texture.anchor_x = images[0].anchor_x
             texture.anchor_y = images[0].anchor_y
 
-        texture.images = depth
+        texture._images = depth
         
-        blank = (GLubyte * (texture.width * texture.height * texture.images))()
+        blank = (GLubyte * (texture.width * texture.height * texture._images))()
         glBindTexture(texture.target, texture.id)
         glTexImage3D(texture.target, texture.level,
                      internalformat,
-                     texture.width, texture.height, texture.images, 0,
+                     texture.width, texture.height, texture._images, 0,
                      GL_ALPHA, GL_UNSIGNED_BYTE,
                      blank)
 
@@ -2169,7 +2169,7 @@ class ImageGrid(AbstractImage, AbstractImageSequence):
     regular regions of that image.
 
     The grid can be accessed either as a complete image, or as a sequence
-    of images.  The most useful applications are to access the grid
+    of _images.  The most useful applications are to access the grid
     as a `TextureGrid`::
 
         image_grid = ImageGrid(...)
@@ -2279,7 +2279,7 @@ class TextureGrid(TextureRegion, UniformTextureSequence):
 
     The texture grid can be accessed as a single texture, or as a sequence
     of `TextureRegion`.  When accessing as a sequence, you can specify
-    integer indexes, in which the images are arranged in rows from the
+    integer indexes, in which the _images are arranged in rows from the
     bottom-left to the top-right::
 
         # assume the texture_grid is 3x3:
@@ -2294,11 +2294,11 @@ class TextureGrid(TextureRegion, UniformTextureSequence):
     When using tuples in a slice, the returned sequence is over the
     rectangular region defined by the slice::
 
-        # returns center, center-right, center-top, top-right images in that
+        # returns center, center-right, center-top, top-right _images in that
         # order:
-        images = texture_grid[(1,1):]
+        _images = texture_grid[(1,1):]
         # equivalent to
-        images = texture_grid[(1,1):(3,3)]
+        _images = texture_grid[(1,1):(3,3)]
 
     '''
     items = ()
@@ -2447,7 +2447,7 @@ def load_animation(filename, file=None, decoder=None):
         raise first_exception  
 
 class Animation(object):
-    '''Sequence of images with timing information.
+    '''Sequence of _images with timing information.
 
     If no frames of the animation have a duration of ``None``, the animation
     loops continuously; otherwise the animation stops at the first frame with
@@ -2470,7 +2470,7 @@ class Animation(object):
         self.frames = frames
 
     def add_to_texture_bin(self, bin):
-        '''Add the images of the animation to a `TextureBin`.
+        '''Add the _images of the animation to a `TextureBin`.
 
         The animation frames are modified in-place to refer to the texture bin
         regions.
@@ -2539,7 +2539,7 @@ class Animation(object):
 
     @classmethod
     def from_image_sequence(cls, sequence, period, loop=True):
-        '''Create an animation from a list of images and a constant framerate.
+        '''Create an animation from a list of _images and a constant framerate.
 
         :Parameters:
             `sequence` : list of `AbstractImage`

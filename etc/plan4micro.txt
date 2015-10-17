@@ -1,0 +1,98 @@
+commit notes:
+innumeribal changes.
+reprogrammed ViewingPane to make it more efficent; now fills batch with whole map only switching
+the tiles specifically when they change. uses gl functions to move the viewport.
+added scrolling through mouse and keyboard.
+engine will now fire a "on_map_changed" event.
+tileimagesbysize now fully functions. created tilesheet build script to arrange tiles in a square to be within texture size limitations.
+added app icon.
+added logic to switch tilesize at runtime.
+ported tilesheet generator maketiles.py
+
+- play doom / supernes games *************
+- sort downloads folder
+- set up true surround sound to watch lotr
+
+
+-----------  TODO NEXT  -----------
+
+IN ORDER:
+- make commit
+- work on engine features
+
+
+-------------   Plan For Micropylis Dev   --------------
+
+- make simulation work part by part
+    - get tools working - modification of the map
+        - what needs to be done?
+        - get tool cursor going
+    - map animating itself
+        - map scanning - residential and roads
+        - power
+        - budget
+        - lots of things.
+    - Tiles class is global access point for loading a TileSpec
+- get simple gui going
+    - make an "as simple as possible tool select dialog"
+        - test the image grid tool select thing from platform editor
+    - use modified version of kytten
+        - all controls can go in kytten dialogs
+            - tool select
+            - pause/play
+            - save/load/new
+            - info
+
+----------------  Extraneous Things --------------
+
+- loading screen (getting tiles ready)
+    - have lightweight scene manager
+        - either (can create a "process" and add draw and update functions to it)
+        - or (scene manager where a scene object will subclass Scene)
+        - viewingpane will only process a certain amount at a time, and report back its completion and progres
+            - this scene will update a progress bar and display an animation.
+- build maker
+    - install tool (start menu shortcut)
+    - copies everything for a release to a release directory
+        - python code into a self contained executable
+    - uses a simple build script
+        - directories, files, other scripts to run (maketiles)
+        - excluded extensions
+    - pack all tile data including tiles.rc in single file
+        - header, tiles.rc, and tilesheet pngs
+        - header data: signature, format version, number of sizes followed by each size's number, length of tiles.rc
+        - implement for icons and sprite images
+
+-----------  NOTES  -----------
+
+- map scan runs tile behaviour actions. take a look at the different actions.
+
+- a very large city could cause slowdowns due to updating the batch
+    - will need to mess with updating of changed tiles.
+    - for more effiency: keep track of which tiles that are in view and only actively update those
+        - will need to update tiles after scrolling or window size change
+    - window size might need to be limited (too many tiles will need constant updating in a large city)
+
+- viewingpane mouse pan tool
+
+
+-----------  BUGS  -----------
+
+1) vertical seems between tiles when vertical scrolling at certain intervals
+        
+
+
+---------- Q 'n A -----------
+
+- what does band do in Engine.simulate()?
+    - maps are scanned a section at a time (band at a time)
+
+- how does it determine which zones are linked together (for transportation and power etc.)
+    - in behaviour class it follows road from zone to see if it can get somewhere usefull
+
+---------- GOALS -----------
+
+One of the main goals of porting micropolis is to 
+understand a semi-complex simulation system:
+        - city transportation network
+        - rci demand

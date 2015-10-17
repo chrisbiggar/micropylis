@@ -1,0 +1,18 @@
+------  Micropylis version history  ------
+
+
+---------------------------------
+version 2
+innumeribal changes.
+reprogrammed ViewingPane to make it more efficent; now fills batch with whole map only switching
+the tiles specifically when they change. uses gl functions to move the viewport.
+added scrolling through mouse and keyboard.
+engine will now fire a "on_map_changed" event.
+tileimagesbysize now fully functions. created tilesheet build script to arrange tiles in a square to be within texture size limitations.
+added app icon.
+added logic to switch tilesize at runtime.
+
+---------------------------------
+first commit
+display static map by adding tile images to new pyglet batch each time
+map updates. slow.

@@ -2,22 +2,11 @@
     main engine module
     
 '''
-
-import struct
+import pyglet
 from array import *
 from engine.tileConstants import *
+from engine.misc import *
 
-''' misc functions '''
-def readShort(aFile):
-    '''map is stored big endian'''
-    return struct.unpack('>H',aFile.read(2))[0]
-
-def readInt(aFile):
-    '''map is stored big endian'''
-    return struct.unpack('>I', aFile.read(4))[0]
-
-def create2dArray(width, height):
-    return [[0 for y in range(height)] for x in range(width)]
 
 '''
 class History
@@ -45,7 +34,7 @@ class History(object):
     census data
     history data
 '''
-class Engine(object):
+class Engine(pyglet.event.EventDispatcher):
     DEFAULT_WIDTH = 120
     DEFAULT_HEIGHT = 100
     
@@ -57,8 +46,8 @@ class Engine(object):
             height = self.DEFAULT_HEIGHT
         self.map = create2dArray(height, width)
         self.history = History()
-        #self.load('maponly.cty')
-        self.load('corner1.cty')
+        self.register_event_type("on_map_changed")
+        self.updatedTiles = list()
         
     def getTile(self, x, y):
         return self.map[y][x] & LOMASK
@@ -76,7 +65,7 @@ class Engine(object):
         pass
     
     ''' given a filename will load saved city data '''
-    def load(self, fileName):
+    def loadCity(self, fileName):
         saveFile = open(fileName, "rb")
         try:
             self.loadHistoryArray(saveFile, self.history.res)
@@ -91,6 +80,7 @@ class Engine(object):
             print str(err)
         finally:
             saveFile.close()
+            self.dispatch_event("on_map_changed", self.updatedTiles)
         pass
     
     def loadHistoryArray(self, saveFile, array):
@@ -141,13 +131,33 @@ class Engine(object):
                 # clear 6 most significant bits (leaving 10 lsb's)
                 z &= ~(1024 | 2048 | 4096 | 8192 | 16384)
                 self.map[y][x] = z
+                self.updatedTiles.append((x,y))
+                
+    def testChange(self):
+        for x in range(90):
+            self.setTile(x,2,12+x)
+            self.setTile(x,3,12+x)
+            self.setTile(x,4,12+x)
+            self.setTile(x,5,12+x)
+    
+    ''' this method clears PWRBIT of given tile '''
+    def setTile(self, x, y, newTile):
+        if ((newTile & LOMASK) == newTile and \
+                self.map[y][x] != newTile):
+            self.map[y][x] = newTile
+            self.updatedTiles.append((x,y))
+    
+    def animate(self):
+        self.step()
     
     def step(self):
-        pass
-    
+        self.simulate(0)
+            
     def simulate(self, mod16):
-        pass
-    
+        
+        if (len(self.updatedTiles) != 0):
+            self.dispatch_event("on_map_changed", self.updatedTiles)
+            self.updatedTiles = list()
     
     
     

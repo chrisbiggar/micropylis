@@ -46,7 +46,7 @@ from pyglet.image.codecs import ImageDecodeException
 
 class GIFStream(object):
     def __init__(self):
-        self.images = []
+        self._images = []
 
 class GIFImage(object):
     delay = None
@@ -130,7 +130,7 @@ def skip_data_sub_blocks(file):
 
 def read_table_based_image(file, stream, graphics_scope):
     gif_image = GIFImage()
-    stream.images.append(gif_image)
+    stream._images.append(gif_image)
     gif_image.delay = graphics_scope.delay
         
     # 20. Image descriptor
