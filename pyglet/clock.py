@@ -226,16 +226,16 @@ class Clock(_ClockBase):
 
     def __init__(self, fps_limit=None, time_function=_default_time_function):
         '''Initialise a Clock, with optional framerate limit and custom
-        time function.
+        startTime function.
 
         :Parameters:
             `fps_limit` : float
                 If not None, the maximum allowable framerate.  Defaults
                 to None.  Deprecated in pyglet 1.2.
             `time_function` : function
-                Function to return the elapsed time of the application, 
-                in seconds.  Defaults to time.time, but can be replaced
-                to allow for easy time dilation effects or game pausing.
+                Function to return the elapsed startTime of the application, 
+                in seconds.  Defaults to startTime.startTime, but can be replaced
+                to allow for easy startTime dilation effects or game pausing.
 
         '''
 
@@ -900,7 +900,7 @@ class ClockDisplay(object):
             `color` : 4-tuple of float
                 The color, including alpha, passed to ``glColor4f``.
             `clock` : `Clock`
-                The clock which determines the time.  If None, the default
+                The clock which determines the startTime.  If None, the default
                 clock is used.
 
         '''

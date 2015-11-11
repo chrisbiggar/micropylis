@@ -136,6 +136,8 @@ class TileSpec(object):
         self.tileName = tileName
         self._attributes = dict()
         self._images = list()
+        self.buildingInfo = None
+        self.owner = None
         
     def load(self, inStr, tilesRc):
         '''
@@ -177,6 +179,66 @@ class TileSpec(object):
         self.canConduct = self.getBooleanAttribute("conducts")
         self.overWater = self.getBooleanAttribute("overwater")
         self.zone = self.getBooleanAttribute("zone")
+        
+    def resolveBuildingInfo(self):
+        tmp = self.getAttribute("building")
+        if tmp is None:
+            return
+        
+        bi = BuildingInfo()
+        
+        p2 = tmp.split("x")
+        bi.width = int(p2[0])
+        bi.height = int(p2[1])
+        
+        bi.members = [0] * bi.width * bi.height
+        startTile = self._tileNum
+        if bi.width >= 3:
+            startTile -= 1
+        if bi.height >= 3:
+            startTile -= bi.width
+        
+        for row in range(bi.height):
+            for col in range(bi.width):
+                bi.members[row * bi.width + col] = startTile
+                startTile += 1
+                
+        self.buildingInfo = bi
+        
+    def resolveReferences(self, tileMap):
+        tmp = self.getAttribute("becomes")
+        if tmp is not None:
+            self.animNext = tileMap.get(tmp)
+        tmp = self.getAttribute("onpower")
+        if tmp is not None:
+            self.onPower = tileMap.get(tmp)
+        tmp = self.getAttribute("onshutdown")
+        if tmp is not None:
+            self.onShutdown = tileMap.get(tmp)
+        tmp = self.getAttribute("building-part")
+        if tmp is not None:
+            self.handleBuildingPart(tmp, tileMap)
+        
+        self.resolveBuildingInfo()
+    
+    def handleBuildingPart(self, text, tileMap):
+        parts = text.split(",")
+        if len(parts) != 3:
+            print "invalid building-part spec"
+            return
+        self.owner = tileMap.get(parts[0])
+        self.ownerOffsetX = int(parts[1])
+        self.ownerOffsetY = int(parts[2])
+        
+        assert self.owner is not None
+        assert self.ownerOffsetX != 0 or self.ownerOffsetY != 0
+        
+    def isNumberedTile(self):
+        # regex to match name
+        pass
+    
+    def getBuildingInfo(self):
+        return self.buildingInfo
         
     def getImages(self):
         return self._images

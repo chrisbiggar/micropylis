@@ -1617,7 +1617,7 @@ class FPSDisplay(object):
     update_period = 0.25
 
     def __init__(self, window):
-        from time import time
+        from startTime import startTime
         from pyglet.text import Label
         self.label = Label('', x=10, y=10, 
                            font_size=24, bold=True,
@@ -1628,7 +1628,7 @@ class FPSDisplay(object):
         window.flip = self._hook_flip
 
         self.time = 0.0
-        self.last_time = time()
+        self.last_time = startTime()
         self.count = 0
 
     def update(self):

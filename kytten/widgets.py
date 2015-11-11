@@ -150,7 +150,7 @@ class Control(Widget, pyglet.event.EventDispatcher):
 
         @param id Controls may have ids, which can be used to identify
                   them to the outside application.
-        @param value Controls may be assigned values at start time.  The
+        @param value Controls may be assigned values at start startTime.  The
                      values of all controls which have ids can be obtained
                      through the containing Dialog.
         @param x Initial X coordinate of lower left corner

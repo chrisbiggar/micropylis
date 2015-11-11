@@ -1,59 +1,112 @@
 commit notes:
-innumeribal changes.
-reprogrammed ViewingPane to make it more efficent; now fills batch with whole map only switching
-the tiles specifically when they change. uses gl functions to move the viewport.
-added scrolling through mouse and keyboard.
-engine will now fire a "on_map_changed" event.
-tileimagesbysize now fully functions. created tilesheet build script to arrange tiles in a square to be within texture size limitations.
-added app icon.
-added logic to switch tilesize at runtime.
-ported tilesheet generator maketiles.py
-
-- play doom / supernes games *************
-- sort downloads folder
-- set up true surround sound to watch lotr
+Version 2
+created tool system.
+viewing pane shows tool preview and cursor.
+added infopane to show city information.
+created script to create tool icon grid.
+beginnings of mapscanning and tile behaviours in place.
 
 
------------  TODO NEXT  -----------
+----- STATE OF DEV -----
 
-IN ORDER:
-- make commit
-- work on engine features
+DO COMMIT!!!
+
+- pretty tool buttons grid!
+    - include pan tool icon
+    - load imagegrid and tool order file, then assign imagegrid peices to paletteoptions
+    - put all tool types in micropolistools
+
+- laywire (after doing the tool button)
+- bulldozer tool
+
+- start working on engine map scanning
+
+
+------ More Things:
+
+*- toolstroke applyzone() water = tool result NONE 
+
+- the rest of the tools
+
+*- incorporate makeicons into main build script
+    - change names of these to "gen graphics"
+
+*- placing zones should be restricted to 2 zones thick either direction
+
 
 
 -------------   Plan For Micropylis Dev   --------------
 
-- make simulation work part by part
-    - get tools working - modification of the map
-        - what needs to be done?
-        - get tool cursor going
-    - map animating itself
-        - map scanning - residential and roads
-        - power
-        - budget
-        - lots of things.
-    - Tiles class is global access point for loading a TileSpec
-- get simple gui going
-    - make an "as simple as possible tool select dialog"
-        - test the image grid tool select thing from platform editor
-    - use modified version of kytten
-        - all controls can go in kytten dialogs
-            - tool select
-            - pause/play
-            - save/load/new
-            - info
+- work on engine simulation
+    - test mapscan
+    - continue working on behaviours
+    - residential and roads
+    - focus on a couple things: roads, res, industrial?
+        - get proof of concepts going eg. residential zone growing 
+    - census stuff
 
-----------------  Extraneous Things --------------
+- learn how to do profiling
+
+- gui
+    - message display box
+        - better background
+        - needs to auto resize itself
+            - stay same width?
+            - need to figure this out.
+
+    - info panel.
+        - resize itself.
+        - buttons for kytten dialogs
+        - can be minimized?
+        - minimap is 360 px wide
+            - how to do minimap and overlays?
+
+    - sounds
+
+    - other things
+        - new city
+        - pause/play
+        - save/load
+        - budget dialog
+        - city eval
 
 - loading screen (getting tiles ready)
+    - will display game screen with display panel and in area where map will
+        be it will display a loading bar
     - have lightweight scene manager
         - either (can create a "process" and add draw and update functions to it)
         - or (scene manager where a scene object will subclass Scene)
         - viewingpane will only process a certain amount at a time, and report back its completion and progres
             - this scene will update a progress bar and display an animation.
+
+
+-----------  BUGS  -----------
+
+1: PaletteMenu or Option does not pass mouse move event to parent dialog (should probobly do this)
+
+2: when in 8 size tile, view is wider than map.
+    centre map and have a border.
+3: in addition to bug #2, map needs to be adjusted
+    when changed zoom lvls so it is not off centre
+
+4: when tool is dragged off map, tool does not actually place.
+    - has to do with on tool up not happening
+
+----------------  Extraneous Things --------------
+
+- get self containing exe working
+
+- get music from original.
+
+- improve tiles!
+
+- tool cursor in viewingpane
+    - tool cursor uses sprite (will need peices for middles and ends, vertical and horizontal + sizes) (or look at how kytten makes dynamic boxes using single image**)
+
 - build maker
     - install tool (start menu shortcut)
     - copies everything for a release to a release directory
+        - this needs testing!
         - python code into a self contained executable
     - uses a simple build script
         - directories, files, other scripts to run (maketiles)
@@ -65,27 +118,40 @@ IN ORDER:
 
 -----------  NOTES  -----------
 
-- map scan runs tile behaviour actions. take a look at the different actions.
+- kytten container that has no background and/or cannot be moved
+        - try container?
 
-- a very large city could cause slowdowns due to updating the batch
+- Micropolis is simple!
+    - just does simulation (mapscanning and census) in the switch-case of the simulate() function. then stuff is added to map with tool classes. sprites are animated.
+    - class functionailities can be split into:
+        - Mapscanning
+            - TileBehaviour,
+            - mapscanner
+            - terrainbehaviour
+            - things that help with this
+                - TrafficGen
+                - tiles, tilespec
+        - Evaluation and Census
+            - Cityeval
+            - citybudget
+            - cityproblem
+        - tools for modiying the map
+            - start with tool
+            - RoadLikeTool
+            - bulldozer
+            - translatedtooleffect
+        - Sprites
+            - airplane, monster, tornado
+
+- a very dense large city would cause slowdowns due to updating the batch
     - will need to mess with updating of changed tiles.
     - for more effiency: keep track of which tiles that are in view and only actively update those
         - will need to update tiles after scrolling or window size change
     - window size might need to be limited (too many tiles will need constant updating in a large city)
 
-- viewingpane mouse pan tool
-
-
------------  BUGS  -----------
-
-1) vertical seems between tiles when vertical scrolling at certain intervals
-        
-
+- Toolstrokes are "always draws down". so when draging tool down, y[start] always stays the same and height increases. when dragging up y increases as well as height. start is always at top of line.
 
 ---------- Q 'n A -----------
-
-- what does band do in Engine.simulate()?
-    - maps are scanned a section at a time (band at a time)
 
 - how does it determine which zones are linked together (for transportation and power etc.)
     - in behaviour class it follows road from zone to see if it can get somewhere usefull
@@ -94,5 +160,5 @@ IN ORDER:
 
 One of the main goals of porting micropolis is to 
 understand a semi-complex simulation system:
-        - city transportation network
-        - rci demand
+    - city transportation network
+    - rci demand
