@@ -8,7 +8,6 @@ class TileBehaviour(object):
     
     def __init__(self, city):
         self.city = city
-        self.PRNG = city.PRNG
         
     def processTile(self, x, y):
         self.x = x

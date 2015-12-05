@@ -220,7 +220,7 @@ class Dropdown(Control):
 
     def _delete_pulldown_menu(self):
         if self.pulldown_menu is not None:
-            self.pulldown_menu.window.remove_handlers(self.pulldown_menu)
+            self.pulldown_menu.tilesView.remove_handlers(self.pulldown_menu)
             self.pulldown_menu.teardown()
             self.pulldown_menu = None
 
@@ -267,8 +267,8 @@ class Dropdown(Control):
                 else:
                     self.on_select(choice)
 
-        # We'll need the root window to get window size
-        width, height = root.window.get_size()
+        # We'll need the root tilesView to get tilesView size
+        width, height = root.tilesView.get_size()
 
         # Calculate the anchor point and location for the dialog
         if self.align == VALIGN_TOP:
@@ -289,11 +289,11 @@ class Dropdown(Control):
                            height=self.max_height),
                 path=['dropdown', 'pulldown']
             ),
-            window=root.window, batch=root.batch,
+            window=root.tilesView, batch=root.batch,
             group=root.root_group.parent, theme=root.theme,
             movable=False, anchor=anchor, offset=(x, y),
             on_escape=on_escape)
-        root.window.push_handlers(self.pulldown_menu)
+        root.tilesView.push_handlers(self.pulldown_menu)
 
     def layout(self, x, y):
         Control.layout(self, x, y)

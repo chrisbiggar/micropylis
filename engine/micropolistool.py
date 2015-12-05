@@ -25,6 +25,7 @@ class MicropylisTool(object):
         try:
             class_ = types[toolType]
         except KeyError:
+            print "toolType not found: " + toolType
             return None
         return class_
         
@@ -62,11 +63,19 @@ class MicropylisTool(object):
 
 
 types = dict()
-#types['BULLDOZER'] = MicropylisTool('BULLDOZER', BULLDOZER, 1, 10)
-#types['WIRE'] = MicropylisTool('WIRE', WIRE, 1, 10)
-types['ROAD'] = MicropylisTool('ROAD', ROADS, 1, 10)
-types['RAIL'] = MicropylisTool('RAIL', RAIL, 1, 20)
-
-#types['AIRPORT'] = 
+types['BULLDOZER'] = MicropylisTool('BULLDOZER', BULLDOZER, 1, 10)
+types['WIRE'] = MicropylisTool('WIRE', WIRE, 1, 5) # 25 underwater
+types['ROADS'] = MicropylisTool('ROADS', ROADS, 1, 10) # 50 overwater
+types['RAIL'] = MicropylisTool('RAIL', RAIL, 1, 20) # 100 underwater
 types['RESIDENTIAL'] = MicropylisTool('RESIDENTIAL', RESIDENTIAL, 3, 100)
+types['COMMERCIAL'] = MicropylisTool('COMMERCIAL', COMMERCIAL, 3, 100)
+types['INDUSTRIAL'] = MicropylisTool('INDUSTRIAL', INDUSTRIAL, 3, 100)
+types['POLICE'] = MicropylisTool('POLICE', POLICE, 3, 500)
+types['FIRE'] = MicropylisTool('FIRE', FIRE, 3, 500)
+types['STADIUM'] = MicropylisTool('STADIUM', STADIUM, 3, 500)
+types['PARK'] = MicropylisTool('PARK', PARK, 1, 500)
+types['SEAPORT'] = MicropylisTool('SEAPORT', SEAPORT, 4, 3000)
+types['POWERPLANT'] = MicropylisTool('POWERPLANT', POWERPLANT, 3, 3000)
+types['NUCLEAR'] = MicropylisTool('NUCLEAR', NUCLEAR, 3, 5000)
+types['AIRPORT'] = MicropylisTool('AIRPORT', AIRPORT, 3, 10000)
 types['QUERY'] = MicropylisTool('QUERY', QUERY, 1, 0)

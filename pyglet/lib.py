@@ -313,7 +313,7 @@ class LinuxLibraryLoader(LibraryLoader):
 
     def _create_ld_so_cache(self):
         # Recreate search path followed by ld.so.  This is going to be
-        # slow to build, and incorrect (ld.so uses ld.so.cache, which may
+        # slow to gengraphics, and incorrect (ld.so uses ld.so.cache, which may
         # not be up-to-date).  Used only as fallback for distros without
         # /sbin/ldconfig.
         #

@@ -87,6 +87,7 @@ HRAILROAD = 237
 VRAILROAD = 238
 LASTRAIL = 238
 
+ALLBITS = 64512
 LOMASK = 1023 # mask for low ten bits
 
 RESBASE = 244
@@ -142,7 +143,8 @@ def canAutoBulldozeZ(tile):
 
 def getTileBehaviour(tile):
     ts = Tiles().get(tile)
-    return ts.getAttribute("behaviour")
+    b = ts.getAttribute("behavior")
+    return b
 
 
 def isRoadDynamic(tile):
@@ -228,6 +230,10 @@ def railConnectsWest(tile):
         tile != VRAILROAD and
         tile != VRAIL)
     
+def isCombustible(tile):
+    assert (tile & LOMASK) == tile
+    spec = Tiles().get(tile)
+    return spec is not None and spec.canBurn
 
 def isConductive(tile):
     assert tile & LOMASK == tile
@@ -266,6 +272,11 @@ def wireConnectsWest(tile):
         ntile != HPOWER and
         ntile != HROADPOWER and
         ntile != RAILHPOWERV)
+    
+def isZoneCenter(tile):
+    assert (tile & LOMASK) == tile
+    spec = Tiles().get(tile)
+    return spec is not None and spec.zone
 
 
 def neutralizeRoad(tile):
@@ -274,13 +285,6 @@ def neutralizeRoad(tile):
     if tile >= ROADBASE and tile <= LASTROAD:
         tile = ((tile - ROADBASE) & 0xf) + ROADBASE
     return tile
-
-
-def isZoneCenter(tile):
-    assert tile & LOMASK == tile
-    
-    spec = Tiles().get(tile)
-    return spec is not None and spec.zone
 
 
 

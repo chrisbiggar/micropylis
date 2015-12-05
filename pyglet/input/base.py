@@ -80,8 +80,8 @@ class Device(object):
         '''Open the device to begin receiving input from it.
 
         :Parameters:
-            `window` : Window
-                Optional window to associate with the device.  The behaviour
+            `tilesView` : Window
+                Optional tilesView to associate with the device.  The behaviour
                 of this parameter is device and operating system dependant.
                 It can usually be omitted for most devices.
             `exclusive` : bool
@@ -615,7 +615,7 @@ AppleRemote.register_event_type('on_button_release')
 class Tablet(object):
     '''High-level interface to tablet devices.
 
-    Unlike other devices, tablets must be opened for a specific window,
+    Unlike other devices, tablets must be opened for a specific tilesView,
     and cannot be opened exclusively.  The `open` method returns a
     `TabletCanvas` object, which supports the events provided by the tablet.
 
@@ -624,11 +624,11 @@ class Tablet(object):
     undefined.
     '''
     def open(self, window):
-        '''Open a tablet device for a window.
+        '''Open a tablet device for a tilesView.
 
         :Parameters:
-            `window` : `Window`
-                The window on which the tablet will be used.
+            `tilesView` : `Window`
+                The tilesView on which the tablet will be used.
 
         :rtype: `TabletCanvas`
         '''
@@ -638,40 +638,40 @@ class TabletCanvas(EventDispatcher):
     '''Event dispatcher for tablets.
 
     Use `Tablet.open` to obtain this object for a particular tablet device and
-    window.  Events may be generated even if the tablet stylus is outside of
-    the window; this is operating-system dependent.
+    tilesView.  Events may be generated even if the tablet stylus is outside of
+    the tilesView; this is operating-system dependent.
 
     The events each provide the `TabletCursor` that was used to generate the
     event; for example, to distinguish between a stylus and an eraser.  Only
     one cursor can be used at a time, otherwise the results are undefined.
 
     :Ivariables:
-        `window` : Window
-            The window on which this tablet was opened.
+        `tilesView` : Window
+            The tilesView on which this tablet was opened.
     '''
-    # OS X: Active window receives tablet events only when cursor is in window
-    # Windows: Active window receives all tablet events
+    # OS X: Active tilesView receives tablet events only when cursor is in tilesView
+    # Windows: Active tilesView receives all tablet events
     #
     # Note that this means enter/leave pairs are not always consistent (normal
     # usage).
 
     def __init__(self, window):
-        self.window = window
+        self.tilesView = window
 
     def close(self):
-        '''Close the tablet device for this window.
+        '''Close the tablet device for this tilesView.
         '''
         raise NotImplementedError('abstract')
 
     if _is_epydoc:
         def on_enter(self, cursor):
-            '''A cursor entered the proximity of the window.  The cursor may
-            be hovering above the tablet surface, but outside of the window
-            bounds, or it may have entered the window bounds.
+            '''A cursor entered the proximity of the tilesView.  The cursor may
+            be hovering above the tablet surface, but outside of the tilesView
+            bounds, or it may have entered the tilesView bounds.
 
             Note that you cannot rely on `on_enter` and `on_leave` events to
             be generated in pairs; some events may be lost if the cursor was
-            out of the window bounds at the time.
+            out of the tilesView bounds at the time.
 
             :Parameters:
                 `cursor` : `TabletCursor`
@@ -681,13 +681,13 @@ class TabletCanvas(EventDispatcher):
             '''
 
         def on_leave(self, cursor):
-            '''A cursor left the proximity of the window.  The cursor may have
+            '''A cursor left the proximity of the tilesView.  The cursor may have
             moved too high above the tablet surface to be detected, or it may
-            have left the bounds of the window.
+            have left the bounds of the tilesView.
 
             Note that you cannot rely on `on_enter` and `on_leave` events to
             be generated in pairs; some events may be lost if the cursor was
-            out of the window bounds at the time.
+            out of the tilesView bounds at the time.
 
             :Parameters:
                 `cursor` : `TabletCursor`
@@ -706,9 +706,9 @@ class TabletCanvas(EventDispatcher):
                 `cursor` : `TabletCursor`
                     The cursor that moved.
                 `x` : int
-                    The X position of the cursor, in window coordinates.
+                    The X position of the cursor, in tilesView coordinates.
                 `y` : int
-                    The Y position of the cursor, in window coordinates.
+                    The Y position of the cursor, in tilesView coordinates.
                 `pressure` : float
                     The pressure applied to the cursor, in range 0.0 (no
                     pressure) to 1.0 (full pressure).

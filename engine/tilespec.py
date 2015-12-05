@@ -132,12 +132,13 @@ class TileSpec(object):
     
     '''
     def __init__(self, tileNum, tileName):
-        self._tileNum = tileNum
+        self.tileNum = tileNum
         self.tileName = tileName
         self._attributes = dict()
         self._images = list()
         self.buildingInfo = None
         self.owner = None
+        self.animNext = None
         
     def load(self, inStr, tilesRc):
         '''
@@ -175,7 +176,7 @@ class TileSpec(object):
                 self._images.append(v)
         
         self.canBulldoze = self.getBooleanAttribute("bulldozable")
-        self.canBurn = self.getBooleanAttribute("noburn")
+        self.canBurn = not self.getBooleanAttribute("noburn")
         self.canConduct = self.getBooleanAttribute("conducts")
         self.overWater = self.getBooleanAttribute("overwater")
         self.zone = self.getBooleanAttribute("zone")
@@ -192,7 +193,7 @@ class TileSpec(object):
         bi.height = int(p2[1])
         
         bi.members = [0] * bi.width * bi.height
-        startTile = self._tileNum
+        startTile = self.tileNum
         if bi.width >= 3:
             startTile -= 1
         if bi.height >= 3:

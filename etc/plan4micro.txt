@@ -1,55 +1,54 @@
-commit notes:
-Version 2
-created tool system.
-viewing pane shows tool preview and cursor.
-added infopane to show city information.
-created script to create tool icon grid.
-beginnings of mapscanning and tile behaviours in place.
+commit:
+v3
+-----
+innumerous changes.
+cleaned up build and renamed to gengraphics
+impl full tool menu using texturegrid for icons.
+fixed opengl scaling of tiles by adding 1px border around all tiles in tilesheet. added tools logic to compensate for scaling. fixed opengl scaling to zoom to centre of view.
+fire terrainbehaviour implemented. animation. 
 
 
 ----- STATE OF DEV -----
 
-DO COMMIT!!!
 
-- pretty tool buttons grid!
-    - include pan tool icon
-    - load imagegrid and tool order file, then assign imagegrid peices to paletteoptions
-    - put all tool types in micropolistools
+- speed control
 
-- laywire (after doing the tool button)
-- bulldozer tool
+- impl speed control and use dt to control how fast things update! animation may have to be slowed down sometimes etc.
+    - compare to original / look at original timing.
 
-- start working on engine map scanning
+- simulation engine *****
+    - jot down notes about simulation as you go.
+    - start with power stuff?  ***
+        - blink
+            - overlay?
+        - building tool
+        - laywire
+        - look at algorithm
 
+-------------   Plan For Micropylis Dev --------------
 
------- More Things:
+- updateView() for updating only the tiles seen on the screen; will be called when scrolling. on_map changed only updates tiles within screen. call less periodically when zoomed out?
 
-*- toolstroke applyzone() water = tool result NONE 
-
-- the rest of the tools
-
-*- incorporate makeicons into main build script
-    - change names of these to "gen graphics"
-
-*- placing zones should be restricted to 2 zones thick either direction
-
-
-
--------------   Plan For Micropylis Dev   --------------
 
 - work on engine simulation
-    - test mapscan
     - continue working on behaviours
-    - residential and roads
-    - focus on a couple things: roads, res, industrial?
-        - get proof of concepts going eg. residential zone growing 
-    - census stuff
-
-- learn how to do profiling
+    - tools
+    - animation
+        - use pyglet animations when an animated tile is set?
+        - blink
+        - shake
+        - on power animations
+        - only animate within viewport
+            - impl viewingpane withinView(tileX,tileY)
+                - getViewCityRect() *
 
 - gui
+    -make concrete plan for gui.
+        - scenes and controls
+        - complete gui mockups for all controls and screens
+ 
     - message display box
-        - better background
+        - better background (image?)(like kytten and cursor)
         - needs to auto resize itself
             - stay same width?
             - need to figure this out.
@@ -59,6 +58,7 @@ DO COMMIT!!!
         - buttons for kytten dialogs
         - can be minimized?
         - minimap is 360 px wide
+            - scale the regular map very small?
             - how to do minimap and overlays?
 
     - sounds
@@ -69,6 +69,9 @@ DO COMMIT!!!
         - save/load
         - budget dialog
         - city eval
+
+- learn how to do profiling
+- consider unit tests
 
 - loading screen (getting tiles ready)
     - will display game screen with display panel and in area where map will
@@ -84,15 +87,28 @@ DO COMMIT!!!
 
 1: PaletteMenu or Option does not pass mouse move event to parent dialog (should probobly do this)
 
-2: when in 8 size tile, view is wider than map.
-    centre map and have a border.
-3: in addition to bug #2, map needs to be adjusted
-    when changed zoom lvls so it is not off centre
-
 4: when tool is dragged off map, tool does not actually place.
-    - has to do with on tool up not happening
+    - has to do with "on tool up" not happening
+
+5: when placing or dragging a tool higher than or left of the map, the tool will draw outside the map and wrap around to other side of map, setting the tiles in those spots to black, and the spot outside the map to the value of those tiles. (tile sprite coords are being moved to values outside of the map)
 
 ----------------  Extraneous Things --------------
+
+- make window resizable (easy!)
+    - do in test program first
+    - everything relative to its size
+    - gui components resize themselves.
+    - 0ther glitches?
+    - minimum size restriction
+    - fullscreen?
+
+
+- ? make right click drag move map. right click without drag queries tile.
+
+- add title label at top of message queue: City Info
+- put dollar sign in front of tool cost
+
+- change the mouse cursor to CURSOR_NO if tool cannot be dragged there.
 
 - get self containing exe working
 
@@ -116,10 +132,21 @@ DO COMMIT!!!
         - header data: signature, format version, number of sizes followed by each size's number, length of tiles.rc
         - implement for icons and sprite images
 
+*- placing zones should be restricted to 2 zones thick either direction
+    - impl. in getBounds(): similar to roadliketool
+
+- could allow to scroll outside map partially with illusion of map continuing in all directions. could have same colour or repeated tiles outside border of map.
+
 -----------  NOTES  -----------
 
+Mouse Coords:
+PS:192,288
+RES:256,96
+PARK:32,288
+RAIL:288,226
+
 - kytten container that has no background and/or cannot be moved
-        - try container?
+        - try generic container?
 
 - Micropolis is simple!
     - just does simulation (mapscanning and census) in the switch-case of the simulate() function. then stuff is added to map with tool classes. sprites are animated.
@@ -149,7 +176,7 @@ DO COMMIT!!!
         - will need to update tiles after scrolling or window size change
     - window size might need to be limited (too many tiles will need constant updating in a large city)
 
-- Toolstrokes are "always draws down". so when draging tool down, y[start] always stays the same and height increases. when dragging up y increases as well as height. start is always at top of line.
+- Toolstrokes always draw downwards. so when draging tool down, y[start] always stays the same and height increases. when dragging up y increases as well as height. start is always at top of line.
 
 ---------- Q 'n A -----------
 

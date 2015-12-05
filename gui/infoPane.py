@@ -108,7 +108,7 @@ class InfoPane(object):
         self.msgs.create(self.batch, self.x + self.border, self.border, 
                          self.width - 20, 200)
         self.fundsLabel = Label(x=self.x + self.width - 146,
-                                y=self.y + self.height - 20,
+                                y=self.y + 220,
                                 batch=self.batch,
                                 group=fgGroup)
         self.createBackground()

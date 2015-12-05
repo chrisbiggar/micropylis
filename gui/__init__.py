@@ -13,6 +13,7 @@ from engine.cityRect import CityRect
 import dialogs
 from engine.toolResult import ToolResult
 from infoPane import InfoPane
+from gui.dialogs import NewCityDialog
 
 
 '''  '''
@@ -32,7 +33,8 @@ class MainWindow(pyglet.window.Window):
     DEFAULT_HEIGHT = 660
     
     def __init__(self):
-        super(MainWindow, self).__init__(vsync=True)
+        #super(MainWindow, self).__init__(resizable=True,vsync=True)
+        super(MainWindow, self).__init__(vsync=False)
         
         engine.tiles.Tiles().readTiles() # load in tile specs
         self.engine = Engine()
@@ -47,7 +49,7 @@ class MainWindow(pyglet.window.Window):
         self.lastY = 0
         
         # window stuff
-        self.initGLSettings()
+        
         self.set_caption("Micropylis")
         self.set_icon(pyglet.image.load("res/icon32.png"))
         self.set_size(self.DEFAULT_WIDTH,self.DEFAULT_HEIGHT)
@@ -58,7 +60,15 @@ class MainWindow(pyglet.window.Window):
         pyglet.clock.schedule_interval(self.update, 1/60.)
         
         #testing sounds:
-        #music = pyglet.media.load('explosion.wav'
+        #music = pyglet.media.load('explosion.wav
+        
+    def newCity(self):
+        newCityDialog = NewCityDialog(self)
+        
+        
+    
+    def loadCity(self):
+        pass
         
     def initGuiComponents(self):
         self.setupDialogs()
@@ -81,12 +91,6 @@ class MainWindow(pyglet.window.Window):
         self.push_handlers(self.mainDialog)
         pyglet.clock.schedule_interval(self.updateKytten, 1/60.)
         
-    def initGLSettings(self):
-        # GL_NEAREST rendering for zoomed scale without seams between tiles:
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
-        glEnable(GL_BLEND)
-        
     def on_key_release(self, symbol, modifiers):
         if (symbol == pyglet.window.key.X):
             self.engine.testChange()
@@ -102,6 +106,10 @@ class MainWindow(pyglet.window.Window):
             self.onToolDown(x, y, button, modifiers)
         
     def on_mouse_release(self, x, y, button, modifiers):
+        '''if button == pyglet.window.mouse.RIGHT:
+            self.viewingPane.printWorldCoords(x,y)
+            return'''
+        
         if self.viewingPane.withinRange(x, y):
             self.onToolUp(x, y, button, modifiers)
             
@@ -112,37 +120,50 @@ class MainWindow(pyglet.window.Window):
     def on_resize(self, width, height):
         self.viewingPane.setSize(math.floor(self.DEFAULT_WIDTH * 0.75), 
                                     height)
+        # infopane
+        
         pyglet.window.Window.on_resize(self, width, height)
+
         
     def on_close(self):
         #self.viewingPane.cleanup()
         return super(MainWindow,self).on_close()
     
+    '''
+        selectTool(tooltype)
+        accepts a string specifying what tool should
+        be currently active. returns tool type object
+    '''
     def selectTool(self, toolType):
         if self.currentTool is not None and \
                 toolType == self.currentTool.name:
             return
+        if toolType == "Pan":
+            self.currentTool = None
+            return
         
         tool = MicropylisTool.factory(toolType)
-        
         self.currentTool = tool
-        
-        # cost?
+        return tool
         
     
     def onToolDown(self, x, y, button, modifiers):
+        loc = self.viewingPane.evToCityLocation(x, y)
+        self.lastX = loc.x
+        self.lastY = loc.y
+        #print self.lastX
+        #print x,y
         if button == mouse.RIGHT:
-            loc = self.viewingPane.evToCityLocation(x, y)
-            self.doQueryTool(loc.x, loc.y)
+            self.set_mouse_cursor(self.get_system_mouse_cursor(self.CURSOR_CROSSHAIR))
             return
 
+
+        if self.currentTool == None:
+            self.set_mouse_cursor(self.get_system_mouse_cursor(self.CURSOR_CROSSHAIR))
+            return
+        
         if button != mouse.LEFT:
             return
-        
-        if self.currentTool == None:
-            return
-        
-        loc = self.viewingPane.evToCityLocation(x, y)
         
         if self.currentTool.type == engine.micropolistool.QUERY:
             self.doQueryTool(loc.x, loc.y)
@@ -152,9 +173,10 @@ class MainWindow(pyglet.window.Window):
                                                 self.engine,
                                                 loc.x, loc.y)
             self.previewTool()
+            self.set_mouse_cursor(self.get_system_mouse_cursor(self.CURSOR_HAND))
             
-        self.lastX = loc.x
-        self.lastY = loc.y
+            
+
         
 
         
@@ -162,27 +184,30 @@ class MainWindow(pyglet.window.Window):
         if not self.viewingPane.withinRange(self.dragStart[0], self.dragStart[1]):
             return
         
-        if self.currentTool is None:
-            # pan view
-            self.viewingPane.moveView(-dx, dy)
+        if self.currentTool is None or\
+                buttons & mouse.RIGHT:
+            # pan tool is selected
+            self.viewingPane.moveView(dx, dy)
             return
-        if buttons & mouse.LEFT == 0:
-            return
-        
+
         loc = self.viewingPane.evToCityLocation(x, y)
         tx = loc.x
         ty = loc.y
         if tx == self.lastX and ty == self.lastY:
             return
         
+ 
+        if buttons & mouse.LEFT == 0:
+            return
+        
+        self.lastX = tx
+        self.lastY = ty
+        
         if self.toolStroke is not None:
             self.toolStroke.dragTo(tx, ty)
             self.previewTool()
         elif self.currentTool == micropolistool.QUERY:
             self.doQueryTool(tx, ty)
-        
-        self.lastX = tx
-        self.lastY = ty
         
         
     def onToolUp(self, x, y, button, modifiers):
@@ -191,7 +216,15 @@ class MainWindow(pyglet.window.Window):
             self.showToolResult(self.toolStroke.getLocation(),
                                 self.toolStroke.apply())
             self.toolStroke = None
-            
+        #print x,y
+        loc = self.viewingPane.evToCityLocation(x, y)
+        tx = loc.x
+        ty = loc.y
+        #print self.lastX,tx
+        if button == mouse.RIGHT and self.lastX == tx and self.lastY == ty:
+            self.doQueryTool(tx, ty)
+        
+        self.set_mouse_cursor(self.get_system_mouse_cursor(self.CURSOR_DEFAULT))    
         self.onToolHover(x,y)
         
         #TODO conditionally show budget window
@@ -200,10 +233,11 @@ class MainWindow(pyglet.window.Window):
     def onToolHover(self, x, y):
         if self.currentTool is None or\
             self.currentTool.type == engine.micropolistool.QUERY:
-                self.viewingPane.setToolCursor2(None)
+                self.viewingPane.setToolCursor(None)
                 return
             
         loc = self.viewingPane.evToCityLocation(x,y)
+        #print loc
         x = loc.x
         y = loc.y
         w = self.currentTool.getWidth()
@@ -215,13 +249,13 @@ class MainWindow(pyglet.window.Window):
             y -= 1
         
         rect = CityRect(x,y,w,h)
-        self.viewingPane.setToolCursor(rect, self.currentTool)
+        self.viewingPane.newToolCursor(rect, self.currentTool)
         
     def previewTool(self):
         assert self.toolStroke is not None
         assert self.currentTool is not None
         
-        self.viewingPane.setToolCursor(self.toolStroke.getBounds(), 
+        self.viewingPane.newToolCursor(self.toolStroke.getBounds(), 
                                         self.currentTool)
         self.viewingPane.setToolPreview(self.toolStroke.getPreview())
         
@@ -257,10 +291,11 @@ class MainWindow(pyglet.window.Window):
         self.dispatch_event('on_update', dt)
         
     def on_draw(self):
+        #pyglet.gl.glClearColor(240,240,240,255)
         self.clear()
         self.viewingPane.tileBatch.draw()
-        if self.viewingPane.toolCursor is not None:
-            self.viewingPane.toolCursor.vl.draw(GL_QUADS)
+        '''if self.viewingPane.toolCursor is not None:
+            self.viewingPane.toolCursor.vl.draw(GL_QUADS)'''
         self.infoPane.batch.draw()
         self.dialogBatch.draw()
         self.fpsDisplay.draw()

@@ -7,6 +7,7 @@ from array import *
 from engine.tileConstants import *
 from util import readShort, readInt, create2dArray
 from engine.terrainBehaviour import TerrainBehaviour
+from mapScanner import MapScanner
 
 
 class CityBudget(object):
@@ -74,22 +75,13 @@ class Engine(pyglet.event.EventDispatcher):
         self.register_event_type("on_map_changed")
         self.register_event_type("on_funds_changed")
         
-        ''' mapdata is stored as [column][row] '''
-        if (width == None):
-            width = self.DEFAULT_WIDTH
-        if (height == None):
-            height = self.DEFAULT_HEIGHT
-        self.map = create2dArray(height, width)
-        self.updatedTiles = list()
+        self.initTileBehaviours()
         
-        ''' misc engine vars '''
-        self.history = History()
-        self.budget = CityBudget()
-        self.budget.funds = 10000
+
+        self.newCity(width, height)
+
         
-        self.fCycle = 0 # counts simulation steps (mod 1024)
-        self.sCycle = 0 # same as cityTime, except mod 1024
-        self.aCycle = 0 # animation cycle (mod 960)
+        
         
     def spend(self, amount):
         self.budget.funds -= amount
@@ -108,8 +100,29 @@ class Engine(pyglet.event.EventDispatcher):
     def getHeight(self):
         return len(self.map)
         
-    def newCity(self):
-        pass
+    def newCity(self, width=None, height=None):
+        ''' mapdata is stored as [column][row] '''
+        if (width == None):
+            width = self.DEFAULT_WIDTH
+        if (height == None):
+            height = self.DEFAULT_HEIGHT
+        self.map = create2dArray(height, width)
+        self.updatedTiles = list()
+        ''' misc engine vars '''
+        self.history = History()
+        self.budget = CityBudget()
+        self.budget.funds = 10000
+        
+        self.fCycle = 0 # counts simulation steps (mod 1024)
+        self.sCycle = 0 # same as cityTime, except mod 1024
+        self.aCycle = 0 # animation cycle (mod 960)
+        
+        self.cityTime = 0
+        
+        
+        self.roadTotal = 0
+        self.roadEffect = 0
+        self.firePop = 0
     
     ''' given a filename will load saved city data '''
     def loadCity(self, fileName):
@@ -155,7 +168,10 @@ class Engine(pyglet.event.EventDispatcher):
         for i in range(18,50):
             readShort(saveFile)
             
-        readInt(saveFile) # budget.totalFunds
+        self.budget.funds = readInt(saveFile) # budget.totalFunds
+        
+        self.budget.funds = 10000
+        
         readShort(saveFile) # autoBulldoze
         readShort(saveFile) # autoBudget
         readShort(saveFile) # autoGo
@@ -180,11 +196,10 @@ class Engine(pyglet.event.EventDispatcher):
                 self.updatedTiles.append((x,y))
                 
     def testChange(self):
-        for x in range(90):
-            self.setTile(x,2,12+x)
-            self.setTile(x,3,12+x)
-            self.setTile(x,4,12+x)
-            self.setTile(x,5,12+x)
+        # fire test
+        self.setTile(10,10,FIRE)
+        self.setTile(10,12,FIRE)
+        self.setTile(10,14,FIRE)
     
     ''' this method clears PWRBIT of given tile '''
     def setTile(self, x, y, newTile):
@@ -204,7 +219,7 @@ class Engine(pyglet.event.EventDispatcher):
         if self.aCycle % 2 == 0:
             self.step()
         #self.moveObjects()
-        #self.animateTiles()
+        self.animateTiles()
     
     def step(self):
         self.fCycle = (self.fCycle + 1) % 1024
@@ -234,7 +249,7 @@ class Engine(pyglet.event.EventDispatcher):
         elif mod16 == 7:
             self.mapScan(6*band, 7*band)
         elif mod16 == 8:
-            self.mapScan(7*band, 8*band)
+            self.mapScan(7*band, self.getWidth())
         
         
         
@@ -247,7 +262,23 @@ class Engine(pyglet.event.EventDispatcher):
         
         bb["FIRE"] = TerrainBehaviour(self, B.FIRE)
         bb["FLOOD"] = TerrainBehaviour(self, B.FLOOD)
-        #bb[]
+        bb["RADIOACTIVE"] = TerrainBehaviour(self, B.RADIOACTIVE)
+        bb["ROAD"] = TerrainBehaviour(self, B.ROAD)
+        bb["RAIL"] = TerrainBehaviour(self, B.RAIL)
+        bb["EXPLOSION"] = TerrainBehaviour(self, B.EXPLOSION)
+        
+        bb["RESIDENTIAL"] = MapScanner(self, B.RESIDENTIAL)
+        bb["HOSPITAL_CHURCH"] = MapScanner(self, B.HOSPITAL_CHURCH)
+        bb["COMMERCIAL"] = MapScanner(self, B.COMMERCIAL)
+        bb["INDUSTRIAL"] = MapScanner(self, B.INDUSTRIAL)
+        bb["COAL"] = MapScanner(self, B.COAL)
+        bb["NUCLEAR"] = MapScanner(self, B.NUCLEAR)
+        bb["FIRESTATION"] = MapScanner(self, B.FIRESTATION)
+        bb["POLICESTATION"] = MapScanner(self, B.POLICESTATION)
+        bb["STADIUM_EMPTY"] = MapScanner(self, B.STADIUM_EMPTY)
+        bb["STADIUM_FULL"] = MapScanner(self, B.STADIUM_FULL)
+        bb["AIRPORT"] = MapScanner(self, B.AIRPORT)
+        bb["SEAPORT"] = MapScanner(self, B.SEAPORT)
         
         self.tileBehaviours = bb
     
@@ -257,13 +288,36 @@ class Engine(pyglet.event.EventDispatcher):
                 tile = self.getTile(x,y)
                 behaviourString = getTileBehaviour(tile)
                 if behaviourString is None:
-                    return
+                    continue
                 b = self.tileBehaviours[behaviourString]
                 if b is not None:
                     b.processTile(x,y)
                 else:
-                    # raise error
-                    pass
+                    assert False
+                    
+    def animateTiles(self):
+        for y in range(self.getHeight()):
+            for x in range(self.getWidth()):
+                tileValue = self.map[y][x]
+                spec = Tiles().get(tileValue)
+                if (spec is not None and 
+                        spec.animNext is not None):
+                    flags = tileValue & ALLBITS
+                    self.setTile(x, y, 
+                                 spec.animNext.tileNum | flags)
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
     
     
     

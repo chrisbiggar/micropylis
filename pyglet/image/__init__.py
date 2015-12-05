@@ -2221,6 +2221,7 @@ class ImageGrid(AbstractImage, AbstractImageSequence):
         if item_height is None:
             item_height = \
                 (image.height - row_padding * (rows - 1)) // rows 
+        #print rows,columns,image.width,image.height,item_width,item_height
         self.image = image
         self.rows = rows
         self.columns = columns
@@ -2244,6 +2245,7 @@ class ImageGrid(AbstractImage, AbstractImageSequence):
         return self.rows * self.columns
 
     def _update_items(self):
+        print ''
         if not self._items:
             self._items = []
             y = 0

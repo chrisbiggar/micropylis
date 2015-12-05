@@ -155,7 +155,7 @@ THAI_CHARSET     = 222
 TURKISH_CHARSET  = 162
 VIETNAMESE_CHARSET = 163
 
-# build lookup dictionary to get charset name from its code
+# gengraphics lookup dictionary to get charset name from its code
 CHARSET_NAMES = {}
 for (name, value) in locals().copy().items():
   if name.endswith('_CHARSET'):

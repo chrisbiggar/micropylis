@@ -73,7 +73,7 @@ import ctypes
 import sys
 
 if sys.platform != 'win32':
-    raise ImportError('pyglet.com requires a Windows build of Python')
+    raise ImportError('pyglet.com requires a Windows gengraphics of Python')
 
 class GUID(ctypes.Structure):
     _fields_ = [

@@ -10,7 +10,7 @@ import micropolistool
 class Bulldozer(ToolStroke):
     def __init__(self, engine, xPos, yPos):
         super(Bulldozer,self).__init__(engine,
-                                       micropolistool.MicropylisTool.BULLDOZER,
+                                       micropolistool.types['BULLDOZER'],
                                        xPos, yPos)
         
     def applyArea(self, eff):

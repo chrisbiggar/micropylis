@@ -207,10 +207,10 @@ class Control(Widget, pyglet.event.EventDispatcher):
     def on_lose_highlight(self):
         self.highlight_flag = False
 
-# Controls can potentially accept most of the events defined for the window,
+# Controls can potentially accept most of the events defined for the tilesView,
 # but in practice we'll only pass selected events from Dialog.  This avoids
 # a large number of unsightly empty method declarations.
-for event_type in pyglet.window.Window.event_types:
+for event_type in pyglet.tilesView.Window.event_types:
     Control.register_event_type(event_type)
 
 Control.register_event_type('on_gain_focus')
