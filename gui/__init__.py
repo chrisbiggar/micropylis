@@ -5,11 +5,11 @@ import pyglet
 from pyglet.gl import *
 from pyglet.window import mouse
 import kytten
-from viewingPane import ViewingPane
-from engine import Engine, micropolistool
-import engine.micropolistool
+import engine
+from engine import Engine, micropolistool, speed, tiles
 from engine.micropolistool import MicropylisTool
 from engine.cityRect import CityRect
+from viewingPane import ViewingPane
 import dialogs
 from engine.toolResult import ToolResult
 from infoPane import InfoPane
@@ -22,6 +22,31 @@ config.read('res/gui.cfg')
 
 cityMessages = ConfigParser.ConfigParser()
 cityMessages.read('res/citymessages.cfg')
+
+
+class Keys(pyglet.window.key.KeyStateHandler):
+    '''
+        responds to keypresses, notifying an event handler
+        while storing the current state of the keys for querying.
+    '''
+    def __init__(self, parent):
+        self.parent = parent
+
+    def on_key_press(self, symbol, modifiers):
+        try:
+            self.parent.key_press(symbol, modifiers)
+        except AttributeError:
+            # parent does not impl key_press method
+            pass
+        super(Keys, self).on_key_press(symbol, modifiers)
+
+    def on_key_release(self, symbol, modifiers):
+        try:
+            self.parent.key_release(symbol, modifiers)
+        except AttributeError:
+            # parent does not impl key_release method
+            pass
+        super(Keys, self).on_key_release(symbol, modifiers)
 
 '''
 class MainWindow
@@ -36,10 +61,11 @@ class MainWindow(pyglet.window.Window):
         #super(MainWindow, self).__init__(resizable=True,vsync=True)
         super(MainWindow, self).__init__(vsync=False)
         
-        engine.tiles.Tiles().readTiles() # load in tile specs
-        self.engine = Engine()
+        tiles.Tiles().readTiles() # load in tile specs
+        
         # load test map:
-        self.engine.loadCity('cities/hawkins.cty')
+        #self.newCity()
+        self.loadCity('cities/hawkins.cty')
         
         # tool vars:
         self.dragStart = (0,0)
@@ -54,21 +80,28 @@ class MainWindow(pyglet.window.Window):
         self.set_icon(pyglet.image.load("res/icon32.png"))
         self.set_size(self.DEFAULT_WIDTH,self.DEFAULT_HEIGHT)
         self.set_location(40,40)
-        self.fpsDisplay = self.fpsDisplay = pyglet.clock.ClockDisplay()
+        self.fpsDisplay = pyglet.clock.ClockDisplay(color=(.2,.2,.2,0.6))
         self.initGuiComponents()
         
+        self.speed = None
+        self.setSpeed(speed.PAUSED)
         pyglet.clock.schedule_interval(self.update, 1/60.)
         
         #testing sounds:
         #music = pyglet.media.load('explosion.wav
         
-    def newCity(self):
-        newCityDialog = NewCityDialog(self)
+    def setExitFunc(self, func):
+        self.exitFunc = func
         
+    def newCity(self):
+        #newCityDialog = NewCityDialog(self)
+        
+        self.engine = Engine()
         
     
-    def loadCity(self):
-        pass
+    def loadCity(self, filePath):
+        self.engine = Engine()
+        self.engine.loadCity(filePath)
         
     def initGuiComponents(self):
         self.setupDialogs()
@@ -94,6 +127,16 @@ class MainWindow(pyglet.window.Window):
     def on_key_release(self, symbol, modifiers):
         if (symbol == pyglet.window.key.X):
             self.engine.testChange()
+        elif symbol == pyglet.window.key._1:
+            self.setSpeed(speed.PAUSED)
+        elif symbol == pyglet.window.key._2:
+            self.setSpeed(speed.SLOW)
+        elif symbol == pyglet.window.key._3:
+            self.setSpeed(speed.NORMAL)
+        elif symbol == pyglet.window.key._4:
+            self.setSpeed(speed.FAST)
+        elif symbol == pyglet.window.key._5:
+            self.setSpeed(speed.SUPER_FAST)
             
     def on_mouse_motion(self, x, y, dx, dy):
         #pyglet.window.Window.on_resize(self, x, y, dx, dy)
@@ -106,10 +149,6 @@ class MainWindow(pyglet.window.Window):
             self.onToolDown(x, y, button, modifiers)
         
     def on_mouse_release(self, x, y, button, modifiers):
-        '''if button == pyglet.window.mouse.RIGHT:
-            self.viewingPane.printWorldCoords(x,y)
-            return'''
-        
         if self.viewingPane.withinRange(x, y):
             self.onToolUp(x, y, button, modifiers)
             
@@ -127,7 +166,9 @@ class MainWindow(pyglet.window.Window):
         
     def on_close(self):
         #self.viewingPane.cleanup()
+        self.exitFunc()
         return super(MainWindow,self).on_close()
+    
     
     '''
         selectTool(tooltype)
@@ -165,7 +206,7 @@ class MainWindow(pyglet.window.Window):
         if button != mouse.LEFT:
             return
         
-        if self.currentTool.type == engine.micropolistool.QUERY:
+        if self.currentTool.type == micropolistool.QUERY:
             self.doQueryTool(loc.x, loc.y)
             self.toolStroke = None
         else:
@@ -216,6 +257,8 @@ class MainWindow(pyglet.window.Window):
             self.showToolResult(self.toolStroke.getLocation(),
                                 self.toolStroke.apply())
             self.toolStroke = None
+            self.engine.tileUpdateCheck()
+        
         #print x,y
         loc = self.viewingPane.evToCityLocation(x, y)
         tx = loc.x
@@ -232,7 +275,7 @@ class MainWindow(pyglet.window.Window):
             
     def onToolHover(self, x, y):
         if self.currentTool is None or\
-            self.currentTool.type == engine.micropolistool.QUERY:
+            self.currentTool.type == micropolistool.QUERY:
                 self.viewingPane.setToolCursor(None)
                 return
             
@@ -281,9 +324,19 @@ class MainWindow(pyglet.window.Window):
         queryMsg = "Tile Value of ({0},{1}): {2}".format(
                 str(xPos), str(yPos), str(tileValue))
         self.infoPane.addInfoMessage(queryMsg)
-    
-    def update(self,dt):
-        self.engine.animate()
+        
+    def setSpeed(self, newSpeed):
+        if newSpeed == self.speed:
+            return
+        pyglet.clock.unschedule(self.engine.animate)
+        self.viewingPane.setSpeed(self.speed, newSpeed)
+        self.speed = newSpeed
+        self.infoPane.addInfoMessage(newSpeed.name + " Speed")
+        if self.speed == speed.PAUSED:
+            return
+        #pyglet.clock.schedule(self.engine.animate, 1./60)
+        
+    def update(self, dt):
         self.viewingPane.update(dt)
         self.infoPane.update(dt)
         
@@ -293,9 +346,7 @@ class MainWindow(pyglet.window.Window):
     def on_draw(self):
         #pyglet.gl.glClearColor(240,240,240,255)
         self.clear()
-        self.viewingPane.tileBatch.draw()
-        '''if self.viewingPane.toolCursor is not None:
-            self.viewingPane.toolCursor.vl.draw(GL_QUADS)'''
+        self.viewingPane.batch.draw()
         self.infoPane.batch.draw()
         self.dialogBatch.draw()
         self.fpsDisplay.draw()

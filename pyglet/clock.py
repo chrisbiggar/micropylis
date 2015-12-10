@@ -275,6 +275,15 @@ class Clock(_ClockBase):
         self.last_ts = ts
 
         return delta_t
+    
+    def restore_time(self, time):
+        self.last_ts = None
+        self.next_ts = time
+        for item in list(self._schedule_interval_items):
+            item.next_ts = time + item.interval
+            item.last_ts = time
+        
+        
 
     def call_scheduled_functions(self, dt):
         '''Call scheduled functions that elapsed on the last `update_time`.
@@ -295,6 +304,7 @@ class Clock(_ClockBase):
 
         # Call functions scheduled for every frame  
         # Dupe list just in case one of the items unchedules itself
+        
         for item in list(self._schedule_items):
             result = True
             item.func(dt, *item.args, **item.kwargs)

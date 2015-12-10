@@ -17,5 +17,5 @@ class TileBehaviour(object):
         
     def apply(self):
         ''' abstract method '''
-        pass
+        raise NotImplementedError("Abstract Method")
         

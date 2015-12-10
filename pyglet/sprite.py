@@ -188,7 +188,8 @@ class Sprite(event.EventDispatcher):
                  batch=None,
                  group=None,
                  usage='dynamic',
-                 subpixel=False):
+                 subpixel=False,
+                 custom_clock=None):
         '''Create a sprite.
 
         :Parameters:
@@ -219,6 +220,8 @@ class Sprite(event.EventDispatcher):
         '''
         if batch is not None:
             self._batch = batch
+        
+        self._clock = custom_clock or clock
 
         self._x = x
         self._y = y
@@ -229,7 +232,7 @@ class Sprite(event.EventDispatcher):
             self._texture = img.frames[0].image.get_texture()
             self._next_dt = img.frames[0].duration
             if self._next_dt:
-                clock.schedule_once(self._animate, self._next_dt)
+                self._clock.schedule_once(self._animate, self._next_dt)
         else:
             self._texture = img.get_texture()
 
@@ -253,7 +256,7 @@ class Sprite(event.EventDispatcher):
         sprite is garbage.
         '''
         if self._animation:
-            clock.unschedule(self._animate)
+            self._clock.unschedule(self._animate)
         self._vertex_list.delete()
         self._vertex_list = None
         self._texture = None
@@ -275,7 +278,7 @@ class Sprite(event.EventDispatcher):
         if frame.duration is not None:
             duration = frame.duration - (self._next_dt - dt)
             duration = min(max(0, duration), frame.duration)
-            clock.schedule_once(self._animate, duration)
+            self._clock.schedule_once(self._animate, duration)
             self._next_dt = duration
         else:
             self.dispatch_event('on_animation_end')
@@ -329,6 +332,12 @@ class Sprite(event.EventDispatcher):
 
     :type: `Group`
     ''')
+    
+    def isAnimation(self):
+        if self._animation:
+            return True
+        else:
+            return False
 
     def _get_image(self):
         if self._animation:
@@ -337,7 +346,7 @@ class Sprite(event.EventDispatcher):
 
     def _set_image(self, img):
         if self._animation is not None:
-            clock.unschedule(self._animate)
+            self._clock.unschedule(self._animate)
             self._animation = None
 
         if isinstance(img, image.Animation):
@@ -346,7 +355,7 @@ class Sprite(event.EventDispatcher):
             self._set_texture(img.frames[0].image.get_texture())
             self._next_dt = img.frames[0].duration
             if self._next_dt:
-                clock.schedule_once(self._animate, self._next_dt)
+                self._clock.schedule_once(self._animate, self._next_dt)
         else:
             self._set_texture(img.get_texture())
         self._update_position()

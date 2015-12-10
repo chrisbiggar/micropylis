@@ -87,6 +87,14 @@ HRAILROAD = 237
 VRAILROAD = 238
 LASTRAIL = 238
 
+POWERPLANT = 750
+
+NUCLEAR = 816
+
+
+
+PWRBIT = 32768 # bit 15 indicates powered state
+
 ALLBITS = 64512
 LOMASK = 1023 # mask for low ten bits
 
@@ -145,6 +153,17 @@ def getTileBehaviour(tile):
     ts = Tiles().get(tile)
     b = ts.getAttribute("behavior")
     return b
+
+
+def getZoneSizeFor(tile):
+    assert isZoneCenter(tile)
+    assert tile & LOMASK == tile
+    
+    spec = Tiles().get(tile)
+    if spec is None:
+        return None
+    return spec.getBuildingSize()
+
 
 
 def isRoadDynamic(tile):
@@ -285,7 +304,6 @@ def neutralizeRoad(tile):
     if tile >= ROADBASE and tile <= LASTROAD:
         tile = ((tile - ROADBASE) & 0xf) + ROADBASE
     return tile
-
 
 
 

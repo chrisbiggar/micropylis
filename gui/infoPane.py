@@ -28,12 +28,22 @@ class Message(object):
     
 
 class MessageQueue(object):
-    def __init__(self):
+    def __init__(self, batch, width):
+        self.batch = batch
         self.msgs = deque(maxlen=12)
         self.dt = 0
         self.secs = 0
+        self.bgRect = None
+        self.doc = UnformattedDocument()
+        self.layout = TextLayout(self.doc,
+                                     width=width,
+                                     batch=batch,
+                                     group=fgGroup,
+                                     multiline=True)
+        self.msgTitleLabel = Label(batch=self.batch,
+                                   group=fgGroup)
     
-    def create(self, batch, x, y, width, height):
+    def doLayout(self, x, y, width, height):
         self.x = x
         self.y = y
         self.width = width
@@ -41,21 +51,24 @@ class MessageQueue(object):
         x2 = x + self.width
         y2 = y + self.height
         c = (90,20,65,255)
+        colorData = []
+        numVertices = 4
+        for i in range(numVertices * len(c)):
+            i2 = i % numVertices
+            colorData.append(c[i2])
         
-        self.doc = UnformattedDocument()
-        self.layout = TextLayout(self.doc,
-                                         width = width,
-                                         height = height,
-                                         batch=batch,
-                                         group=fgGroup,
-                                         multiline=True)
+
         self.layout.x = x
         self.layout.y = y
+        self.layout.width = width
+        self.layout.height = height
         self.doc.set_style(0,0,dict(font_name='Arial', font_size=12))
-        self.bgRect = batch.add(4, GL_QUADS, mgGroup,
+        if self.bgRect is not None:
+            self.bgRect.delete()
+        self.bgRect = self.batch.add(4, GL_QUADS, mgGroup,
                                  ('v2f', [x, y, x2, y, x2, y2, x, y2]),
-                                 ('c4B', [c[0],c[1],c[2],c[3],c[0],c[1],c[2],c[3]
-                                    ,c[0],c[1],c[2],c[3],c[0],c[1],c[2],c[3]]))
+                                 ('c4B', colorData))
+
         
     def _resetDoc(self):
         self.doc.text = ""
@@ -84,7 +97,20 @@ class MessageQueue(object):
                     self.msgs.remove(item)
                 self._resetDoc()
 
+class Widget(object):
+    def __init__(self):
+        pass
+    
+    def layout(self):
+        pass
 
+'''self.dateLabel.text = "Jan 1900"
+self.dateLabel.x = self.x + self.width - self.border\
+                - self.dateLabel.content_width
+self.dateLabel.y = self.y + 220 + 4 + self.fundsLabel.content_height * 2
+self.populationLabel.text = "Population: 0"
+self.populationLabel.x = self.x + self.width - self.border\
+                - self.populationLabel.content_width'''
 
 class InfoPane(object):
     def __init__(self, engine, x, y, width, height):
@@ -95,6 +121,13 @@ class InfoPane(object):
         self.height = height
         self.border = 10
         self.batch = pyglet.graphics.Batch()
+
+        self.fundsLabel = Label(batch=self.batch,
+                                group=fgGroup)
+        self.dateLabel = Label(batch=self.batch,
+                                group=fgGroup)
+        self.populationLabel = Label(batch=self.batch,
+                                     group=fgGroup)
         self.layout()
         self.reset(engine)
         
@@ -102,16 +135,17 @@ class InfoPane(object):
         self.engine = engine
         engine.push_handlers(self)
         self.on_funds_changed()
+        self.on_census_changed()
         
     def layout(self):
-        self.msgs = MessageQueue()
-        self.msgs.create(self.batch, self.x + self.border, self.border, 
-                         self.width - 20, 200)
-        self.fundsLabel = Label(x=self.x + self.width - 146,
-                                y=self.y + 220,
-                                batch=self.batch,
-                                group=fgGroup)
         self.createBackground()
+        self.msgs = MessageQueue(self.batch, self.width - 20)
+        self.msgs.doLayout(self.x + self.border, self.border, 
+                         self.width - 20, 200)
+
+        self.y + 220
+        self.populationLabel.y = self.y + 220
+        
 
     def createBackground(self):
         x = self.x
@@ -128,11 +162,17 @@ class InfoPane(object):
     def addInfoMessage(self, msg):
         self.msgs.addMessage(msg)
         
+    def on_census_changed(self):
+        self.dateLabel.text = "Jan 1900"
+        self.populationLabel.text = "Population: 0"
+        
+        
     def on_funds_changed(self):
         self.fundsLabel.text = "Treasury: $" + str(self.engine.budget.funds)
         # right-align label, respecting border
         self.fundsLabel.x = self.x + self.width - self.border\
                                 - self.fundsLabel.content_width
+        self.fundsLabel.y = self.y + 220 + 2 + self.fundsLabel.content_height
     
     def update(self, dt):
         self.msgs.update(dt)

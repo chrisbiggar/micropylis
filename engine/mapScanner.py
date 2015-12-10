@@ -4,6 +4,10 @@ Created on Oct 19, 2015
 @author: chris
 '''
 from engine.tileBehaviour import TileBehaviour
+from engine import tileConstants
+from tileConstants import isZoneCenter
+from engine.cityLocation import CityLocation
+from tiles import Tiles
 
 RESIDENTIAL,HOSPITAL_CHURCH,COMMERCIAL,INDUSTRIAL,COAL,NUCLEAR,\
 FIRESTATION,POLICESTATION,STADIUM_EMPTY,\
@@ -12,7 +16,9 @@ STADIUM_FULL,AIRPORT,SEAPORT = range(6,18)
 
 class MapScanner(TileBehaviour):
     '''
-    classdocs
+    
+    
+    
     '''
 
 
@@ -48,9 +54,37 @@ class MapScanner(TileBehaviour):
             self.doSeaport()
         else:
             assert False
-
-    
             
+            
+    def checkZonePower(self):
+        '''  '''
+        pwrFlag = self.setZonePower()
+        
+        if pwrFlag:
+            self.city.poweredZoneCount += 1
+        else:
+            self.city.unpoweredZoneCount += 1
+            
+        return pwrFlag
+    
+    def setZonePower(self):
+        '''  '''
+        oldPower = self.city.isTilePowered(self.x, self.y)
+        newPower = ( self.tile == tileConstants.NUCLEAR or
+                     self.tile == tileConstants.POWERPLANT or
+                     self.city.hasPower(self.x,self.y))
+        
+        if newPower and not oldPower:
+            self.city.setTilePower(self.x, self.y, True)
+            self.city.powerZone(self.x, self.y, 
+                                self.getZoneSizeFor(self.tile))
+        if not newPower and oldPower:
+            self.city.setTilePower(self.x, self.y, False)
+            self.city.shutdownZone(self.x, self.y, self.getZoneSizeFor(self.tile))
+        
+        return newPower  
+        
+          
     def doResidential(self):
         #print "process res"
         pass
@@ -65,7 +99,11 @@ class MapScanner(TileBehaviour):
         pass
     
     def doCoalPower(self):
-        pass
+        powerOn = self.checkZonePower()
+        self.city.coalCount += 1
+        if self.city.cityTime % 8 == 0:
+            self.repairZone(tileConstants.POWERPLANT)
+        self.city.powerPlants.append(CityLocation(self.x, self.y))
     
     def doNuclearPower(self):
         pass
@@ -87,4 +125,21 @@ class MapScanner(TileBehaviour):
     
     def doSeaport(self):
         pass
+    
+    def repairZone(self, base):
+        '''  '''
+        assert isZoneCenter(base)
+        
+        powerOn = self.city.isTilePowered(self.x, self.y)
+        
+        bi = Tiles().get(base).getBuildingInfo()
+        assert bi is not None
+        
+        xOrg = self.x - 1
+        yOrg = self.y - 1
+        
+        assert len(bi.members) == bi.width * bi.height
+        i = 0
+    
+    
         

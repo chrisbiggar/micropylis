@@ -1,3 +1,12 @@
+
+# specific files and folders to be not included in micropylis src:
+etc/cloc-1.64.exe
+test.py
+dist/
+etc/
+
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

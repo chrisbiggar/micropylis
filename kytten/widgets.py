@@ -329,6 +329,9 @@ class Label(Widget):
         self.delete()
         if self.saved_dialog is not None:
             self.saved_dialog.set_needs_layout()
+    
+    def get_font(self):
+        return self.label.document.get_font()
 
     def size(self, dialog):
         if dialog is None:

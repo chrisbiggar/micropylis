@@ -95,7 +95,7 @@ class ToolDialog(Dialog):
                     tool.getToolCost() == 0:
                 self.selectedToolPriceLabel.set_text("Free")
             else:
-                self.selectedToolPriceLabel.set_text(str(tool.getToolCost()))
+                self.selectedToolPriceLabel.set_text("$" + str(tool.getToolCost()))
 
             
 

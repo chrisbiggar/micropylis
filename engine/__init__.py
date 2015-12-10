@@ -8,6 +8,7 @@ from engine.tileConstants import *
 from util import readShort, readInt, create2dArray
 from engine.terrainBehaviour import TerrainBehaviour
 from mapScanner import MapScanner
+from cityLocation import CityLocation
 
 
 class CityBudget(object):
@@ -23,6 +24,7 @@ class History
 structure to encapsulate census history
 '''
 class History(object):
+    '''  '''
     def __init__(self):
         self.cityTime = 0
         self.res = array('H')
@@ -86,9 +88,6 @@ class Engine(pyglet.event.EventDispatcher):
     def spend(self, amount):
         self.budget.funds -= amount
         self.dispatch_event("on_funds_changed")
-        
-    def getTile(self, x, y):
-        return self.map[y][x] & LOMASK
     
     def testBounds(self, x, y):
         return x >= 0 and x < self.getWidth()\
@@ -108,6 +107,9 @@ class Engine(pyglet.event.EventDispatcher):
             height = self.DEFAULT_HEIGHT
         self.map = create2dArray(height, width)
         self.updatedTiles = list()
+        
+        self.powerMap = create2dArray(height, width, False)
+        
         ''' misc engine vars '''
         self.history = History()
         self.budget = CityBudget()
@@ -119,10 +121,22 @@ class Engine(pyglet.event.EventDispatcher):
         
         self.cityTime = 0
         
+        self.clearCensus()
         
+
+        
+    def clearCensus(self):
+        '''  '''
+        self.poweredZoneCount = 0
+        self.unpoweredZoneCount = 0
         self.roadTotal = 0
         self.roadEffect = 0
         self.firePop = 0
+        self.coalCount = 0
+        self.nuclearCount = 0
+        self.powerPlants = []
+    
+    
     
     ''' given a filename will load saved city data '''
     def loadCity(self, fileName):
@@ -141,12 +155,18 @@ class Engine(pyglet.event.EventDispatcher):
         finally:
             saveFile.close()
             self.dispatch_event("on_map_changed", self.updatedTiles)
+            
+    def save(self, outFile):
+        ''' saves the current city state to file '''
+        pass
     
     def loadHistoryArray(self, saveFile, array):
+        '''  '''
         for i in range(240):
             array.append(readShort(saveFile))
         
     def loadMisc(self, saveFile):
+        '''  '''
         readShort(saveFile)
         readShort(saveFile)
         self.resPop = readShort(saveFile)
@@ -187,6 +207,7 @@ class Engine(pyglet.event.EventDispatcher):
             readShort(saveFile)
             
     def loadMap(self, saveFile):
+        '''  '''
         for x in range(self.DEFAULT_WIDTH):
             for y in range(self.DEFAULT_HEIGHT):
                 z = readShort(saveFile)
@@ -198,8 +219,17 @@ class Engine(pyglet.event.EventDispatcher):
     def testChange(self):
         # fire test
         self.setTile(10,10,FIRE)
-        self.setTile(10,12,FIRE)
-        self.setTile(10,14,FIRE)
+        self.setTile(10,12,83)
+        self.setTile(10,14,82)
+        self.tileUpdateCheck()
+        
+    def getTile(self, x, y):
+        '''  '''
+        return self.map[y][x] & LOMASK
+    
+    def getTileRaw(self, x, y):
+        '''  '''
+        return self.map[y][x]
     
     ''' this method clears PWRBIT of given tile '''
     def setTile(self, x, y, newTile):
@@ -208,24 +238,28 @@ class Engine(pyglet.event.EventDispatcher):
             self.map[y][x] = newTile
             self.updatedTiles.append((x,y))
             
-    def clearCensus(self):
-        pass
+    def setTilePower(self, x, y, power):
+        '''  '''
+        self.map[y][x] = self.map[y][x] & (~PWRBIT) | power 
     
     def setValves(self):
+        '''  '''
         pass
     
-    def animate(self):
+    def animate(self, dt):
+        '''  '''
         self.aCycle = (self.aCycle + 1) % 960
         if self.aCycle % 2 == 0:
             self.step()
         #self.moveObjects()
-        self.animateTiles()
     
     def step(self):
+        '''  '''
         self.fCycle = (self.fCycle + 1) % 1024
         self.simulate(self.fCycle % 16)
             
     def simulate(self, mod16):
+        '''  '''
         band = self.getWidth() / 8
         
         if mod16 == 0:
@@ -250,14 +284,97 @@ class Engine(pyglet.event.EventDispatcher):
             self.mapScan(6*band, 7*band)
         elif mod16 == 8:
             self.mapScan(7*band, self.getWidth())
+        elif mod16 == 9:
+            pass
+        elif mod16 == 10:
+            pass
+        elif mod16 == 11:
+            self.powerScan()
+            self.newPower = True
+        elif mod16 == 12:
+            self.ptlScan()
+        elif mod16 == 13:
+            self.crimeScan()
+        elif mod16 == 14:
+            self.popDenScan()
+        elif mod16 == 15:
+            pass
+        
+        self.tileUpdateCheck()
+        
+    def powerScan(self):
+        '''  '''
+        self.powerMap = create2dArray(self.getHeight(), self.getWidth(), False)
+        
+        maxPower = self.coalCount * 700 + self.nuclearCount * 2000
+        numPower = 0
+        
+        while(len(self.powerPlants) != 0):
+            loc = self.powerPlants.pop()
+            
+            aDir = 4
+            conNum = 0
+            '''while True:
+                if numPower > maxPower:
+                    # brownouts message.
+                    return
+                # movepowerlocation
+                self.powerMap[loc.y][loc.x] = True
+                
+                conNum = 0
+                dir = 0
+                while dir < 4 and conNum < 2:
+                    if self.testForCond(loc, dir):
+                        conNum += 1
+                        aDir = dir
+                    else:
+                        dir += 1
+                if conNum > 1:
+                    self.powerPlants.append(CityLocation(loc.x, loc.y))'''
+        
+        
+    
+    def ptlScan(self):
+        ''' pollution, terrain and land-value '''
+        pass
+    
+    def crimeScan(self):
+        '''  '''
+        pass
+    
+    def popDenScan(self):
+        '''  '''
+        xTot = 0
+        yTot = 0
+        zoneCount = 0
+        width = self.getWidth()
+        height = self.getHeight()
+        tem = create2dArray((height+1)/2, (width+1)/2)
+        
+        for x in range((width+1)/2):
+            pass
         
         
         
+    
+    def isTilePowered(self, xpos, ypos):
+        ''' checks powerbit of tile value () '''
+        return (self.getTileRaw(xpos, ypos) & PWRBIT) == PWRBIT
+    
+    def hasPower(self, x, y):
+        ''' checks powermap '''
+        return self.powerMap[y][x]
+    
+        
+    def tileUpdateCheck(self):
+        ''' fires an on_map_changed event if their are dirty tiles'''
         if (len(self.updatedTiles) != 0):
             self.dispatch_event("on_map_changed", self.updatedTiles)
             self.updatedTiles = list()
             
     def initTileBehaviours(self):
+        ''' tile behaviours allow an action to processed for every tile '''
+        
         bb = dict()
         
         bb["FIRE"] = TerrainBehaviour(self, B.FIRE)
@@ -283,6 +400,7 @@ class Engine(pyglet.event.EventDispatcher):
         self.tileBehaviours = bb
     
     def mapScan(self, x0, x1):
+        ''' iterates over a section of map, invoking their process fcn'''
         for x in range(x0,x1):
             for y in range(0, self.getHeight()):
                 tile = self.getTile(x,y)
@@ -295,21 +413,66 @@ class Engine(pyglet.event.EventDispatcher):
                 else:
                     assert False
                     
-    def animateTiles(self):
-        for y in range(self.getHeight()):
-            for x in range(self.getWidth()):
-                tileValue = self.map[y][x]
-                spec = Tiles().get(tileValue)
-                if (spec is not None and 
-                        spec.animNext is not None):
-                    flags = tileValue & ALLBITS
-                    self.setTile(x, y, 
-                                 spec.animNext.tileNum | flags)
+    
+    def testForCond(self, loc, dir):
+        ''' returns power condition of location '''
+        xSave = loc.x
+        ySave = loc.y
         
+        rv = False
+        if self.movePowerLocation(loc, dir):
+            t = self.getTile(loc.x, loc.y)
+            rv = (
+                  isConductive(t) and
+                  t != NUCLEAR and
+                  t != POWERPLANT and
+                  not self.hasPower(loc.x, loc.y))
         
+        loc.x = xSave
+        loc.y = ySave
+        return rv
+    
+    def movePowerLocation(self, loc, dir):
+        '''  '''
+        pass
+                    
+    def powerZone(self, xPos, yPos, zoneSize):
+        '''
+            sets all tiles for a zone to a powered state
+        '''
         
+        assert zoneSize >= 3
+        assert zoneSize >= 3
         
+        for dx in range(zoneSize.width):
+            for dy in range(zoneSize.height):
+                x = xPos - 1 + dx
+                y = yPos - 1 + dy
+                tile = self.getTileRaw(x, y)
+                ts = Tiles().get(tile & LOMASK)
+                if ts is not None and ts.onPower is not None:
+                    self.setTile(x, y,
+                                 ts.onPower.tileNum or tile & ALLBITS)        
         
+    def shutdownZone(self, xPos, yPos, zoneSize):
+        '''
+            sets all tiles for a zone to a unpowered state
+        '''
+        assert zoneSize >= 3
+        assert zoneSize >= 3
+        
+        for dx in range(zoneSize.width):
+            for dy in range(zoneSize.height):
+                x = xPos - 1 + dx
+                y = yPos - 1 + dy
+                tile = self.getTileRaw(x, y)
+                ts = Tiles().get(tile & LOMASK)
+                if ts is not None and ts.onShutdown is not None:
+                    self.setTile(x, y,
+                                 ts.onShutdown.tileNum or tile & ALLBITS)
+        
+    def takeCensus(self):
+        pass    
         
         
         

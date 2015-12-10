@@ -6,7 +6,9 @@ Created on Aug 30, 2015
 import pyglet
 from engine.tileConstants import LOMASK
 from pyglet.image import TextureGrid,AbstractImage\
-,AbstractImageSequence,TextureRegion,ImageException,UniformTextureSequence
+,AbstractImageSequence,TextureRegion,ImageException,UniformTextureSequence,\
+    Animation, AnimationFrame
+from engine.tiles import Tiles
 
 class SizeNotAvaiableError(Exception):
     pass
@@ -42,51 +44,6 @@ class Limits(object):
         else:
             return False
 
-'''
-class TileImagesBySize
-
-default tile size must be specified at creation
-''' '''
-class TileImagesBySize(object):
-    def __init__(self, defaultSize):
-        self._curTileImages = None
-        self._limits = Limits()
-        self._sizes = dict()
-        self._addSize(TileImages(16))
-        self._defaultSize = defaultSize
-        self.setCurrentSize(defaultSize)
-        
-        
-    def getTileImage(self, cell):
-        return self._curTileImages.getTileImage(cell)
-    
-    def currentTileSize(self):
-        return self._curTileImages.tileSize
-        
-    def _addSize(self, size):
-        self._limits.update(size.tileSize)
-        self._sizes[str(size.tileSize)] = size
-        
-    def setCurrentSize(self, size):
-        try:
-            self._curTileImages = self._sizes[str(size)]
-            self._currentSize = size
-        except KeyError:
-            raise SizeNotAvaiableError()
-        
-    def defaultSize(self):
-        self.setCurrentSize(self._defaultSize)
-    
-    def higherSize(self):
-        new = self._currentSize * 2
-        if self._limits.withinRange(new):
-            self.setCurrentSize(new)
-        
-    def lowerSize(self):
-        new = self._currentSize / 2
-        if self._limits.withinRange(new):
-            self.setCurrentSize(new)'''
-            
 
 class BorderedImageGrid(AbstractImage, AbstractImageSequence):
     '''An imaginary grid placed over an image allowing easy access to
@@ -197,7 +154,7 @@ class BorderedImageGrid(AbstractImage, AbstractImageSequence):
         return iter(self._items)
 
 
-class BorderedTextureGrid(TextureRegion, UniformTextureSequence):
+class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
     '''A texture containing a regular grid of texture regions.
 
     To construct, create an `ImageGrid` first::
@@ -235,27 +192,58 @@ class BorderedTextureGrid(TextureRegion, UniformTextureSequence):
     item_width = 0
     item_height = 0
 
-    def __init__(self, grid, exterior_border=1):
+    def __init__(self, animationDelay, grid, exterior_border=1):
         image = grid.get_texture()
         if isinstance(image, TextureRegion):
             owner = image.owner
         else:
             owner = image
 
-        super(BorderedTextureGrid, self).__init__(
+        super(BorderedAnimatedTextureGrid, self).__init__(
             image.x, image.y, image.z, image.width, image.height, owner)
         
-        items = []
+        textureItems = []
         y = exterior_border
+        tileNum = 0
         for row in range(grid.rows):
             x = exterior_border
             for col in range(grid.columns):
-                items.append(
+                textureItems.append(
                     self.get_region(x, y, grid.item_width, grid.item_height))
                 x += grid.item_width + grid.column_padding
             y += grid.item_height + grid.row_padding
+        
+        # process animations
+        tileNum = 0
+        tiles = Tiles()
+        finalItems = [0 for tNum in range(len(textureItems))]
+        for row in range(grid.rows):
+            for col in range(grid.columns):
+                spec = tiles.get(tileNum)
+                if spec.animNext is None:
+                    finalItems[tileNum] = textureItems[tileNum]
+                else:
+                    frames = []
+                    stopFrame = tileNum
+                    curFrame = tileNum
+                    while True:
+                        frames.append(textureItems[curFrame])
+                        if spec.animNext is None:
+                            curFrame += 1
+                            stopFrame = curFrame
+                        else:
+                            curFrame = spec.animNext.tileNum
+                            if curFrame == stopFrame:
+                                break
+                        spec = tiles.get(curFrame)
+                    anim = Animation.from_image_sequence(
+                                                    frames, 
+                                                    animationDelay, 
+                                                    True)
+                    finalItems[tileNum] = anim
+                tileNum += 1
 
-        self.items = items
+        self.items = finalItems
         self.rows = grid.rows
         self.columns = grid.columns
         self.item_width = grid.item_width
@@ -306,20 +294,6 @@ class BorderedTextureGrid(TextureRegion, UniformTextureSequence):
             elif type(index) is int:
                 return self.items[index]
 
-    def __setitem__(self, index, value):
-        if type(index) is slice:
-            for region, image in zip(self[index], value):
-                if image.width != self.item_width or \
-                   image.height != self.item_height:
-                    raise ImageException('Image has incorrect dimensions')
-                image.blit_into(region, image.anchor_x, image.anchor_y, 0)
-        else:
-            image = value
-            if image.width != self.item_width or \
-               image.height != self.item_height:
-                raise ImageException('Image has incorrect dimensions')
-            image.blit_into(self[index], image.anchor_x, image.anchor_y, 0)
-
     def __len__(self):
         return len(self.items)
 
@@ -337,6 +311,8 @@ Images are loaded from a given filename in sequential fashion, and are
 referenced by their index into that sequence.
 '''
 class TileImages(object):
+    DEFAULT_ANIMATION_DELAY = 0.2
+    
     def __init__(self, tileSize, padding=2):
         self.tileSize = tileSize
         self.padding = padding
@@ -347,7 +323,8 @@ class TileImages(object):
         tileSheet = pyglet.image.load(self._tileSheetFilename)
         rows = tileSheet.height  / (self.tileSize + self.padding)
         columns = tileSheet.width / (self.tileSize + self.padding)
-        return BorderedTextureGrid(
+        return BorderedAnimatedTextureGrid(
+                            self.DEFAULT_ANIMATION_DELAY,
                             BorderedImageGrid(tileSheet, rows, columns,
                                                    row_padding=self.padding,
                                                    column_padding=self.padding))

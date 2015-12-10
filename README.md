@@ -2,7 +2,7 @@
 # micropylis
 
 
-micropolis port in python
+Simcity Clone In Python
 
 
 2013, Chris Biggar - chrisbggr@gmail.com, BSD 3-Clause License
@@ -16,5 +16,5 @@ Included:
 * pyglet 1.2.4
 * kytten (a pyglet gui lib)
 Separate:
-* pillow image library 3.0.0
+* pillow image library 3.0.0 (to gen graphics sheets)
 

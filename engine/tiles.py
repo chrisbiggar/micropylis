@@ -36,6 +36,7 @@ class Tiles(object):
             tileName = tileNames[i]
             rawSpec = tilesRc.getProperty(tileName)
             if rawSpec is None:
+                print "blah"
                 break
             
             ts = parseTileSpec(i, tileName, rawSpec, tilesRc)

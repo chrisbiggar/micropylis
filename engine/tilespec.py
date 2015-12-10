@@ -4,6 +4,7 @@ Created on Oct 4, 2015
 @author: chris
 '''
 import re
+from cityDimension import CityDimension
 
 '''
 
@@ -205,6 +206,13 @@ class TileSpec(object):
                 startTile += 1
                 
         self.buildingInfo = bi
+    
+    def getBuildingSize(self):
+        if self.buildingInfo is not None:
+            return CityDimension(self.buildingInfo.width,
+                                 self.buildingInfo.height)
+        else:
+            return None
         
     def resolveReferences(self, tileMap):
         tmp = self.getAttribute("becomes")
