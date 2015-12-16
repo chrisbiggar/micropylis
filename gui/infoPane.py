@@ -85,7 +85,7 @@ class MessageQueue(object):
     def update(self, dt):
         self.dt += dt
         secs = floor(self.dt)
-        if secs != self.secs:
+        if secs != self.secs and len(self.msgs):
             # only check for expiries once a second
             self.secs = secs
             toRemove = []
@@ -96,6 +96,10 @@ class MessageQueue(object):
                 for item in toRemove:
                     self.msgs.remove(item)
                 self._resetDoc()
+                
+class DemandIndicatorWidget(object):
+    def __init__(self):
+        pass
 
 class Widget(object):
     def __init__(self):
@@ -115,20 +119,18 @@ self.populationLabel.x = self.x + self.width - self.border\
 class InfoPane(object):
     def __init__(self, engine, x, y, width, height):
         self.engine = engine
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
         self.border = 10
         self.batch = pyglet.graphics.Batch()
 
+        self.msgs = MessageQueue(self.batch, width - 20)
         self.fundsLabel = Label(batch=self.batch,
                                 group=fgGroup)
         self.dateLabel = Label(batch=self.batch,
                                 group=fgGroup)
         self.populationLabel = Label(batch=self.batch,
                                      group=fgGroup)
-        self.layout()
+        self.resize(x,y,width,height)
+        
         self.reset(engine)
         
     def reset(self, engine):
@@ -137,14 +139,16 @@ class InfoPane(object):
         self.on_funds_changed()
         self.on_census_changed()
         
-    def layout(self):
+    def resize(self, x, y, width, height):
+        self.x = x
+        self.y = y
+        self.height = height
+        self.width = 300
         self.createBackground()
-        self.msgs = MessageQueue(self.batch, self.width - 20)
         self.msgs.doLayout(self.x + self.border, self.border, 
-                         self.width - 20, 200)
-
-        self.y + 220
-        self.populationLabel.y = self.y + 220
+                         280, 200)
+        #self.y + 220
+        
         
 
     def createBackground(self):
@@ -165,7 +169,12 @@ class InfoPane(object):
     def on_census_changed(self):
         self.dateLabel.text = "Jan 1900"
         self.populationLabel.text = "Population: 0"
-        
+        self.dateLabel.x = self.x + self.width - self.border\
+                                - self.dateLabel.content_width
+        self.dateLabel.y = self.fundsLabel.y + self.fundsLabel.content_height + 2
+        self.populationLabel.x = self.x + self.width - self.border\
+                                - self.populationLabel.content_width
+        self.populationLabel.y = self.y + 220
         
     def on_funds_changed(self):
         self.fundsLabel.text = "Treasury: $" + str(self.engine.budget.funds)
@@ -176,4 +185,34 @@ class InfoPane(object):
     
     def update(self, dt):
         self.msgs.update(dt)
+        self.updateDateLabel()
+    
+    def formatGameDate(self, cityTime):
+        y = 1900 + cityTime / 48
+        m = (cityTime % 48) / 4
+        #d = "Week " + str((cityTime % 4) + 1)
+        months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        m = months[m-1]
+        return "{} {}".format(m,y)
+        
+        
+    def updateDateLabel(self):
+        self.dateLabel.text = self.formatGameDate(self.engine.cityTime)
+        self.dateLabel.x = self.x + self.width - self.border\
+                                - self.dateLabel.content_width
+        # update population
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
     

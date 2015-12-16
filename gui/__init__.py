@@ -24,6 +24,8 @@ cityMessages = ConfigParser.ConfigParser()
 cityMessages.read('res/citymessages.cfg')
 
 
+
+
 class Keys(pyglet.window.key.KeyStateHandler):
     '''
         responds to keypresses, notifying an event handler
@@ -48,6 +50,8 @@ class Keys(pyglet.window.key.KeyStateHandler):
             pass
         super(Keys, self).on_key_release(symbol, modifiers)
 
+
+
 '''
 class MainWindow
 
@@ -58,14 +62,16 @@ class MainWindow(pyglet.window.Window):
     DEFAULT_HEIGHT = 660
     
     def __init__(self):
-        #super(MainWindow, self).__init__(resizable=True,vsync=True)
-        super(MainWindow, self).__init__(vsync=False)
+        super(MainWindow, self).__init__(width=self.DEFAULT_WIDTH,
+                                         height=self.DEFAULT_HEIGHT,
+                                         resizable=True,
+                                         vsync=True)
         
         tiles.Tiles().readTiles() # load in tile specs
         
         # load test map:
-        #self.newCity()
-        self.loadCity('cities/hawkins.cty')
+        self.newCity()
+        #self.loadCity('cities/hawkins.cty')
         
         # tool vars:
         self.dragStart = (0,0)
@@ -75,17 +81,16 @@ class MainWindow(pyglet.window.Window):
         self.lastY = 0
         
         # window stuff
-        
+        self.set_minimum_size(640, 480)
         self.set_caption("Micropylis")
         self.set_icon(pyglet.image.load("res/icon32.png"))
-        self.set_size(self.DEFAULT_WIDTH,self.DEFAULT_HEIGHT)
         self.set_location(40,40)
         self.fpsDisplay = pyglet.clock.ClockDisplay(color=(.2,.2,.2,0.6))
         self.initGuiComponents()
-        
+
+        pyglet.clock.schedule_interval(self.update, 1/60.)
         self.speed = None
         self.setSpeed(speed.PAUSED)
-        pyglet.clock.schedule_interval(self.update, 1/60.)
         
         #testing sounds:
         #music = pyglet.media.load('explosion.wav
@@ -124,9 +129,18 @@ class MainWindow(pyglet.window.Window):
         self.push_handlers(self.mainDialog)
         pyglet.clock.schedule_interval(self.updateKytten, 1/60.)
         
+    def toggleFullscreen(self):
+        if not self._fullscreen:
+            self.set_fullscreen(True)
+        else:
+            self.set_fullscreen(False)
+        
     def on_key_release(self, symbol, modifiers):
         if (symbol == pyglet.window.key.X):
             self.engine.testChange()
+        elif (modifiers & pyglet.window.key.MOD_ALT and
+                symbol == pyglet.window.key.ENTER):
+            self.toggleFullscreen()
         elif symbol == pyglet.window.key._1:
             self.setSpeed(speed.PAUSED)
         elif symbol == pyglet.window.key._2:
@@ -157,11 +171,10 @@ class MainWindow(pyglet.window.Window):
             self.onToolDrag(x, y, dx, dy, buttons, modifiers)
         
     def on_resize(self, width, height):
-        self.viewingPane.setSize(math.floor(self.DEFAULT_WIDTH * 0.75), 
+        self.viewingPane.resize(math.floor(self.DEFAULT_WIDTH * 0.75), 
                                     height)
-        # infopane
-        
-        pyglet.window.Window.on_resize(self, width, height)
+        self.infoPane.resize(self.viewingPane.getWidth() + 1, 0, width, height)
+        super(MainWindow,self).on_resize(width, height)
 
         
     def on_close(self):
@@ -197,15 +210,11 @@ class MainWindow(pyglet.window.Window):
         if button == mouse.RIGHT:
             self.set_mouse_cursor(self.get_system_mouse_cursor(self.CURSOR_CROSSHAIR))
             return
-
-
         if self.currentTool == None:
             self.set_mouse_cursor(self.get_system_mouse_cursor(self.CURSOR_CROSSHAIR))
             return
-        
         if button != mouse.LEFT:
             return
-        
         if self.currentTool.type == micropolistool.QUERY:
             self.doQueryTool(loc.x, loc.y)
             self.toolStroke = None
@@ -216,34 +225,23 @@ class MainWindow(pyglet.window.Window):
             self.previewTool()
             self.set_mouse_cursor(self.get_system_mouse_cursor(self.CURSOR_HAND))
             
-            
-
-        
-
         
     def onToolDrag(self, x, y, dx, dy, buttons, modifiers):
         if not self.viewingPane.withinRange(self.dragStart[0], self.dragStart[1]):
             return
-        
         if self.currentTool is None or\
                 buttons & mouse.RIGHT:
-            # pan tool is selected
             self.viewingPane.moveView(dx, dy)
             return
-
         loc = self.viewingPane.evToCityLocation(x, y)
         tx = loc.x
         ty = loc.y
         if tx == self.lastX and ty == self.lastY:
             return
-        
- 
         if buttons & mouse.LEFT == 0:
             return
-        
         self.lastX = tx
         self.lastY = ty
-        
         if self.toolStroke is not None:
             self.toolStroke.dragTo(tx, ty)
             self.previewTool()
@@ -258,7 +256,6 @@ class MainWindow(pyglet.window.Window):
                                 self.toolStroke.apply())
             self.toolStroke = None
             self.engine.tileUpdateCheck()
-        
         #print x,y
         loc = self.viewingPane.evToCityLocation(x, y)
         tx = loc.x
@@ -266,11 +263,9 @@ class MainWindow(pyglet.window.Window):
         #print self.lastX,tx
         if button == mouse.RIGHT and self.lastX == tx and self.lastY == ty:
             self.doQueryTool(tx, ty)
-        
         self.set_mouse_cursor(self.get_system_mouse_cursor(self.CURSOR_DEFAULT))    
         self.onToolHover(x,y)
-        
-        #TODO conditionally show budget window
+        #TODO conditionally show budget window here?
         
             
     def onToolHover(self, x, y):
@@ -334,7 +329,9 @@ class MainWindow(pyglet.window.Window):
         self.infoPane.addInfoMessage(newSpeed.name + " Speed")
         if self.speed == speed.PAUSED:
             return
-        #pyglet.clock.schedule(self.engine.animate, 1./60)
+        pyglet.clock.schedule_interval(self.engine.animate, newSpeed.delay)
+
+        
         
     def update(self, dt):
         self.viewingPane.update(dt)

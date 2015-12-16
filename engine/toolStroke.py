@@ -148,7 +148,7 @@ class ToolStroke(object):
             
     
     def applyParkTool(self, eff):
-        pass
+        print "park"
     
     def fixZoneSpecific(self, xPos, yPos):
         eff = ToolEffect(self.engine, xPos, yPos)

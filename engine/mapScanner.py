@@ -5,6 +5,7 @@ Created on Oct 19, 2015
 '''
 from engine.tileBehaviour import TileBehaviour
 from engine import tileConstants
+from tileConstants import getZoneSizeFor
 from tileConstants import isZoneCenter
 from engine.cityLocation import CityLocation
 from tiles import Tiles
@@ -57,7 +58,7 @@ class MapScanner(TileBehaviour):
             
             
     def checkZonePower(self):
-        '''  '''
+        ''' updates zone's power '''
         pwrFlag = self.setZonePower()
         
         if pwrFlag:
@@ -68,7 +69,7 @@ class MapScanner(TileBehaviour):
         return pwrFlag
     
     def setZonePower(self):
-        '''  '''
+        ''' updates power bit for tiles according to powerMap'''
         oldPower = self.city.isTilePowered(self.x, self.y)
         newPower = ( self.tile == tileConstants.NUCLEAR or
                      self.tile == tileConstants.POWERPLANT or
@@ -77,10 +78,10 @@ class MapScanner(TileBehaviour):
         if newPower and not oldPower:
             self.city.setTilePower(self.x, self.y, True)
             self.city.powerZone(self.x, self.y, 
-                                self.getZoneSizeFor(self.tile))
+                                getZoneSizeFor(self.tile))
         if not newPower and oldPower:
             self.city.setTilePower(self.x, self.y, False)
-            self.city.shutdownZone(self.x, self.y, self.getZoneSizeFor(self.tile))
+            self.city.shutdownZone(self.x, self.y, getZoneSizeFor(self.tile))
         
         return newPower  
         
@@ -106,7 +107,11 @@ class MapScanner(TileBehaviour):
         self.city.powerPlants.append(CityLocation(self.x, self.y))
     
     def doNuclearPower(self):
-        pass
+        powerOn = self.checkZonePower()
+        self.city.nuclearCount += 1
+        if self.city.cityTime % 8 == 0:
+            self.repairZone(tileConstants.NUCLEAR)
+        self.city.powerPlants.append(CityLocation(self.x, self.y))
     
     def doFireStation(self):
         pass

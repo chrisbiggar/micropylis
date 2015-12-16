@@ -76,6 +76,7 @@ class Engine(pyglet.event.EventDispatcher):
     def __init__(self, width=None, height=None):
         self.register_event_type("on_map_changed")
         self.register_event_type("on_funds_changed")
+        self.register_event_type("on_census_changed")
         
         self.initTileBehaviours()
         
@@ -289,7 +290,7 @@ class Engine(pyglet.event.EventDispatcher):
         elif mod16 == 10:
             pass
         elif mod16 == 11:
-            self.powerScan()
+            #self.powerScan()
             self.newPower = True
         elif mod16 == 12:
             self.ptlScan()
@@ -301,9 +302,59 @@ class Engine(pyglet.event.EventDispatcher):
             pass
         
         self.tileUpdateCheck()
+
+    def testForCond(self, loc, dir):
+        ''' returns power condition of location '''
+        xSave = loc.x
+        ySave = loc.y
         
-    def powerScan(self):
+        rv = False
+        if self.movePowerLocation(loc, dir):
+            t = self.getTile(loc.x, loc.y)
+            rv = (
+                  isConductive(t) and
+                  t != NUCLEAR and
+                  t != POWERPLANT and
+                  not self.hasPower(loc.x, loc.y))
+        
+        loc.x = xSave
+        loc.y = ySave
+        return rv
+    
+    def movePowerLocation(self, loc, dir):
         '''  '''
+        if dir == 0:
+            if loc.y > 0:
+                loc.y -= 1
+                return True
+            else:
+                return False
+        elif dir == 1:
+            if loc.x + 1 < self.getWidth():
+                loc.x += 1
+                return True
+            else:
+                return False
+        elif dir == 2:
+            if loc.y + 1 < self.getWidth():
+                loc.y += 1
+                return True
+            else:
+                return False
+        elif dir == 3:
+            if loc.x > 0:
+                loc.x -= 1
+                return True
+            else:
+                return False
+        elif dir == 4:
+            return True
+        else:
+            return False
+            
+
+    def powerScan(self):
+        ''' called once a cycle.  '''
         self.powerMap = create2dArray(self.getHeight(), self.getWidth(), False)
         
         maxPower = self.coalCount * 700 + self.nuclearCount * 2000
@@ -314,11 +365,11 @@ class Engine(pyglet.event.EventDispatcher):
             
             aDir = 4
             conNum = 0
-            '''while True:
+            while True:
                 if numPower > maxPower:
                     # brownouts message.
                     return
-                # movepowerlocation
+                self.movePowerLocation(loc, aDir)
                 self.powerMap[loc.y][loc.x] = True
                 
                 conNum = 0
@@ -330,7 +381,7 @@ class Engine(pyglet.event.EventDispatcher):
                     else:
                         dir += 1
                 if conNum > 1:
-                    self.powerPlants.append(CityLocation(loc.x, loc.y))'''
+                    self.powerPlants.append(CityLocation(loc.x, loc.y))
         
         
     
@@ -383,7 +434,6 @@ class Engine(pyglet.event.EventDispatcher):
         bb["ROAD"] = TerrainBehaviour(self, B.ROAD)
         bb["RAIL"] = TerrainBehaviour(self, B.RAIL)
         bb["EXPLOSION"] = TerrainBehaviour(self, B.EXPLOSION)
-        
         bb["RESIDENTIAL"] = MapScanner(self, B.RESIDENTIAL)
         bb["HOSPITAL_CHURCH"] = MapScanner(self, B.HOSPITAL_CHURCH)
         bb["COMMERCIAL"] = MapScanner(self, B.COMMERCIAL)
@@ -413,28 +463,6 @@ class Engine(pyglet.event.EventDispatcher):
                 else:
                     assert False
                     
-    
-    def testForCond(self, loc, dir):
-        ''' returns power condition of location '''
-        xSave = loc.x
-        ySave = loc.y
-        
-        rv = False
-        if self.movePowerLocation(loc, dir):
-            t = self.getTile(loc.x, loc.y)
-            rv = (
-                  isConductive(t) and
-                  t != NUCLEAR and
-                  t != POWERPLANT and
-                  not self.hasPower(loc.x, loc.y))
-        
-        loc.x = xSave
-        loc.y = ySave
-        return rv
-    
-    def movePowerLocation(self, loc, dir):
-        '''  '''
-        pass
                     
     def powerZone(self, xPos, yPos, zoneSize):
         '''
@@ -451,8 +479,10 @@ class Engine(pyglet.event.EventDispatcher):
                 tile = self.getTileRaw(x, y)
                 ts = Tiles().get(tile & LOMASK)
                 if ts is not None and ts.onPower is not None:
+                    print "onPower: " + str((x,y,ts.onPower.tileNum))
                     self.setTile(x, y,
-                                 ts.onPower.tileNum or tile & ALLBITS)        
+                                 ts.tileNum or tile & ALLBITS)
+                           
         
     def shutdownZone(self, xPos, yPos, zoneSize):
         '''

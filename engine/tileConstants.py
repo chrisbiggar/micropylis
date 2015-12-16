@@ -86,30 +86,42 @@ LVRAIL10 = 236
 HRAILROAD = 237
 VRAILROAD = 238
 LASTRAIL = 238
-
-POWERPLANT = 750
-
-NUCLEAR = 816
-
-
-
-PWRBIT = 32768 # bit 15 indicates powered state
-
-ALLBITS = 64512
-LOMASK = 1023 # mask for low ten bits
-
 RESBASE = 244
 RESCLR = 244
-
+HOUSE = 249
+LHTHR = 249 # 12 house tiles
+HHTHR = 260
+RZB = 265 # residential zone base
+HOSPITAL = 409
+CHURCH = 418
+COMBASE = 423
 COMCLR = 427
-
-
+CZB = 436 # commercial zone base
+INDBASE = 612
 INDCLR = 616
+IZB = 625
+PORTBASE = 693
+PORT = 698
+AIRPORT = 716
+POWERPLANT = 750
+FIRESTATION = 765
+POLICESTATION = 774
+STADIUM = 784
+FULLSTADIUM = 800
+NUCLEAR = 816
+
+LIGHTNINGBOLT = 827
 
 TINYEXP = 860
 LASTTINYEXP = 867
 
 
+LASTTILE = 956
+
+PWRBIT = 32768 # bit 15 indicates powered state
+
+ALLBITS = 64512
+LOMASK = 1023 # mask for low ten bits
 
 
 ROADTABLE = [
@@ -304,8 +316,6 @@ def neutralizeRoad(tile):
     if tile >= ROADBASE and tile <= LASTROAD:
         tile = ((tile - ROADBASE) & 0xf) + ROADBASE
     return tile
-
-
 
 
 

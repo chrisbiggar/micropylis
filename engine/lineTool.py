@@ -11,10 +11,10 @@ from tileConstants import *
 from engine.toolResult import ToolResult
 
 
-class RoadLikeTool(ToolStroke):
+class LineTool(ToolStroke):
 
     def __init__(self, engine, tool, xPos, yPos):
-        super(RoadLikeTool,self).__init__(engine, tool, xPos, yPos)
+        super(LineTool,self).__init__(engine, tool, xPos, yPos)
         
     '''
         overrides ToolStroke
@@ -23,8 +23,6 @@ class RoadLikeTool(ToolStroke):
         while True:
             if self.applyForward(eff) == False:
                 break
-            #if self.applyBackward(eff) == False:
-            #    break
             
             
     def applyForward(self, eff):
@@ -84,8 +82,17 @@ class RoadLikeTool(ToolStroke):
             return self.applyRoadTool(eff)
         elif self.tool.type == micropolistool.RAIL:
             return self.applyRailTool(eff)
+        elif self.tool.type == micropolistool.WIRE:
+            return self.applyWireTool(eff)
         else:
             raise Exception("Unexpected Tool: " + self.tool.name)
+        
+    def applyWireTool(self, eff):
+        if self.layWire(eff):
+            self.fixZone(eff)
+            return True
+        else:
+            return False
         
     def applyRailTool(self, eff):
         if self.layRail(eff):
@@ -101,6 +108,80 @@ class RoadLikeTool(ToolStroke):
             return True
         else:
             return False
+    
+    def layWire(self, eff):
+        WIRECOST = 5
+        UNDERWATERWIRECOST = 25
+        
+        cost = WIRECOST
+        
+        tile = eff.getTile(0,0)
+        tile = neutralizeRoad(tile)
+        
+        if (tile == RIVER 
+                or tile == REDGE
+                or tile == CHANNEL):
+            cost = UNDERWATERWIRECOST
+            
+            hit = False
+            eastT = neutralizeRoad(eff.getTile(1, 0))
+            if (isConductive(eastT) and
+                    eastT != HROADPOWER and
+                    eastT != RAILHPOWERV and
+                    eastT != HPOWER):
+                eff.setTile(0,0, VPOWER)
+                hit = True
+            if not hit:
+                westT = neutralizeRoad(eff.getTile(-1, 0))
+                if (isConductive(westT) and
+                        westT != HROADPOWER and
+                        westT != RAILHPOWERV and
+                        westT != HPOWER):
+                    eff.setTile(0,0, VPOWER)
+                    hit = True
+            if not hit:
+                southT = neutralizeRoad(eff.getTile(0, 1))
+                if (isConductive(southT) and
+                        southT != VROADPOWER and
+                        southT != RAILVPOWERH and
+                        southT != VPOWER):
+                    eff.setTile(0,0, HPOWER)
+                    hit = True
+            if not hit:
+                northTile = neutralizeRoad(eff.getTile(0, -1))
+                if (isConductive(northTile) and
+                        northTile != VROADPOWER and
+                        northTile != RAILVPOWERH and
+                        northTile != VPOWER):
+                    eff.setTile(0,0, HPOWER)
+                    hit = True
+            
+            if not hit:
+                return False
+        
+        elif tile == ROADS:
+            eff.setTile(0, 0, HROADPOWER)
+        
+        elif tile == ROADS2:
+            eff.setTile(0, 0, VROADPOWER)
+            
+        elif tile == LHRAIL:
+            eff.setTile(0, 0, RAILHPOWERV)
+            
+        elif tile == LVRAIL:
+            eff.setTile(0, 0, RAILVPOWERH)
+        
+        else:
+            if tile != DIRT:
+                if canAutoBulldozeRRW(tile):
+                    cost += 1
+                else:
+                    return False
+            
+            eff.setTile(0, 0, LHPOWER)
+        
+        eff.spend(cost)
+        return True
         
     def layRail(self, eff):
         RAILCOST = 20
