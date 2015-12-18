@@ -4,6 +4,7 @@ etc/cloc-1.64.exe
 test.py
 dist/
 etc/
+etc/**
 
 
 

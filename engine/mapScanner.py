@@ -17,7 +17,7 @@ STADIUM_FULL,AIRPORT,SEAPORT = range(6,18)
 
 class MapScanner(TileBehaviour):
     '''
-    
+    contains the processing algorithms for the zones
     
     
     '''
@@ -75,61 +75,71 @@ class MapScanner(TileBehaviour):
                      self.tile == tileConstants.POWERPLANT or
                      self.city.hasPower(self.x,self.y))
         
+        if not newPower:
+            self.city.setTileIndicator(self.x,self.y,True)
+        
         if newPower and not oldPower:
             self.city.setTilePower(self.x, self.y, True)
             self.city.powerZone(self.x, self.y, 
                                 getZoneSizeFor(self.tile))
+            self.city.setTileIndicator(self.x,self.y,False)
         if not newPower and oldPower:
             self.city.setTilePower(self.x, self.y, False)
             self.city.shutdownZone(self.x, self.y, getZoneSizeFor(self.tile))
+            self.city.setTileIndicator(self.x,self.y,True)
         
         return newPower  
         
           
     def doResidential(self):
-        #print "process res"
-        pass
+        powerOn = self.checkZonePower()
+        #print "dores"
+        
     
     def doHospitalChurch(self):
-        pass
+        powerOn = self.checkZonePower()
+        
     
     def doCommercial(self):
-        pass
+        powerOn = self.checkZonePower()
     
     def doIndustrial(self):
-        pass
+        powerOn = self.checkZonePower()
     
     def doCoalPower(self):
+        #print "docoal"
         powerOn = self.checkZonePower()
         self.city.coalCount += 1
         if self.city.cityTime % 8 == 0:
-            self.repairZone(tileConstants.POWERPLANT)
+            #self.repairZone(tileConstants.POWERPLANT)
+            pass
         self.city.powerPlants.append(CityLocation(self.x, self.y))
     
     def doNuclearPower(self):
         powerOn = self.checkZonePower()
         self.city.nuclearCount += 1
         if self.city.cityTime % 8 == 0:
-            self.repairZone(tileConstants.NUCLEAR)
+            #self.repairZone(tileConstants.NUCLEAR)
+            pass
         self.city.powerPlants.append(CityLocation(self.x, self.y))
     
     def doFireStation(self):
-        pass
+        powerOn = self.checkZonePower()
     
     def doPoliceStation(self):
-        pass
+        powerOn = self.checkZonePower()
     
     def doStadiumEmpty(self):
-        pass
+        powerOn = self.checkZonePower()
     
     def doStadiumFull(self):
-        pass
+        powerOn = self.checkZonePower()
     
     def doAirport(self):
-        pass
+        powerOn = self.checkZonePower()
     
     def doSeaport(self):
-        pass
+        powerOn = self.checkZonePower()
     
     def repairZone(self, base):
         '''  '''
@@ -145,6 +155,42 @@ class MapScanner(TileBehaviour):
         
         assert len(bi.members) == bi.width * bi.height
         i = 0
+        for y in xrange(bi.height):
+            for x in xrange(bi.width):
+                xx = xOrg + x
+                yy = yOrg + y
+                
+                ts = Tiles().get(bi.members[i])
+                if powerOn and ts.onPower is not None:
+                    ts = ts.onPower
+                
+                if self.city.testBounds(xx,yy):
+                    thCh = self.city.getTile(xx,yy)
+                    if isZoneCenter(thCh):
+                        continue
+                    
+                    if tileConstants.isAnimated(thCh):
+                        continue
+                    
+                    '''if isRubble(thCh):
+                        continue'''
+                   
+                    #if is
+                    
+                    self.city.setTile(xx,yy,ts.tileNum)
+                i += 1
+
+
+
+
+
+
+
+
+
+
+
+
     
     
         

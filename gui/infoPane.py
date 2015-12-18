@@ -19,29 +19,41 @@ MSG_SHOW_TIME = 10 # in seconds
 
 
 class Message(object):
-    def __init__(self, msg, startTime):
+    def __init__(self, num, msg, startTime, start):
         self.string = msg
         self.time = int(startTime)
+        self.index = start
+        self.num = num
     
     def isExpired(self, dt):
         return int(dt) > self.time + MSG_SHOW_TIME
     
+    def __len__(self):
+        return len(self.string)
+    
 
+'''
+    displays messages to user. 
+'''
 class MessageQueue(object):
     def __init__(self, batch, width):
         self.batch = batch
-        self.msgs = deque(maxlen=12)
+        #self.msgs = deque(maxlen=12)
+        self.msgs = list()
         self.dt = 0
         self.secs = 0
         self.bgRect = None
-        self.doc = UnformattedDocument()
+        self.doc = FormattedDocument()
         self.layout = TextLayout(self.doc,
                                      width=width,
                                      batch=batch,
                                      group=fgGroup,
                                      multiline=True)
-        self.msgTitleLabel = Label(batch=self.batch,
+        self.titleLabel = Label("City Messages",
+                                   batch=self.batch,
                                    group=fgGroup)
+        self.currentPos = 0
+        self.numMsgs = 0
     
     def doLayout(self, x, y, width, height):
         self.x = x
@@ -68,19 +80,57 @@ class MessageQueue(object):
         self.bgRect = self.batch.add(4, GL_QUADS, mgGroup,
                                  ('v2f', [x, y, x2, y, x2, y2, x, y2]),
                                  ('c4B', colorData))
+        self.titleLabel.x = x + 10
+        self.titleLabel.y = y + 10
 
         
     def _resetDoc(self):
-        self.doc.text = ""
+        text = ""
+        first = True
         for item in self.msgs:
-            self.doc.text += item.string + "\n"
+            attStr = item.string + '\n'
+            if first:
+                first = False
+                attStr = "{bold True}" + item.string + "{bold False}\n"
+            text += attStr + "\n"
+        self.layout.document = pyglet.text.decode_attributed(text)
+        
+        
+    def removeLine(self, item):
+        print "remove"
+        before = self.doc.text[:item.index]
+        endIndex = item.index + len(item)
+        after = self.doc.text[endIndex:]
+        print "before: " + str(item.index)
+        print "after: " + str(endIndex)
+        self.doc.text = before + after
+        msgsN = self.msgs
+        #msgsN.remove(item.num)
+        for msg in msgsN:
+            msg.num -= 1
+            msg.index -= len(item)
+            print msg.num,msg.index
+    
+    def insertStart(self, item):
+        print item.index, len(item)
+        self.doc.text = item.string + "\n" + self.doc.text
+        self.numMsgs += 1
+        for msg in self.msgs[1:]:
+            msg.index += len(item) + 1
+            msg.num += 1
     
     def addMessage(self, msg):
-        self.msgs.append(Message(msg, floor(self.secs)))
+        if len(self.msgs) and msg == self.msgs[0].string:
+            return
+        #print self.currentPos
+        item = Message(self.numMsgs, msg, floor(self.secs), 0)
+        self.msgs.insert(0,item)
+        #self.insertStart(item)
+        if self.layout.content_height >= self.height - self.titleLabel.content_height - 5:
+            self.msgs = self.msgs[:len(self.msgs)-1]
+            #self.removeLine(msg.index)
+        self.currentPos = len(self.doc.text)
         self._resetDoc()
-        if self.layout.content_height > self.height:
-            self.msgs.popleft()
-            self._resetDoc()
             
     def update(self, dt):
         self.dt += dt
@@ -95,6 +145,7 @@ class MessageQueue(object):
             if len(toRemove) > 0:
                 for item in toRemove:
                     self.msgs.remove(item)
+                    #self.removeLine(item)
                 self._resetDoc()
                 
 class DemandIndicatorWidget(object):
@@ -164,6 +215,9 @@ class InfoPane(object):
         
     
     def addInfoMessage(self, msg):
+        self.msgs.addMessage(msg)
+        
+    def city_message(self, msg):
         self.msgs.addMessage(msg)
         
     def on_census_changed(self):

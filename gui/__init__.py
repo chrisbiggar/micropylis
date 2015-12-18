@@ -6,7 +6,7 @@ from pyglet.gl import *
 from pyglet.window import mouse
 import kytten
 import engine
-from engine import Engine, micropolistool, speed, tiles
+from engine import Engine, micropolistool, speed, tiles, tileConstants
 from engine.micropolistool import MicropylisTool
 from engine.cityRect import CityRect
 from viewingPane import ViewingPane
@@ -114,6 +114,7 @@ class MainWindow(pyglet.window.Window):
         vPWidth = math.floor(self.DEFAULT_WIDTH * 0.75)
         self.viewingPane = ViewingPane(self.engine, 0, 0,
                                     vPWidth, self.DEFAULT_HEIGHT)
+        self.engine.push_handlers(self.viewingPane)
         self.push_handlers(self.viewingPane.keys)
         
         self.infoPane = InfoPane(self.engine,  
@@ -316,8 +317,12 @@ class MainWindow(pyglet.window.Window):
     def doQueryTool(self, xPos, yPos):
         ''' print tilevalue to infopane messages '''
         tileValue = self.engine.getTile(xPos,yPos)
-        queryMsg = "Tile Value of ({0},{1}): {2}".format(
-                str(xPos), str(yPos), str(tileValue))
+        self.engine.setTile(xPos,yPos,tileConstants.WOODS)
+        return
+        queryMsg = "Power of ({0},{1}): {2}".format(
+                str(xPos), str(yPos), str(self.engine.hasPower(xPos, yPos)))
+        '''queryMsg = "Power of ({0},{1}): {2}".format(
+                str(xPos), str(yPos), str(self.engine.getTile(xPos, yPos)))'''
         self.infoPane.addInfoMessage(queryMsg)
         
     def setSpeed(self, newSpeed):

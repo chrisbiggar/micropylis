@@ -9,11 +9,14 @@ from pyglet.sprite import Sprite
 from engine.cityLocation import CityLocation
 from tileImages import TileImages
 import gui
+import engine
 from util import create2dArray
 from engine.tileConstants import CLEAR
 from pyglet.gl import *
 import math
 from pyglet import clock
+from engine import tileConstants
+from engine.speed import Speed
 
 
 class TileSprite(Sprite):
@@ -80,18 +83,37 @@ class TilesGroup(OrderedGroup):
         glPopMatrix()
 
 
-class BlinkOverlayGroup(TilesGroup):
-    def __init__(self):
+class BlinkOverlayGroup(OrderedGroup):
+    def __init__(self, tilesGroup):
         super(BlinkOverlayGroup,self).__init__(2)
+        self._tilesGroup = tilesGroup
+        self.blink = False
+        self.lastChange = 0
+        self.dt = 0
+        self.freq = 0.8
+        self.paused = False
         
     def set_state(self):
-        super(TilesGroup,self).set_state()
-        
-        # if blink
-        #glColorMask(GL_FALSE)
+        self._tilesGroup.set_state()
+        if self.blink and not self.paused:
+            glColorMask(GL_FALSE,GL_FALSE,GL_FALSE,GL_FALSE)
     
     def unset_state(self):
-        super(TilesGroup,self).unset_state()
+        self._tilesGroup.unset_state()
+        if self.blink and not self.paused:
+            glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE)
+    
+    def start(self):
+        self.paused = False
+        
+    def stop(self):
+        self.paused = True
+    
+    def update(self, dt):
+        self.dt += dt
+        if self.dt > self.lastChange + self.freq:
+            self.blink = not self.blink
+            self.lastChange = self.dt
 
         
 class ToolCursorGroup(OrderedGroup):
@@ -152,8 +174,29 @@ class ViewingPane(object):
         self._tilesGroup.setViewportSize(width, height)
         self.overlayGroup = OrderedGroup(2)
         self._tileSprites = None
+        self.blinkGroup = BlinkOverlayGroup(self._tilesGroup)
         
         self.reset(engine)
+    
+    
+    def on_power_indicator_changed(self, pos):
+        x = pos[0]
+        y = pos[1]
+        ind = self._engine.getTileIndicator(x,y)
+        if ind and self._tileIndicators[x][y] is None:
+            img = self.tileImages.getTileImage(tileConstants.LIGHTNINGBOLT)
+            tileSize = self.DEFAULT_TILE_SIZE
+            x2 = x * tileSize
+            y2 = (self._height - y * tileSize - tileSize)
+            self._tileIndicators[x][y] = Sprite(img,
+                                                batch=self.batch,
+                                                group=self.blinkGroup,
+                                                x=x2,
+                                                y=y2)
+        if not ind and self._tileIndicators[x][y] is not None:
+            self._tileIndicators[x][y].delete()
+            self._tileIndicators[x][y] = None
+    
         
     def reset(self, engine):
         self._scrollX = 0
@@ -162,6 +205,11 @@ class ViewingPane(object):
         self.toolPreview = None
         self.setEngine(engine)
         self._resetTileBatch()
+        self._tileIndicators = create2dArray(
+                                    self._engine.getHeight(), 
+                                    self._engine.getWidth(), 
+                                    None)
+        
         
     def resize(self, width, height):
         if self._width == width and self._height == height:
@@ -224,7 +272,7 @@ class ViewingPane(object):
         '''
         tileSize = self.DEFAULT_TILE_SIZE
         x = self.toolCursor.rect.x * tileSize
-        y = (self._height - (self.toolCursor.rect.y - 1) 
+        y = (self._height - (self.toolCursor.rect.y - 1)
                        * tileSize - tileSize)
         x2 = x + self.toolCursor.rect.width * tileSize
         y2 = y + self.toolCursor.rect.height * tileSize
@@ -310,6 +358,10 @@ class ViewingPane(object):
             lastSpeed.lastTs = self.getTime()
         self.animClock.restore_time(speed.lastTs)
         self.animCoefficient = speed.animCoefficient
+        if speed == engine.speed.PAUSED:
+            self.blinkGroup.stop()
+        else:
+            self.blinkGroup.start()
             
     def setZoom(self, newValue=None, increment=None):
         '''
@@ -441,6 +493,7 @@ class ViewingPane(object):
         self._checkScrollKeys(dt)
         if self.zoomTransition is not None:
             self.updateZoom(dt)
+        self.blinkGroup.update(dt)
         
         
         

@@ -51,8 +51,12 @@ class LayoutFrame(object):
         self.frameHeight = height
         
     def doLayout(self):
+        # do layout for items right here in this method
         for item in self._items:
-            item.layout()
+            if item.alignment == RIGHT_ALIGN:
+                self.x = self.parentFrame.x + self.parentFrame.width - self.parentFrame.border\
+                                    - self.content_width
+
     
     
     

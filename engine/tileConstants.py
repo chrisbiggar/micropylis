@@ -310,6 +310,13 @@ def isZoneCenter(tile):
     return spec is not None and spec.zone
 
 
+def isAnimated(tile):
+    assert tile & LOMASK == tile
+    
+    spec = Tiles().get(tile)
+    return spec is not None and spec.animNext is not None
+
+
 def neutralizeRoad(tile):
     assert (tile & LOMASK) == tile
     

@@ -2,6 +2,9 @@
 
 
 '''
+contains the data pertinent to each game speed.
+
+
 animationCoefficient:
     animation duration is set to 0.2.
     animationCoefficient is multiplied to time to produce

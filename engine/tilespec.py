@@ -141,6 +141,7 @@ class TileSpec(object):
         self.owner = None
         self.animNext = None
         self.onPower = None
+        self.onShutdown = None
         
     def load(self, inStr, tilesRc):
         '''

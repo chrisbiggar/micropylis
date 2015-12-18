@@ -1,17 +1,44 @@
 commit log:
-v5
+
 -----
-rudiments of simple gui layout engine created. added formatted date and population label to infopane. cleaned up tool cursor logic by using translating group(tilesgroup). power partially coded but not functional. completed wire portion of linetool. all buildings placeable except nuclear powerplant due to gui not providing option. fixed speed control for engine simulation.
 
 
 
-window now resizable. infopane will resize itself. fullscreen mode now availible.
 
------ STATE OF DEV -----
+
+window now resizable. infopane will resize itself. fullscreen mode now availible. improved message pane.
+
 
 - where is sega genesis??
 
-- BUG: months starts dec 1990 and wraps around to jan 1990
+----- WHAT TO DO NEXT -----
+
+- when changing tile of zone with no power, tileindicator does not go away
+    - need do call a destory zone function. (like what would be called when you bulldoze key tile of zone)
+
+- change code to use xrange when possible.
+
+-FIX: month starts at dec 1990 and wraps around to jan 1990
+
+- dynamic layout containers
+    - look at kytten
+
+- powersystem
+    - impl checkpowermap
+    - repair zone not working. (progressivly moving zone south-east)
+    - onpower not working
+        - repair zone! is not working but seems to fix this.
+
+- general city messages should be restricted from repeating within a certain timeframe.
+
+- msgpane: make more efficient by cleaning up and appending and removing text from document. may have to use html or something.
+    - have to store index's into doc string.
+
+
+-------------   Plan For Micropylis Dev --------------
+
+- give description comment for ambiguious methods in source!!!!!!
+- comment every class briefly on what it does.
 
 - make window resizable
     - make code for laying out infopane upon resize
@@ -21,79 +48,56 @@ window now resizable. infopane will resize itself. fullscreen mode now availible
             - use kytten for example.
             - date,funds,population,msgpane.
 
-        - containers and items. each container has list of items that it lays out inside itself according to rules for alignment and order. vertical and horizontal and possibly grid layouts can be used.
+        - containers and items. each container has list of items that it lays out inside itself according to rules for alignment and order. vertical and horizontal and possibly grid layouts can be used. constrictions like on a certain item's width can be used.
+            - horizontal layout used for viewingpane and infopane: infopane has minimum or static width and viewingpane will fit the rest of the screen left.
 
-- simulation engine *****
-    - impl. speed control for engine.
-    - code power system
-        - test: place powerplant and lines and zones. the zones should blink while no power and when attached to power blinking will stop.
-        - ** do main system, then blink.
-            - powerscan and tile behaviours ***
-                -****FIX: powerscan goes into infinite loop.
-        - blink
-            - animation toggling between blank and power symbol
-                - disable glcolorbuffer in group.
+- simulation engine
+    - study the source code more: write down any findings about how things work.
+    - outline the different systems that make the city alive so you can see what to do next and what you are doing in relation to everything else.
 
-- tool cursor logic could be simplified by using regular tilegroup (order number 2 still though) (make copy of viewingpane before change!)
-
-- comment every ambiguious method in source
-
-
--------------   Plan For Micropylis Dev --------------
-
-- envision and make mockup for final vision of what micropylis will be! label and make notes.
+- when working on engine simulation
+    - a test: zones growing
+        - number of different systems contribute to this.
+            - make map of different systems and how they relate?
+    - test you methods as you go!
+        - real unit tests?
+    - jot down notes about simulation for more specific parts.
 
 - test on linux
-
-- work on engine simulation
-    - when making lots of new methods, each one should be tested to stop confusion when putting it all together
-        - real unit tests?
-    - jot down notes about simulation as you go.
-    - *** test to strive for: residential zone growing
-
 - mouse wheel scroll!! (on mouse point)
 
-- going to need to optimize, but will be doable!
-    - updateView() for updating only the tiles seen on the screen; will be called when scrolling(only when every few new tiles have been reached) on_map changed only updates tiles within screen. call less periodically when zoomed out?
-    - learn how to do profiling
 
-- gui
-    - info panel.
-        - should cleanly layout itself independant of size
-        - add title label at top of message queue: Info
-        - buttons to bring up kytten dialogs
-        - can be minimized?
-        - message display box
-            - better background (image?)(like kytten and cursor)
-            - needs to auto resize itself
-                - stay same width?
-                - need to figure this out.
+---------- GUI LIST ---------------
 
-        - minimap is 360 px wide
-            - scale the regular map very small?
-            - how to do minimap and overlays?
+- info panel.
+    - buttons - highlight and display hand when hover. click will show indication of click.
+        - button that opens main menu dialog
+            - main menu: new,load,save,options,about
+        - population is button that opens cityevaldialog
+        - date is button that opens graphs (how to show graphs?)
+        - funds is button that opens budgetdialog
 
-    - sounds
-        - orig music
-        - zone placement
+    - minimap is 360 px wide
+        - 360px wide, 300px tall in original (3px per tile)
+        - somehow copy and scale the regular map for this?
+        - could have slower updates than regular map for speed.
+        - how to do this minimap and overlays?
 
-    - some GUI items:
-        - demand indicator
-        - new city
-        - save/load
-        - budget dialog
-        - city eval
+- sounds
+    - orig music
+    - zone placement
+
+- some gui items to be made:
+    - demand indicator
+    - new city
+    - save/load
+    - budget dialog
+    - city eval dialog
+    - about dialog
 
 
 -----------  BUGS  -----------
 
-1: PaletteMenu or Option does not pass mouse move event to parent dialog (should probobly do this)
-
-4: when tool is dragged off map, tool does not actually place.
-    - has to do with "on tool up" not happening
-
 4b: when panning map and mouse cursor is cross hair if dragging off the map or in certain situations it will not turn back to a normal cursor
 
-5: when placing or dragging a tool higher than or left of the map, the tool will draw outside the map and wrap around to other side of map, setting the tiles in those spots to black, and the spot outside the map to the value of those tiles. (tile sprite coords are being moved to values outside of the map)
-
-6: When changing a tile for first time, there is a slowdown; program stops for a split second. changes after that do not seem to impact speed.
+5:(verify this is still happening...) when placing or dragging a tool higher than or left of the map, the tool will draw outside the map and wrap around to other side of map, setting the tiles in those spots to black, and the spot outside the map to the value of those tiles. (tile sprite coords are being moved to values outside of the map)

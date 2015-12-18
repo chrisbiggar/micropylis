@@ -2,6 +2,7 @@
     main engine module
     
 '''
+import ConfigParser
 import pyglet
 from array import *
 from engine.tileConstants import *
@@ -59,6 +60,12 @@ class B(object):
     STADIUM_FULL=15
     AIRPORT=16
     SEAPORT=17
+    
+    
+    
+cityMessages = ConfigParser.ConfigParser()
+cityMessages.read('res/citymessages.cfg')    
+
 
 '''
     class Engine
@@ -77,6 +84,8 @@ class Engine(pyglet.event.EventDispatcher):
         self.register_event_type("on_map_changed")
         self.register_event_type("on_funds_changed")
         self.register_event_type("on_census_changed")
+        self.register_event_type("on_power_indicator_changed")
+        self.register_event_type("city_message")
         
         self.initTileBehaviours()
         
@@ -84,7 +93,10 @@ class Engine(pyglet.event.EventDispatcher):
         self.newCity(width, height)
 
         
-        
+    def cityMessage(self, category, stringOption):
+            self.dispatch_event("city_message", 
+                                cityMessages.get(category,
+                                                 stringOption))
         
     def spend(self, amount):
         self.budget.funds -= amount
@@ -110,17 +122,18 @@ class Engine(pyglet.event.EventDispatcher):
         self.updatedTiles = list()
         
         self.powerMap = create2dArray(height, width, False)
+        self.noPowerIndicators = create2dArray(width, height, False)
         
         ''' misc engine vars '''
         self.history = History()
         self.budget = CityBudget()
-        self.budget.funds = 10000
+        self.budget.funds = 20000
         
         self.fCycle = 0 # counts simulation steps (mod 1024)
         self.sCycle = 0 # same as cityTime, except mod 1024
         self.aCycle = 0 # animation cycle (mod 960)
         
-        self.cityTime = 0
+        self.cityTime = 0 # 1 week game time per "cityTime"
         
         self.clearCensus()
         
@@ -136,9 +149,22 @@ class Engine(pyglet.event.EventDispatcher):
         self.coalCount = 0
         self.nuclearCount = 0
         self.powerPlants = []
+        
     
+    def saveCity(self, outFile):
+        ''' saves the current city state to file '''
+        pass
+
+    def saveHistoryArray(self):
+        pass
+
+    def saveMisc(self):
+        pass
     
+    def saveMap(self):
+        pass
     
+
     ''' given a filename will load saved city data '''
     def loadCity(self, fileName):
         saveFile = open(fileName, "rb")
@@ -155,11 +181,15 @@ class Engine(pyglet.event.EventDispatcher):
             print str(err)
         finally:
             saveFile.close()
+            self.checkPowerMap()
             self.dispatch_event("on_map_changed", self.updatedTiles)
-            
-    def save(self, outFile):
-        ''' saves the current city state to file '''
+            self.dispatch_event("on_funds_changed")
+    
+    
+    def checkPowerMap(self):
         pass
+            
+            
     
     def loadHistoryArray(self, saveFile, array):
         '''  '''
@@ -222,7 +252,6 @@ class Engine(pyglet.event.EventDispatcher):
         self.setTile(10,10,FIRE)
         self.setTile(10,12,83)
         self.setTile(10,14,82)
-        self.tileUpdateCheck()
         
     def getTile(self, x, y):
         '''  '''
@@ -241,7 +270,13 @@ class Engine(pyglet.event.EventDispatcher):
             
     def setTilePower(self, x, y, power):
         '''  '''
-        self.map[y][x] = self.map[y][x] & (~PWRBIT) | power 
+        #print "MAP: " + str(self.map[y][x])
+        if power:
+            d = PWRBIT
+        else:
+            d = 0
+        self.map[y][x] = self.map[y][x] & (~PWRBIT) | d
+        #print "MAP: " + str(self.map[y][x])
     
     def setValves(self):
         '''  '''
@@ -262,8 +297,9 @@ class Engine(pyglet.event.EventDispatcher):
     def simulate(self, mod16):
         '''  '''
         band = self.getWidth() / 8
-        
+        #print "simulate " + str(mod16)
         if mod16 == 0:
+            #print "bah"
             self.sCycle = (self.sCycle + 1) % 1024
             self.cityTime += 1
             if self.sCycle % 2 == 0:
@@ -290,7 +326,7 @@ class Engine(pyglet.event.EventDispatcher):
         elif mod16 == 10:
             pass
         elif mod16 == 11:
-            #self.powerScan()
+            self.powerScan()
             self.newPower = True
         elif mod16 == 12:
             self.ptlScan()
@@ -301,60 +337,63 @@ class Engine(pyglet.event.EventDispatcher):
         elif mod16 == 15:
             pass
         
+        # should this be once a cycle?
         self.tileUpdateCheck()
 
-    def testForCond(self, loc, dir):
+    def testForConductive(self, loc, dir):
         ''' returns power condition of location '''
         xSave = loc.x
         ySave = loc.y
         
         rv = False
-        if self.movePowerLocation(loc, dir):
+        
+        r,loc = self.movePowerLocation(loc, dir)
+        if r:
             t = self.getTile(loc.x, loc.y)
             rv = (
                   isConductive(t) and
                   t != NUCLEAR and
                   t != POWERPLANT and
                   not self.hasPower(loc.x, loc.y))
-        
         loc.x = xSave
         loc.y = ySave
-        return rv
+        return rv,loc
     
     def movePowerLocation(self, loc, dir):
         '''  '''
         if dir == 0:
             if loc.y > 0:
                 loc.y -= 1
-                return True
+                return True,loc
             else:
-                return False
+                return False,loc
         elif dir == 1:
             if loc.x + 1 < self.getWidth():
                 loc.x += 1
-                return True
+                return True,loc
             else:
-                return False
+                return False,loc
         elif dir == 2:
             if loc.y + 1 < self.getWidth():
                 loc.y += 1
-                return True
+                return True,loc
             else:
-                return False
+                return False,loc
         elif dir == 3:
             if loc.x > 0:
                 loc.x -= 1
-                return True
+                return True,loc
             else:
-                return False
+                return False,loc
         elif dir == 4:
-            return True
-        else:
-            return False
+            return True,loc
+        
+        return False,loc
             
 
     def powerScan(self):
-        ''' called once a cycle.  '''
+        ''' called once a cycle. does the actual work of populating powermap 
+            starts at all powerplants and traces the power path'''
         self.powerMap = create2dArray(self.getHeight(), self.getWidth(), False)
         
         maxPower = self.coalCount * 700 + self.nuclearCount * 2000
@@ -362,27 +401,28 @@ class Engine(pyglet.event.EventDispatcher):
         
         while(len(self.powerPlants) != 0):
             loc = self.powerPlants.pop()
-            
             aDir = 4
             conNum = 0
             while True:
+                numPower += 1
                 if numPower > maxPower:
-                    # brownouts message.
+                    self.cityMessage("general", "BROWNOUTS_REPORT")
                     return
-                self.movePowerLocation(loc, aDir)
+                r,loc = self.movePowerLocation(loc, aDir)
                 self.powerMap[loc.y][loc.x] = True
                 
                 conNum = 0
-                dir = 0
-                while dir < 4 and conNum < 2:
-                    if self.testForCond(loc, dir):
+                theDir = 0
+                while theDir < 4 and conNum < 2:
+                    r,loc = self.testForConductive(loc, theDir)
+                    if r:
                         conNum += 1
-                        aDir = dir
-                    else:
-                        dir += 1
+                        aDir = theDir
+                    theDir += 1
                 if conNum > 1:
                     self.powerPlants.append(CityLocation(loc.x, loc.y))
-        
+                if conNum == 0:
+                    break
         
     
     def ptlScan(self):
@@ -424,7 +464,7 @@ class Engine(pyglet.event.EventDispatcher):
             self.updatedTiles = list()
             
     def initTileBehaviours(self):
-        ''' tile behaviours allow an action to processed for every tile '''
+        ''' tile behaviours allow an action to be processed for every tile '''
         
         bb = dict()
         
@@ -463,6 +503,17 @@ class Engine(pyglet.event.EventDispatcher):
                 else:
                     assert False
                     
+    def setTileIndicator(self, x, y, value):
+        if not self.noPowerIndicators[x][y] and value:
+            self.noPowerIndicators[x][y] = True
+            self.dispatch_event("on_power_indicator_changed",(x,y))
+        elif self.noPowerIndicators[x][y] and not value:
+            self.noPowerIndicators[x][y] = False
+            self.dispatch_event("on_power_indicator_changed",(x,y))
+    
+    def getTileIndicator(self, x, y):
+        return self.noPowerIndicators[x][y]
+                    
                     
     def powerZone(self, xPos, yPos, zoneSize):
         '''
@@ -479,7 +530,7 @@ class Engine(pyglet.event.EventDispatcher):
                 tile = self.getTileRaw(x, y)
                 ts = Tiles().get(tile & LOMASK)
                 if ts is not None and ts.onPower is not None:
-                    print "onPower: " + str((x,y,ts.onPower.tileNum))
+                    #print "onPower: " + str((x,y,ts.onPower.tileNum))
                     self.setTile(x, y,
                                  ts.tileNum or tile & ALLBITS)
                            
