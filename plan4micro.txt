@@ -1,5 +1,5 @@
 commit log:
-
+v7
 -----
 
 
@@ -13,29 +13,39 @@ window now resizable. infopane will resize itself. fullscreen mode now availible
 
 ----- WHAT TO DO NEXT -----
 
-- when changing tile of zone with no power, tileindicator does not go away
-    - need do call a destory zone function. (like what would be called when you bulldoze key tile of zone)
+- etc dir still in repo. remove this!
+
+- fix toolstroke to do autobulldoze properly.
 
 - change code to use xrange when possible.
 
 -FIX: month starts at dec 1990 and wraps around to jan 1990
 
+- general city messages should be restricted from repeating within a certain timeframe.
+
+- msgpane: make more efficient by cleaning up and appending and removing text from document. may have to use html or something for formatting.
+    - have to store index's into doc string.
+
 - dynamic layout containers
     - look at kytten
 
-- powersystem
-    - impl checkpowermap
+- powersystem final details
+    - impl checkpowermap for loading saves
     - repair zone not working. (progressivly moving zone south-east)
     - onpower not working
         - repair zone! is not working but seems to fix this.
+    - when changing tile of zone with no power, tileindicator does not go away
+        - need to call a destory zone function. (like what would be called when you bulldoze key tile of zone)
 
-- general city messages should be restricted from repeating within a certain timeframe.
 
-- msgpane: make more efficient by cleaning up and appending and removing text from document. may have to use html or something.
-    - have to store index's into doc string.
+THEN:
+- figure out next steps by mapping out what engine does and seeing bigger picture of simulation.
+
 
 
 -------------   Plan For Micropylis Dev --------------
+
+- mouse wheel scroll!! (on mouse point)
 
 - give description comment for ambiguious methods in source!!!!!!
 - comment every class briefly on what it does.
@@ -63,8 +73,6 @@ window now resizable. infopane will resize itself. fullscreen mode now availible
         - real unit tests?
     - jot down notes about simulation for more specific parts.
 
-- test on linux
-- mouse wheel scroll!! (on mouse point)
 
 
 ---------- GUI LIST ---------------
@@ -77,7 +85,7 @@ window now resizable. infopane will resize itself. fullscreen mode now availible
         - date is button that opens graphs (how to show graphs?)
         - funds is button that opens budgetdialog
 
-    - minimap is 360 px wide
+    - minimap
         - 360px wide, 300px tall in original (3px per tile)
         - somehow copy and scale the regular map for this?
         - could have slower updates than regular map for speed.
