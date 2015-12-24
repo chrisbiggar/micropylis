@@ -56,15 +56,15 @@ class ToolPreview(object):
             self.offsetY = -dy
             return
         
-        for i in range(len(self.tiles)):
+        for i in xrange(len(self.tiles)):
             orig = self.tiles[i]
             
             if self.offsetX + dx >= len(orig):
                 newLen = self.offsetX + dx + 1
                 new = [CLEAR] * newLen
-                for i2 in range(len(orig)):
+                for i2 in xrange(len(orig)):
                     new[i2] = orig[i2]
-                for i2 in range(len(orig)+1,newLen):
+                for i2 in xrange(len(orig)+1,newLen):
                     new[i2] = CLEAR
                 self.tiles[i] = new
             elif self.offsetX + dx < 0:
@@ -73,9 +73,9 @@ class ToolPreview(object):
                 addl = -(self.offsetX + dx)
                 newLen = len(orig) + addl
                 new = [CLEAR] * newLen
-                for i2 in range(len(orig)):
+                for i2 in xrange(len(orig)):
                     new[i2+addl] = orig[i2]
-                for i2 in range(addl):
+                for i2 in xrange(addl):
                     new[i2] = CLEAR
                 self.tiles[i] = new
                 
@@ -90,12 +90,12 @@ class ToolPreview(object):
             newLen = self.offsetY + dy + 1
             newTiles = create2dArray(newLen,width,CLEAR)
             
-            for y in range(len(self.tiles)):
-                for x in range(len(self.tiles[0])):
+            for y in xrange(len(self.tiles)):
+                for x in xrange(len(self.tiles[0])):
                     newTiles[y][x] = self.tiles[y][x]
                     
-            for y in range(len(self.tiles)+1,len(newTiles)):
-                for x in range(len(newTiles[0])):
+            for y in xrange(len(self.tiles)+1,len(newTiles)):
+                for x in xrange(len(newTiles[0])):
                     newTiles[y][x] = CLEAR
             self.tiles = newTiles
             
@@ -106,12 +106,12 @@ class ToolPreview(object):
             newLen = len(self.tiles) + addl
             newTiles = create2dArray(newLen,width,CLEAR)
             
-            for y in range(len(self.tiles)):
-                for x in range(len(self.tiles[0])):
+            for y in xrange(len(self.tiles)):
+                for x in xrange(len(self.tiles[0])):
                     newTiles[y+addl][x] = self.tiles[y][x]
                     
-            for y in range(addl):
-                for x in range(len(newTiles[0])):
+            for y in xrange(addl):
+                for x in xrange(len(newTiles[0])):
                     newTiles[y][x] = CLEAR
                     
             self.tiles = newTiles

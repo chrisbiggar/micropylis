@@ -5,8 +5,7 @@ Created on Oct 19, 2015
 '''
 from engine.tileBehaviour import TileBehaviour
 from engine import tileConstants
-from tileConstants import getZoneSizeFor
-from tileConstants import isZoneCenter
+from tileConstants import getZoneSizeFor,isZoneCenter,isRubble,isAnimated,isIndestructible
 from engine.cityLocation import CityLocation
 from tiles import Tiles
 
@@ -54,7 +53,7 @@ class MapScanner(TileBehaviour):
         elif self.behaviour == SEAPORT:
             self.doSeaport()
         else:
-            assert False
+            assert False # invalid or unimplemened behaviour
             
             
     def checkZonePower(self):
@@ -107,39 +106,51 @@ class MapScanner(TileBehaviour):
         powerOn = self.checkZonePower()
     
     def doCoalPower(self):
-        #print "docoal"
         powerOn = self.checkZonePower()
         self.city.coalCount += 1
         if self.city.cityTime % 8 == 0:
-            #self.repairZone(tileConstants.POWERPLANT)
-            pass
+            self.repairZone(tileConstants.POWERPLANT)
         self.city.powerPlants.append(CityLocation(self.x, self.y))
     
     def doNuclearPower(self):
         powerOn = self.checkZonePower()
         self.city.nuclearCount += 1
         if self.city.cityTime % 8 == 0:
-            #self.repairZone(tileConstants.NUCLEAR)
-            pass
+            self.repairZone(tileConstants.NUCLEAR)
         self.city.powerPlants.append(CityLocation(self.x, self.y))
     
     def doFireStation(self):
         powerOn = self.checkZonePower()
+        
+        if self.city.cityTime % 8 == 0:
+            self.repairZone(tileConstants.FIRESTATION)
     
     def doPoliceStation(self):
         powerOn = self.checkZonePower()
+        
+        if self.city.cityTime % 8 == 0:
+            self.repairZone(tileConstants.POLICESTATION)
     
     def doStadiumEmpty(self):
         powerOn = self.checkZonePower()
+        
+        if self.city.cityTime % 16 == 0:
+            self.repairZone(tileConstants.STADIUM)
     
     def doStadiumFull(self):
         powerOn = self.checkZonePower()
     
     def doAirport(self):
         powerOn = self.checkZonePower()
+        
+        if self.city.cityTime % 8 == 0:
+            self.repairZone(tileConstants.AIRPORT)
     
     def doSeaport(self):
         powerOn = self.checkZonePower()
+        
+        if self.city.cityTime % 16 == 0:
+            self.repairZone(tileConstants.PORT)
     
     def repairZone(self, base):
         '''  '''
@@ -149,36 +160,28 @@ class MapScanner(TileBehaviour):
         
         bi = Tiles().get(base).getBuildingInfo()
         assert bi is not None
-        
-        xOrg = self.x - 1
-        yOrg = self.y - 1
-        
         assert len(bi.members) == bi.width * bi.height
+        
+        xOrg = self.x-1
+        yOrg = self.y-1
         i = 0
         for y in xrange(bi.height):
             for x in xrange(bi.width):
-                xx = xOrg + x
-                yy = yOrg + y
+                x2 = xOrg + x
+                y2 = yOrg + y
                 
                 ts = Tiles().get(bi.members[i])
                 if powerOn and ts.onPower is not None:
                     ts = ts.onPower
                 
-                if self.city.testBounds(xx,yy):
-                    thCh = self.city.getTile(xx,yy)
-                    if isZoneCenter(thCh):
-                        continue
-                    
-                    if tileConstants.isAnimated(thCh):
-                        continue
-                    
-                    '''if isRubble(thCh):
-                        continue'''
-                   
-                    #if is
-                    
-                    self.city.setTile(xx,yy,ts.tileNum)
-                i += 1
+                if self.city.testBounds(x2,y2):
+                    thCh = self.city.getTile(x2,y2)
+                    if not (isIndestructible(thCh)
+                            or isAnimated(thCh)
+                            or isRubble(thCh)
+                            or isZoneCenter(thCh)):
+                        self.city.setTile(x2, y2, ts.tileNum)
+                    i += 1
 
 
 

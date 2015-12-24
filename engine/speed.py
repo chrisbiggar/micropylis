@@ -19,6 +19,7 @@ class Speed(object):
         self.delay = delay
         self.name = name
         self.lastTs = 0
+    
 
 PAUSED = Speed(0, 999, "Paused")
 SLOW = Speed(0.34, 0.025, "Slow")

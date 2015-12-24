@@ -131,9 +131,9 @@ class BorderedImageGrid(AbstractImage, AbstractImageSequence):
         if not self._items:
             self._items = []
             y = self.exterior_border
-            for row in range(self.rows):
+            for row in xrange(self.rows):
                 x = self.exterior_border
-                for col in range(self.columns):
+                for col in xrange(self.columns):
                     self._items.append(self.image.get_region(
                         x, y, self.item_width, self.item_height))
                     x += self.item_width + self.column_padding
@@ -205,9 +205,9 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
         textureItems = []
         y = exterior_border
         tileNum = 0
-        for row in range(grid.rows):
+        for row in xrange(grid.rows):
             x = exterior_border
-            for col in range(grid.columns):
+            for col in xrange(grid.columns):
                 textureItems.append(
                     self.get_region(x, y, grid.item_width, grid.item_height))
                 x += grid.item_width + grid.column_padding
@@ -216,9 +216,9 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
         # process animations
         tileNum = 0
         tiles = Tiles()
-        finalItems = [0 for tNum in range(len(textureItems))]
-        for row in range(grid.rows):
-            for col in range(grid.columns):
+        finalItems = [0 for tNum in xrange(len(textureItems))]
+        for row in xrange(grid.rows):
+            for col in xrange(grid.columns):
                 spec = tiles.get(tileNum)
                 if spec.animNext is None:
                     finalItems[tileNum] = textureItems[tileNum]

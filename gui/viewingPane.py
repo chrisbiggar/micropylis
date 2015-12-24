@@ -17,6 +17,7 @@ import math
 from pyglet import clock
 from engine import tileConstants
 from engine.speed import Speed
+from gui.layoutManager import Spacer
 
 
 class TileSprite(Sprite):
@@ -27,8 +28,7 @@ class TileSprite(Sprite):
         self.tileImages = tileImages
         super(TileSprite,self).__init__(
                             self.tileImages.getTileImage(tileNum),
-                            x=x,
-                            y=y,
+                            x=x, y=y,
                             batch=batch,
                             group=group,
                             usage='static',
@@ -40,12 +40,13 @@ class TileSprite(Sprite):
 
 
 class TilesGroup(OrderedGroup):
-    def __init__(self, order=1):
+    def __init__(self, yOff, order=1):
         super(TilesGroup, self).__init__(order)
         self.focusX = 0
         self.focusY = 0
         self.zoom = 1.0
         self.yTrans = 0
+        self.yOff = yOff
         
     def setViewportSize(self, width, height):
         self.viewWidth = width
@@ -60,6 +61,7 @@ class TilesGroup(OrderedGroup):
         self.reCalc()
             
     def reCalc(self):
+        self.yTrans = 660 - self.yOff
         self.zoomPointX = -self.focusX + (self.viewWidth / 2)
         self.zoomPointY = -self.focusY + (self.viewHeight / 2)
 
@@ -72,6 +74,7 @@ class TilesGroup(OrderedGroup):
         glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
+        glTranslatef(0.,(self.viewHeight-660) * self.zoom, 0.)
         glTranslatef(0.,self.yTrans, 0.)
         glTranslatef(float(self.focusX),float(self.focusY),0.)
         glTranslatef(self.zoomPointX, self.zoomPointY,0.0)
@@ -95,12 +98,12 @@ class BlinkOverlayGroup(OrderedGroup):
         
     def set_state(self):
         self._tilesGroup.set_state()
-        if self.blink and not self.paused:
+        if self.blink:
             glColorMask(GL_FALSE,GL_FALSE,GL_FALSE,GL_FALSE)
     
     def unset_state(self):
         self._tilesGroup.unset_state()
-        if self.blink and not self.paused:
+        if self.blink:
             glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE)
     
     def start(self):
@@ -111,7 +114,7 @@ class BlinkOverlayGroup(OrderedGroup):
     
     def update(self, dt):
         self.dt += dt
-        if self.dt > self.lastChange + self.freq:
+        if self.dt > self.lastChange + self.freq and not self.paused:
             self.blink = not self.blink
             self.lastChange = self.dt
 
@@ -142,13 +145,15 @@ class ViewingPane
 Displays the Map to the user and allows the current
 tool to act on the map at spot where user clicks
 '''
-class ViewingPane(object):
-    #DH = 660
+class ViewingPane(Spacer):
+    YOFF = 660  # tiles are drawn at this height
     DEFAULT_TILE_SIZE = 16
     INCREASE = 2
     DECREASE = 1
 
-    def __init__(self, engine, x, y, width, height):
+    def __init__(self, engine):
+        super(ViewingPane,self).__init__()
+        
         self.animCoefficient = 0
         self.animClock = clock.Clock(time_function=self.getTime)
         self.keys = gui.Keys(self)
@@ -163,15 +168,12 @@ class ViewingPane(object):
         self._targetZoom = self._zoom
         self.zoomTransition = None
         
-        self.x = x
-        self.y = y
-        self._width = width
-        self._height = height
+        self.x = self.y = self._width = self.height = 0
         
         self.tileImages = TileImages(self.DEFAULT_TILE_SIZE)
-        self._tilesGroup = TilesGroup()
+        self._tilesGroup = TilesGroup(self.YOFF)
         self._cursorGroup = ToolCursorGroup(self._tilesGroup)
-        self._tilesGroup.setViewportSize(width, height)
+        self._tilesGroup.setViewportSize(900, 660)
         self.overlayGroup = OrderedGroup(2)
         self._tileSprites = None
         self.blinkGroup = BlinkOverlayGroup(self._tilesGroup)
@@ -179,24 +181,11 @@ class ViewingPane(object):
         self.reset(engine)
     
     
-    def on_power_indicator_changed(self, pos):
-        x = pos[0]
-        y = pos[1]
-        ind = self._engine.getTileIndicator(x,y)
-        if ind and self._tileIndicators[x][y] is None:
-            img = self.tileImages.getTileImage(tileConstants.LIGHTNINGBOLT)
-            tileSize = self.DEFAULT_TILE_SIZE
-            x2 = x * tileSize
-            y2 = (self._height - y * tileSize - tileSize)
-            self._tileIndicators[x][y] = Sprite(img,
-                                                batch=self.batch,
-                                                group=self.blinkGroup,
-                                                x=x2,
-                                                y=y2)
-        if not ind and self._tileIndicators[x][y] is not None:
-            self._tileIndicators[x][y].delete()
-            self._tileIndicators[x][y] = None
-    
+    def layout(self, x, y):
+        super(ViewingPane,self).layout(x,y)
+        self._tilesGroup.setViewportSize(self.width, self.height)
+        self.upOff()
+        
         
     def reset(self, engine):
         self._scrollX = 0
@@ -204,30 +193,25 @@ class ViewingPane(object):
         self.toolCursor = None
         self.toolPreview = None
         self.setEngine(engine)
-        self._resetTileBatch()
+        self._renderTileMap()
         self._tileIndicators = create2dArray(
-                                    self._engine.getHeight(), 
                                     self._engine.getWidth(), 
+                                    self._engine.getHeight(), 
                                     None)
         
         
     def resize(self, width, height):
-        if self._width == width and self._height == height:
+        if self._width == width and self.height == height:
             return
         self._tilesGroup.setViewportSize(width, height)
         self._width = width
         self._height = height
         self.upOff()
-        self._tilesGroup.yTrans = height - 660
+        self._tilesGroup.yTrans = height - self.YOFF
             
     def setEngine(self, eng):
         self._engine = eng
         self._engine.push_handlers(self)
-        
-    def withinRange(self, x, y):
-        # screen space coordinates
-        return x >= self.x and x <= self.x + self._width\
-            and y >= self.y and y <= self.y + self._height
             
     def setToolCursor(self, newCursor):
         if self.toolCursor is None\
@@ -246,7 +230,7 @@ class ViewingPane(object):
             c = self.toolCursor.fillColor
             colorData = []
             numVertices = 4
-            for i in range(numVertices * len(c)):
+            for i in xrange(numVertices * len(c)):
                 i2 = i % numVertices
                 colorData.append(c[i2])
             self.toolCursor.vl = self.batch.add(numVertices,
@@ -272,7 +256,7 @@ class ViewingPane(object):
         '''
         tileSize = self.DEFAULT_TILE_SIZE
         x = self.toolCursor.rect.x * tileSize
-        y = (self._height - (self.toolCursor.rect.y - 1)
+        y = (self.YOFF - (self.toolCursor.rect.y - 1)
                        * tileSize - tileSize)
         x2 = x + self.toolCursor.rect.width * tileSize
         y2 = y + self.toolCursor.rect.height * tileSize
@@ -289,8 +273,8 @@ class ViewingPane(object):
             # reset old preview tile sprites
             b = self.toolPreview.getBounds()
             tilesList = list()
-            for x in range(b.width):
-                for y in range(b.height):
+            for x in xrange(b.width):
+                for y in xrange(b.height):
                     tilesList.append(
                                 (x + b.x,
                                  y + b.y))
@@ -299,8 +283,8 @@ class ViewingPane(object):
         if newPreview is not None:
             # set new preview tile sprites
             b = newPreview.getBounds()
-            for y in range(b.height):
-                for x in range(b.width):               
+            for y in xrange(b.height):
+                for x in xrange(b.width):               
                     x2 = x - newPreview.offsetX
                     y2 = y - newPreview.offsetY
                     tNum = newPreview.getTile(x2,y2)
@@ -317,7 +301,7 @@ class ViewingPane(object):
         # transformed coords:
         x = math.floor((x - self._scaleOffX) / self._zoom + self._scrollX)
         
-        y = math.floor((self._height - y - self._scaleOffY)
+        y = math.floor((self.height - y - self._scaleOffY)
                         / self._zoom + self._scrollY)
         #print y,self._height,self._scaleOffY,self._scrollY
         return CityLocation(int(x / tileSize), int(y / tileSize))
@@ -326,10 +310,10 @@ class ViewingPane(object):
         return (self._scrollX, self._scrollY)
     
     def getHeight(self):
-        return self._height
+        return self.height
     
     def getWidth(self):
-        return self._width
+        return self.width
     
     def printWorldCoords(self,x,y):
         ''' debugging fncn: print world coords from screen coords
@@ -337,7 +321,7 @@ class ViewingPane(object):
         #print x,self._scaleOffX,self._scrollX,self._zoom
         x = math.floor((x - self._scaleOffX) / self._zoom + self._scrollX)
         #print y,self._scaleOffY,self._scrollY,self._zoom
-        y = (math.floor(((self._height - y) - self._scaleOffY)
+        y = (math.floor(((self.height - y) - self._scaleOffY)
                         / self._zoom + self._scrollY))
         print "World Coords: " + str((x,y))
         
@@ -374,15 +358,16 @@ class ViewingPane(object):
             
         tileSize = self.DEFAULT_TILE_SIZE
         if (self._engine.getWidth() * tileSize * newValue
-                >= self._width) and\
+                >= self.width) and\
                 (self._engine.getHeight() * tileSize * newValue
-                 >= self._height):
+                 >= self.height):
             self._targetZoom = newValue
             self.deltaZoom = (newValue - self._zoom) * 3
             if newValue > self._zoom:
                 self.zoomTransition = self.INCREASE
             elif newValue < self._zoom:
                 self.zoomTransition = self.DECREASE
+            print self.height,newValue
                     
     def moveView(self, mx, my):
         if mx != 0:
@@ -401,46 +386,52 @@ class ViewingPane(object):
             self._scrollX = x
         if y is not None:
             self._scrollY = y
-        self._tilesGroup.setFocus(self._scrollX, self._scrollY)
+            #print y
+        self._tilesGroup.setFocus(-self._scrollX, self._scrollY)
+        #print self._scrollY
         
     def _setScroll(self, x=None, y=None, zoom=None):
+        #self._setScrollFree(x,y)
+        #return
+        
         ''' restricts within limits of map '''
         if zoom is None:
             zoom = self._zoom
         if x is not None:
             width = ((self._engine.getWidth() *
                      (self.DEFAULT_TILE_SIZE * zoom))
-                     - self._width) / zoom
+                     - self.width) / zoom
             minX = math.ceil(self._scaleOffX / zoom)
             maxX = math.floor(minX + width)
             self._scrollX = max(minX,x)
             self._scrollX = min(maxX,self._scrollX)
         if y is not None:
             height = ((self._engine.getHeight() * self.DEFAULT_TILE_SIZE * zoom) 
-                    - self._height) / zoom
+                    - self.height) / zoom
             minY = math.floor(self._scaleOffY / zoom)
             maxY = math.floor(minY + height)
             self._scrollY = max(minY,y)
             self._scrollY = min(maxY,self._scrollY)
+            #print self._scrollY
         self._tilesGroup.setFocus(-self._scrollX, self._scrollY)
         
-    def _resetTileBatch(self):
+    def _renderTileMap(self):
         mapWidth = self._engine.getWidth()
         mapHeight = self._engine.getHeight()
         if self._tileSprites is not None:
-            for y in range(mapHeight):
-                for x in range(mapWidth):
+            for y in xrange(mapHeight):
+                for x in xrange(mapWidth):
                     if self._tileSprites[x][y] is not None:
                         self._tileSprites[x][y].delete()
         else:
             self._tileSprites = create2dArray(mapWidth, mapHeight, None)
         self.batch = pyglet.graphics.Batch()
         tileSize = self.DEFAULT_TILE_SIZE
-        for y in range(mapHeight):
-            for x in range(mapWidth):
+        for y in xrange(mapHeight):
+            for x in xrange(mapWidth):
                 cell = self._engine.getTile(x,y)
                 x2 = (x * tileSize)
-                y2 = (self._height - y * tileSize - tileSize)
+                y2 = (self.YOFF - y * tileSize - tileSize)
                 self._tileSprites[x][y] = TileSprite(cell,
                                     x2,
                                     y2,
@@ -459,6 +450,24 @@ class ViewingPane(object):
             cell = self._engine.getTile(x,y)
             self._tileSprites[x][y].setTile(cell)
             
+    def on_power_indicator_changed(self, pos):
+        x = pos[0]
+        y = pos[1]
+        ind = self._engine.getTileIndicator(x,y)
+        if ind and self._tileIndicators[x][y] is None:
+            img = self.tileImages.getTileImage(tileConstants.LIGHTNINGBOLT)
+            tileSize = self.DEFAULT_TILE_SIZE
+            x2 = x * tileSize
+            y2 = (self.YOFF - y * tileSize - tileSize)
+            self._tileIndicators[x][y] = Sprite(img,
+                                                batch=self.batch,
+                                                group=self.blinkGroup,
+                                                x=x2,
+                                                y=y2)
+        if not ind and self._tileIndicators[x][y] is not None:
+            self._tileIndicators[x][y].delete()
+            self._tileIndicators[x][y] = None
+            
     def _checkScrollKeys(self, dt):
         # move 12 tiles per second
         delta = int(self.scrollSpeed * self.DEFAULT_TILE_SIZE * dt) 
@@ -472,8 +481,8 @@ class ViewingPane(object):
             self.moveView(0, -delta)
     
     def upOff(self):
-        self._scaleOffX = math.floor((self._width/2) * (1-self._zoom))
-        self._scaleOffY = math.floor((self._height/2) * (1-self._zoom))
+        self._scaleOffX = self.width / 2 * (1-self._zoom)
+        self._scaleOffY = self.height / 2 * (1-self._zoom)
         self.validateScroll(self._zoom)
     
     def updateZoom(self, dt):

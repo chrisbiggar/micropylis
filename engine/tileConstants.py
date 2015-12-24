@@ -316,6 +316,15 @@ def isAnimated(tile):
     spec = Tiles().get(tile)
     return spec is not None and spec.animNext is not None
 
+def isIndestructible(tile):
+    assert tile & LOMASK == tile
+    return tile >= FLOOD and tile < ROADBASE
+
+def isRubble(tile):
+    assert tile & LOMASK == tile
+    return (tile >= RUBBLE and
+            tile <= LASTRUBBLE)
+
 
 def neutralizeRoad(tile):
     assert (tile & LOMASK) == tile

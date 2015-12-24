@@ -33,15 +33,15 @@
 # ----------------------------------------------------------------------------
 # $Id: $
 
-'''Text formatting, layout and display.
+'''Text formatting, textLayout and display.
 
 This module provides classes for loading styled documents from text files,
 HTML files and a pyglet-specific markup format.  Documents can be styled with
 multiple fonts, colours, styles, text sizes, margins, paragraph alignments,
 and so on.  
 
-Using the layout classes, documents can be laid out on a single line or
-word-wrapped to fit a rectangle.  A layout can then be efficiently drawn in
+Using the textLayout classes, documents can be laid out on a single line or
+word-wrapped to fit a rectangle.  A textLayout can then be efficiently drawn in
 a window or updated incrementally (for example, to support interactive text
 editing).
 
@@ -66,7 +66,7 @@ Either label can then be drawn at any time with::
 
 For details on the subset of HTML supported, see `pyglet.text.formats.html`.
 
-Refer to the Programming Guide for advanced usage of the document and layout
+Refer to the Programming Guide for advanced usage of the document and textLayout
 classes, including interactive editing, embedding objects within documents and
 creating scrollable layouts.
 
@@ -211,10 +211,10 @@ def decode_text(text):
     decoder = get_decoder(None, 'text/plain')
     return decoder.decode(text)
 
-class DocumentLabel(layout.TextLayout):
+class DocumentLabel(pyglet.text.layout.TextLayout):
     '''Base label class.
 
-    A label is a layout that exposes convenience methods for manipulating the
+    A label is a textLayout that exposes convenience methods for manipulating the
     associated document.
     '''
     def __init__(self, document=None,
@@ -225,7 +225,7 @@ class DocumentLabel(layout.TextLayout):
 
         :Parameters:
             `document` : `AbstractDocument`
-                Document to attach to the layout.
+                Document to attach to the textLayout.
             `x` : int
                 X coordinate of the label.
             `y` : int
@@ -244,7 +244,7 @@ class DocumentLabel(layout.TextLayout):
                 If True, the label will be word-wrapped and accept newline
                 characters.  You must also set the width of the label.
             `dpi` : float
-                Resolution of the fonts in this layout.  Defaults to 96.
+                Resolution of the fonts in this textLayout.  Defaults to 96.
             `batch` : `Batch`
                 Optional graphics batch to add the label to.
             `group` : `Group`
@@ -353,7 +353,7 @@ class DocumentLabel(layout.TextLayout):
         :Parameters:
             `name` : str
                 Style name to query.  See documentation for
-                `pyglet.text.layout` for known style names.
+                `pyglet.text.textLayout` for known style names.
 
         :rtype: object
         '''
@@ -365,7 +365,7 @@ class DocumentLabel(layout.TextLayout):
         :Parameters:
             `name` : str
                 Name of the style to set.  See documentation for
-                `pyglet.text.layout` for known style names.
+                `pyglet.text.textLayout` for known style names.
             `value` : object
                 Value of the style.
 
@@ -420,7 +420,7 @@ class Label(DocumentLabel):
                 If True, the label will be word-wrapped and accept newline
                 characters.  You must also set the width of the label.
             `dpi` : float
-                Resolution of the fonts in this layout.  Defaults to 96.
+                Resolution of the fonts in this textLayout.  Defaults to 96.
             `batch` : `Batch`
                 Optional graphics batch to add the label to.
             `group` : `Group`
@@ -477,7 +477,7 @@ class HTMLLabel(DocumentLabel):
                 If True, the label will be word-wrapped and render paragraph
                 and line breaks.  You must also set the width of the label.
             `dpi` : float
-                Resolution of the fonts in this layout.  Defaults to 96.
+                Resolution of the fonts in this textLayout.  Defaults to 96.
             `batch` : `Batch`
                 Optional graphics batch to add the label to.
             `group` : `Group`

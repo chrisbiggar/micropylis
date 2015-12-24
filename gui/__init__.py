@@ -14,6 +14,7 @@ import dialogs
 from engine.toolResult import ToolResult
 from infoPane import InfoPane
 from gui.dialogs import NewCityDialog
+from gui.layoutManager import LayoutWindow, HorizontalLayout
 
 
 '''  '''
@@ -69,9 +70,9 @@ class MainWindow(pyglet.window.Window):
         
         tiles.Tiles().readTiles() # load in tile specs
         
-        # load test map:
-        self.newCity()
-        #self.loadCity('cities/hawkins.cty')
+        # load test map: (would normally just call newCity()
+        #self.newCity()
+        self.loadCity('cities/hawkins.cty')
         
         # tool vars:
         self.dragStart = (0,0)
@@ -81,14 +82,20 @@ class MainWindow(pyglet.window.Window):
         self.lastY = 0
         
         # window stuff
+        self.icon = pyglet.image.load("res/icon32.png") # icon is set at resize
         self.set_minimum_size(640, 480)
         self.set_caption("Micropylis")
-        self.set_icon(pyglet.image.load("res/icon32.png"))
         self.set_location(40,40)
         self.fpsDisplay = pyglet.clock.ClockDisplay(color=(.2,.2,.2,0.6))
         self.initGuiComponents()
 
         pyglet.clock.schedule_interval(self.update, 1/60.)
+        self.speedKeyMap = {
+                pyglet.window.key._1 : speed.PAUSED,
+                pyglet.window.key._2 : speed.SLOW,
+                pyglet.window.key._3 : speed.NORMAL,
+                pyglet.window.key._4 : speed.FAST,
+                pyglet.window.key._5 : speed.SUPER_FAST}
         self.speed = None
         self.setSpeed(speed.PAUSED)
         
@@ -111,17 +118,16 @@ class MainWindow(pyglet.window.Window):
     def initGuiComponents(self):
         self.setupDialogs()
         
-        vPWidth = math.floor(self.DEFAULT_WIDTH * 0.75)
-        self.viewingPane = ViewingPane(self.engine, 0, 0,
-                                    vPWidth, self.DEFAULT_HEIGHT)
+        self.viewingPane = ViewingPane(self.engine)
         self.engine.push_handlers(self.viewingPane)
         self.push_handlers(self.viewingPane.keys)
-        
-        self.infoPane = InfoPane(self.engine,  
-                                 self.viewingPane.getWidth() + 1, 0, 
-                                 self.DEFAULT_WIDTH - self.viewingPane.getWidth(),
-                                  self.DEFAULT_HEIGHT)
+        self.infoPane = InfoPane(self.engine)
         self.engine.push_handlers(self.infoPane)
+        
+        self.frame = LayoutWindow(self, HorizontalLayout([
+                                                   self.viewingPane,
+                                                   self.infoPane],
+                                                  padding=0))
         
     def setupDialogs(self):
         self.dialogBatch = pyglet.graphics.Batch()
@@ -142,41 +148,33 @@ class MainWindow(pyglet.window.Window):
         elif (modifiers & pyglet.window.key.MOD_ALT and
                 symbol == pyglet.window.key.ENTER):
             self.toggleFullscreen()
-        elif symbol == pyglet.window.key._1:
-            self.setSpeed(speed.PAUSED)
-        elif symbol == pyglet.window.key._2:
-            self.setSpeed(speed.SLOW)
-        elif symbol == pyglet.window.key._3:
-            self.setSpeed(speed.NORMAL)
-        elif symbol == pyglet.window.key._4:
-            self.setSpeed(speed.FAST)
-        elif symbol == pyglet.window.key._5:
-            self.setSpeed(speed.SUPER_FAST)
+        else:
+            if symbol in self.speedKeyMap:
+                self.setSpeed(self.speedKeyMap[symbol])
+
             
     def on_mouse_motion(self, x, y, dx, dy):
         #pyglet.window.Window.on_resize(self, x, y, dx, dy)
-        if self.viewingPane.withinRange(x, y):
+        if self.viewingPane.hitTest(x, y):
             self.onToolHover(x, y)
             
     def on_mouse_press(self, x, y, button, modifiers):
         self.dragStart = (x,y)
-        if self.viewingPane.withinRange(x, y):
+        if self.viewingPane.hitTest(x, y):
             self.onToolDown(x, y, button, modifiers)
         
     def on_mouse_release(self, x, y, button, modifiers):
-        if self.viewingPane.withinRange(x, y):
+        if self.viewingPane.hitTest(x, y):
             self.onToolUp(x, y, button, modifiers)
             
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
-        if self.viewingPane.withinRange(x, y):
+        if self.viewingPane.hitTest(x, y):
             self.onToolDrag(x, y, dx, dy, buttons, modifiers)
         
     def on_resize(self, width, height):
-        self.viewingPane.resize(math.floor(self.DEFAULT_WIDTH * 0.75), 
-                                    height)
-        self.infoPane.resize(self.viewingPane.getWidth() + 1, 0, width, height)
         super(MainWindow,self).on_resize(width, height)
-
+        self.frame.doLayout(self)
+        self.set_icon(self.icon)
         
     def on_close(self):
         #self.viewingPane.cleanup()
@@ -206,8 +204,6 @@ class MainWindow(pyglet.window.Window):
         loc = self.viewingPane.evToCityLocation(x, y)
         self.lastX = loc.x
         self.lastY = loc.y
-        #print self.lastX
-        #print x,y
         if button == mouse.RIGHT:
             self.set_mouse_cursor(self.get_system_mouse_cursor(self.CURSOR_CROSSHAIR))
             return
@@ -228,7 +224,7 @@ class MainWindow(pyglet.window.Window):
             
         
     def onToolDrag(self, x, y, dx, dy, buttons, modifiers):
-        if not self.viewingPane.withinRange(self.dragStart[0], self.dragStart[1]):
+        if not self.viewingPane.hitTest(self.dragStart[0], self.dragStart[1]):
             return
         if self.currentTool is None or\
                 buttons & mouse.RIGHT:
@@ -257,11 +253,9 @@ class MainWindow(pyglet.window.Window):
                                 self.toolStroke.apply())
             self.toolStroke = None
             self.engine.tileUpdateCheck()
-        #print x,y
         loc = self.viewingPane.evToCityLocation(x, y)
         tx = loc.x
         ty = loc.y
-        #print self.lastX,tx
         if button == mouse.RIGHT and self.lastX == tx and self.lastY == ty:
             self.doQueryTool(tx, ty)
         self.set_mouse_cursor(self.get_system_mouse_cursor(self.CURSOR_DEFAULT))    
@@ -317,8 +311,7 @@ class MainWindow(pyglet.window.Window):
     def doQueryTool(self, xPos, yPos):
         ''' print tilevalue to infopane messages '''
         tileValue = self.engine.getTile(xPos,yPos)
-        self.engine.setTile(xPos,yPos,tileConstants.WOODS)
-        return
+        '''self.engine.setTile(xPos,yPos,tileConstants.DIRT)'''
         queryMsg = "Power of ({0},{1}): {2}".format(
                 str(xPos), str(yPos), str(self.engine.hasPower(xPos, yPos)))
         '''queryMsg = "Power of ({0},{1}): {2}".format(
@@ -341,12 +334,12 @@ class MainWindow(pyglet.window.Window):
     def update(self, dt):
         self.viewingPane.update(dt)
         self.infoPane.update(dt)
+        self.frame.update(dt)
         
     def updateKytten(self, dt):
         self.dispatch_event('on_update', dt)
         
     def on_draw(self):
-        #pyglet.gl.glClearColor(240,240,240,255)
         self.clear()
         self.viewingPane.batch.draw()
         self.infoPane.batch.draw()

@@ -29,10 +29,10 @@ class Tiles(object):
         tilesRc.load(open("res/tiles.rc"))
         tileNames = generateTilenames(tilesRc)
         
-        tiles = [0 for i in range(len(tileNames))]
+        tiles = [0 for i in xrange(len(tileNames))]
         tilesByName = dict()
         
-        for i in range(len(tileNames)):
+        for i in xrange(len(tileNames)):
             tileName = tileNames[i]
             rawSpec = tilesRc.getProperty(tileName)
             if rawSpec is None:
@@ -43,11 +43,11 @@ class Tiles(object):
             tilesByName[tileName] = ts
             tiles[i] = ts
             
-        for i in range(len(tiles)):
+        for i in xrange(len(tiles)):
             tiles[i].resolveReferences(tilesByName)
             bi = tiles[i].getBuildingInfo()
             if bi is not None:
-                for j in range(len(bi.members)):
+                for j in xrange(len(bi.members)):
                     tId = bi.members[j]
                     offX = (-1 if (bi.width >= 3) else 0) + j % bi.width
                     offY = (-1 if bi.height >= 3 else 0) + j / bi.width

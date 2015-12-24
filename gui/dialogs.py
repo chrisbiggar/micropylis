@@ -69,7 +69,7 @@ class ToolDialog(Dialog):
 
         # Create options from images to pass to Palette
         palette_options = [[]]
-        for i in range(rows - 1):
+        for i in xrange(rows - 1):
             palette_options.append([])
         for i, pair in enumerate(toolSet):
             option = widgets.PaletteOption(name=pair[0], image=pair[1], padding=2)

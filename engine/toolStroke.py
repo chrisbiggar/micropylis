@@ -46,8 +46,8 @@ class ToolStroke(object):
     def applyArea(self, eff):
         r = self.getBounds()
         
-        for x in range(0, r.width, self.tool.getWidth()):
-            for y in range(0, r.height, self.tool.getHeight()):
+        for x in xrange(0, r.width, self.tool.getWidth()):
+            for y in xrange(0, r.height, self.tool.getHeight()):
                 self.apply1(TranslatedToolEffect(eff, r.x + x, r.y + y))
         
     def apply1(self, eff):
@@ -109,13 +109,13 @@ class ToolStroke(object):
             return False
         
         cost = self.tool.getToolCost()
-        for rowNum in range(bi.height):
-            for columnNum in range(bi.width):
+        for rowNum in xrange(bi.height):
+            for columnNum in xrange(bi.width):
                 tileValue = eff.getTile(columnNum, rowNum)
                 tileValue = tileValue & LOMASK
                 
                 if tileValue != DIRT:
-                    if canAutoBulldozeZ(tileValue):
+                    if canAutoBulldozeZ(tileValue) and self.engine.canAutoBulldoze:
                         cost += 1
                     else:
                         #TODO if tile water set tool result to NONE
@@ -128,8 +128,8 @@ class ToolStroke(object):
         
         i = 0
         #TODO optimize this by storing full zones and just copying that here?
-        for rowNum in range(bi.height):
-            for columnNum in range(bi.width):
+        for rowNum in xrange(bi.height):
+            for columnNum in xrange(bi.width):
                 eff.setTile(columnNum, rowNum, bi.members[i])
                 i += 1
         
@@ -139,10 +139,10 @@ class ToolStroke(object):
     #def fixBorder
     
     def fixBorder(self, eff, width, height):
-        for x in range(width):
+        for x in xrange(width):
             self.fixZone(TranslatedToolEffect(eff, x, 0))
             self.fixZone(TranslatedToolEffect(eff, x, height - 1))
-        for y in range(height - 1):
+        for y in xrange(height - 1):
             self.fixZone(TranslatedToolEffect(eff, 0, y))
             self.fixZone(TranslatedToolEffect(eff, width-1, y))
             

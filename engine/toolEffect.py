@@ -54,8 +54,8 @@ class ToolEffect(object):
             return ToolResult(ToolResult.INSUFFICIENT_FUNDS, self.preview.cost)
         
         anyFound = False
-        for y in range(len(self.preview.tiles)):
-            for x in range(len(self.preview.tiles[0])):
+        for y in xrange(len(self.preview.tiles)):
+            for x in xrange(len(self.preview.tiles[0])):
                 c = self.preview.tiles[y][x]
                 if c != CLEAR:
                     self.engine.setTile(self.originX + x - self.preview.offsetX,

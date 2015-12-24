@@ -564,7 +564,7 @@ class Batch(object):
         undefined if this condition is not met.
 
         :Parameters:
-            `vertex_lists` : sequence of `VertexList` or `IndexedVertexList`
+            `vertex_lists` : sequence of `` or `IndexedVertexList`
                 Vertex lists to draw.
 
         '''

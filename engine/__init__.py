@@ -89,6 +89,7 @@ class Engine(pyglet.event.EventDispatcher):
         
         self.initTileBehaviours()
         
+        self.canAutoBulldoze = True
 
         self.newCity(width, height)
 
@@ -181,19 +182,32 @@ class Engine(pyglet.event.EventDispatcher):
             print str(err)
         finally:
             saveFile.close()
-            self.checkPowerMap()
+            #self.checkPowerMap()
             self.dispatch_event("on_map_changed", self.updatedTiles)
             self.dispatch_event("on_funds_changed")
     
     
     def checkPowerMap(self):
-        pass
-            
-            
+        self.coalCount = 0
+        self.nuclearCount = 0
+        
+        self.powerPlants = []
+        for y in xrange(self.getHeight()):
+            for x in xrange(self.getWidth()):
+                tile = self.getTile(x, y)
+                if tile == NUCLEAR:
+                    self.nuclearCount += 1
+                    self.powerPlants.append(CityLocation(x, y))
+                elif tile == POWERPLANT:
+                    self.coalCount += 1
+                    self.powerPlants.append(CityLocation(x, y))  
+        
+        self.powerScan()
+        self.newPower = True
     
     def loadHistoryArray(self, saveFile, array):
         '''  '''
-        for i in range(240):
+        for i in xrange(240):
             array.append(readShort(saveFile))
         
     def loadMisc(self, saveFile):
@@ -216,7 +230,7 @@ class Engine(pyglet.event.EventDispatcher):
         readShort(saveFile) #evaluation.cityClass
         readShort(saveFile) #evaluation.cityScore
         
-        for i in range(18,50):
+        for i in xrange(18,50):
             readShort(saveFile)
             
         self.budget.funds = readInt(saveFile) # budget.totalFunds
@@ -234,13 +248,13 @@ class Engine(pyglet.event.EventDispatcher):
         readInt(saveFile) # fire
         readInt(saveFile) # road
         
-        for i in range(64,120):
+        for i in xrange(64,120):
             readShort(saveFile)
             
     def loadMap(self, saveFile):
         '''  '''
-        for x in range(self.DEFAULT_WIDTH):
-            for y in range(self.DEFAULT_HEIGHT):
+        for x in xrange(self.DEFAULT_WIDTH):
+            for y in xrange(self.DEFAULT_HEIGHT):
                 z = readShort(saveFile)
                 # clear 6 most significant bits (leaving 10 lsb's)
                 z &= ~(1024 | 2048 | 4096 | 8192 | 16384)
@@ -341,7 +355,7 @@ class Engine(pyglet.event.EventDispatcher):
         self.tileUpdateCheck()
 
     def testForConductive(self, loc, dir):
-        ''' returns power condition of location '''
+        ''' returns power condition of a location in a paticular direction'''
         xSave = loc.x
         ySave = loc.y
         
@@ -360,7 +374,11 @@ class Engine(pyglet.event.EventDispatcher):
         return rv,loc
     
     def movePowerLocation(self, loc, dir):
-        '''  '''
+        ''' 
+            will move the given location a direction.
+            respects map borders
+            0=NORTH,1=EAST,2=SOUTH,3=WEST,4=skip
+        '''
         if dir == 0:
             if loc.y > 0:
                 loc.y -= 1
@@ -374,7 +392,7 @@ class Engine(pyglet.event.EventDispatcher):
             else:
                 return False,loc
         elif dir == 2:
-            if loc.y + 1 < self.getWidth():
+            if loc.y + 1 < self.getHeight():
                 loc.y += 1
                 return True,loc
             else:
@@ -442,7 +460,7 @@ class Engine(pyglet.event.EventDispatcher):
         height = self.getHeight()
         tem = create2dArray((height+1)/2, (width+1)/2)
         
-        for x in range((width+1)/2):
+        for x in xrange((width+1)/2):
             pass
         
         
@@ -491,8 +509,8 @@ class Engine(pyglet.event.EventDispatcher):
     
     def mapScan(self, x0, x1):
         ''' iterates over a section of map, invoking their process fcn'''
-        for x in range(x0,x1):
-            for y in range(0, self.getHeight()):
+        for x in xrange(x0,x1):
+            for y in xrange(0, self.getHeight()):
                 tile = self.getTile(x,y)
                 behaviourString = getTileBehaviour(tile)
                 if behaviourString is None:
@@ -523,8 +541,8 @@ class Engine(pyglet.event.EventDispatcher):
         assert zoneSize >= 3
         assert zoneSize >= 3
         
-        for dx in range(zoneSize.width):
-            for dy in range(zoneSize.height):
+        for dx in xrange(zoneSize.width):
+            for dy in xrange(zoneSize.height):
                 x = xPos - 1 + dx
                 y = yPos - 1 + dy
                 tile = self.getTileRaw(x, y)
@@ -532,7 +550,7 @@ class Engine(pyglet.event.EventDispatcher):
                 if ts is not None and ts.onPower is not None:
                     #print "onPower: " + str((x,y,ts.onPower.tileNum))
                     self.setTile(x, y,
-                                 ts.tileNum or tile & ALLBITS)
+                                 ts.onPower.tileNum or tile & ALLBITS)
                            
         
     def shutdownZone(self, xPos, yPos, zoneSize):
@@ -542,8 +560,8 @@ class Engine(pyglet.event.EventDispatcher):
         assert zoneSize >= 3
         assert zoneSize >= 3
         
-        for dx in range(zoneSize.width):
-            for dy in range(zoneSize.height):
+        for dx in xrange(zoneSize.width):
+            for dy in xrange(zoneSize.height):
                 x = xPos - 1 + dx
                 y = yPos - 1 + dy
                 tile = self.getTileRaw(x, y)

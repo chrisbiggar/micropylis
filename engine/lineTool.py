@@ -29,8 +29,8 @@ class LineTool(ToolStroke):
         anyChange = False
         
         b = self.getBounds()
-        for y in range(b.height):
-            for x in range(b.width):
+        for y in xrange(b.height):
+            for x in xrange(b.width):
                 tte = TranslatedToolEffect(eff, b.x+x, b.y+y)
                 anyChange = anyChange or self.applySingle(tte)
         return anyChange
@@ -40,8 +40,8 @@ class LineTool(ToolStroke):
         anyChange = False
         
         b = self.getBounds()
-        for y in range(b.height-1, 0, -1):
-            for x in range(b.width-1, 0, -1):
+        for y in xrange(b.height-1, 0, -1):
+            for x in xrange(b.width-1, 0, -1):
                 tte = TranslatedToolEffect(eff, b.x+x, b.y+y)
                 anyChange = anyChange or self.applySingle(tte)
         
@@ -173,7 +173,7 @@ class LineTool(ToolStroke):
         
         else:
             if tile != DIRT:
-                if canAutoBulldozeRRW(tile):
+                if canAutoBulldozeRRW(tile) and self.engine.canAutoBulldoze:
                     cost += 1
                 else:
                     return False
@@ -247,7 +247,7 @@ class LineTool(ToolStroke):
         
         else:
             if tile != DIRT:
-                if canAutoBulldozeRRW(tile):
+                if canAutoBulldozeRRW(tile) and self.engine.canAutoBulldoze:
                     cost += 1
                 else:
                     return False
@@ -316,7 +316,7 @@ class LineTool(ToolStroke):
             eff.setTile(0, 0, VRAILROAD)
         else:
             if tile != DIRT:
-                if canAutoBulldozeRRW(tile):
+                if canAutoBulldozeRRW(tile) and self.engine.canAutoBulldoze:
                     cost += 1
                 else:
                     return False

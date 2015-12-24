@@ -42,7 +42,7 @@ class TerrainBehaviour(TileBehaviour):
         dx = [0,1,0,-1]
         dy = [-1,0,1,0]
         
-        for dir in range(4):
+        for dir in xrange(4):
             if randint(0,7) == 0:
                 x = self.x + dx[dir]
                 y = self.y + dy[dir]

@@ -202,8 +202,8 @@ class TileSpec(object):
         if bi.height >= 3:
             startTile -= bi.width
         
-        for row in range(bi.height):
-            for col in range(bi.width):
+        for row in xrange(bi.height):
+            for col in xrange(bi.width):
                 bi.members[row * bi.width + col] = startTile
                 startTile += 1
                 
