@@ -504,9 +504,11 @@ class PaletteMenu(GridLayout):
 '''
 class ClickMenu(Menu):
     def __init__(self, options=[], align=HALIGN_CENTER, padding=4,
-                 on_select=None):
+                 on_select=None, option_padding_x=0,option_padding_y=0):
         Menu.__init__(self, options=options, align=align, 
-                      padding=padding, on_select=on_select)
+                      padding=padding, on_select=on_select,
+                      option_padding_x=option_padding_x,
+                      option_padding_y=option_padding_y)
 
     def select(self, text):
         if not text in self.options:

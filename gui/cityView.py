@@ -10,14 +10,16 @@ from engine.cityLocation import CityLocation
 from tileImages import TileImages
 import gui
 import engine
-from util import create2dArray
+from util import create2dArray,createRect,createHollowRect
 from engine.tileConstants import CLEAR
 from pyglet.gl import *
 import math
 from pyglet import clock
 from engine import tileConstants
-from engine.speed import Speed
-from gui.layoutManager import Spacer
+import microWindow
+import layout
+
+YOFF = 660
 
 
 class TileSprite(Sprite):
@@ -45,37 +47,37 @@ class TilesGroup(OrderedGroup):
         self.focusX = 0
         self.focusY = 0
         self.zoom = 1.0
-        self.yTrans = 0
-        self.yOff = yOff
+        self.zoomToViewCenter = True
         
     def setViewportSize(self, width, height):
         self.viewWidth = width
         self.viewHeight = height
-        self.reCalc()
+        self.setViewCentre()
         
     def setFocus(self, x=None, y=None):
         if x is not None:
             self.focusX = x
         if y is not None:
             self.focusY = y
-        self.reCalc()
+        if self.zoomToViewCenter:
+            self.setViewCentre()
             
-    def reCalc(self):
-        self.yTrans = 660 - self.yOff
+    def setViewCentre(self):
         self.zoomPointX = -self.focusX + (self.viewWidth / 2)
         self.zoomPointY = -self.focusY + (self.viewHeight / 2)
+        print self.zoomPointX,self.zoomPointY
 
     def set_state(self):
         '''
             translates tilemap to zoom into centre of viewport.
         '''
+        
         glPushMatrix()
         glEnable(GL_BLEND)
         glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
         glTranslatef(0.,(self.viewHeight-660) * self.zoom, 0.)
-        glTranslatef(0.,self.yTrans, 0.)
         glTranslatef(float(self.focusX),float(self.focusY),0.)
         glTranslatef(self.zoomPointX, self.zoomPointY,0.0)
         glScalef(self.zoom,self.zoom,1.0)
@@ -137,26 +139,40 @@ class ToolCursor(object):
         self.rect = None # CityRect
         #self.borderColor = None
         self.fillColor = None
+        self.borderColor = (0, 0, 0, 255)
         self.vl = None
+        self.borderVL = None
+        
+        
+class ToolManager(object):
+    
+    def __init__(self):
+        pass
+        
+        
+        
+        
+        
+        
         
 '''
-class ViewingPane
+class CityView
 
 Displays the Map to the user and allows the current
 tool to act on the map at spot where user clicks
 '''
-class ViewingPane(Spacer):
+class CityView(layout.Spacer):
     YOFF = 660  # tiles are drawn at this height
     DEFAULT_TILE_SIZE = 16
     INCREASE = 2
     DECREASE = 1
 
     def __init__(self, engine):
-        super(ViewingPane,self).__init__()
+        super(CityView,self).__init__()
         
         self.animCoefficient = 0
         self.animClock = clock.Clock(time_function=self.getTime)
-        self.keys = gui.Keys(self)
+        self.keys = microWindow.Keys(self)
         
         # zoom related vars
         self.zoomSpeed = float(gui.config.get('misc', 'ZOOM_TRANSITION_SPEED'))
@@ -182,9 +198,13 @@ class ViewingPane(Spacer):
     
     
     def layout(self, x, y):
-        super(ViewingPane,self).layout(x,y)
+        super(CityView,self).layout(x,y)
         self._tilesGroup.setViewportSize(self.width, self.height)
         self.upOff()
+        
+    def size(self, frame):
+        super(CityView,self).size(frame)
+        
         
         
     def reset(self, engine):
@@ -198,16 +218,6 @@ class ViewingPane(Spacer):
                                     self._engine.getWidth(), 
                                     self._engine.getHeight(), 
                                     None)
-        
-        
-    def resize(self, width, height):
-        if self._width == width and self.height == height:
-            return
-        self._tilesGroup.setViewportSize(width, height)
-        self._width = width
-        self._height = height
-        self.upOff()
-        self._tilesGroup.yTrans = height - self.YOFF
             
     def setEngine(self, eng):
         self._engine = eng
@@ -218,26 +228,25 @@ class ViewingPane(Spacer):
             and self.toolCursor == newCursor:
             return
         
-        if self.toolCursor is not None and\
-                self.toolCursor.vl is not None:
+        if self.toolCursor is not None:
             self.toolCursor.vl.delete()
+            self.toolCursor.borderVL.delete()
+            self.toolCursor = None
             
         self.toolCursor = newCursor
         
         if self.toolCursor is not None:
             x,y,x2,y2 = self.expandMapCoords(self.toolCursor.rect)
             
-            c = self.toolCursor.fillColor
-            colorData = []
-            numVertices = 4
-            for i in xrange(numVertices * len(c)):
-                i2 = i % numVertices
-                colorData.append(c[i2])
-            self.toolCursor.vl = self.batch.add(numVertices,
-                                    GL_QUADS,
-                                    self._cursorGroup,
-                                    ('v2f', [x, y, x2, y, x2, y2, x, y2]),
-                                    ('c4B', colorData))
+            self.toolCursor.vl = createRect(x, y, x2-x, y2-y, 
+                                            self.toolCursor.fillColor, 
+                                            self.batch, 
+                                            self._cursorGroup)
+            self.toolCursor.borderVL = createHollowRect(x, y, x2-x, y2-y, 
+                                            self.toolCursor.borderColor, 
+                                            self.batch, 
+                                            self._cursorGroup)
+            
         
     def newToolCursor(self, newRect, tool):
         newCursor = ToolCursor()
@@ -300,7 +309,6 @@ class ViewingPane(Spacer):
         tileSize = self.DEFAULT_TILE_SIZE
         # transformed coords:
         x = math.floor((x - self._scaleOffX) / self._zoom + self._scrollX)
-        
         y = math.floor((self.height - y - self._scaleOffY)
                         / self._zoom + self._scrollY)
         #print y,self._height,self._scaleOffY,self._scrollY
@@ -328,10 +336,13 @@ class ViewingPane(Spacer):
     def key_release(self, symbol, modifiers):
         if symbol == key.EQUAL:
             self.setZoom(increment=self.zoomChange)
+            self._tilesGroup.zoomToViewCenter = True
         if symbol == key.MINUS:
             self.setZoom(increment=-self.zoomChange)
+            self._tilesGroup.zoomToViewCenter = True
         if symbol == key._0:
             self.setZoom(newValue=1.0)
+            self._tilesGroup.zoomToViewCenter = True
             
     def getTime(self):
         ''' dilates time for controlling animation clock speed'''
@@ -368,7 +379,18 @@ class ViewingPane(Spacer):
             elif newValue < self._zoom:
                 self.zoomTransition = self.DECREASE
             print self.height,newValue
-                    
+            
+    def zoomToPoint(self, x, y, change):
+        print change,x,y
+        self._tilesGroup.zoomToViewCenter = False
+        return
+        self._tilesGroup.zoomPointX = (x + self._scrollX) * self._zoom
+        self._tilesGroup.zoomPointY = ((self.height) - y + self._scrollY) * self._zoom
+        #print self._tilesGroup.zoomPointX,self._tilesGroup.zoomPointY
+        self._zoom += change * 0.5
+        self._tilesGroup.zoom = self._zoom
+        
+                
     def moveView(self, mx, my):
         if mx != 0:
             mx = mx / self._zoom

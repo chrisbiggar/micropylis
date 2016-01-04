@@ -4,13 +4,12 @@ Created on Aug 29, 2015
 @author: chris
 '''
 import pyglet
-import gui
-from gui import viewingPane
+from gui.microWindow import MicroWindow
 
 class MicroEventLoop(pyglet.app.base.EventLoop):
-    def __init__(self, viewingPane):
+    def __init__(self, cityView):
         super(MicroEventLoop,self).__init__()
-        self.viewingPane = viewingPane
+        self.viewingPane = cityView
         
     def idle(self):
         dt = self.clock.update_time()
@@ -21,7 +20,7 @@ class MicroEventLoop(pyglet.app.base.EventLoop):
 
 
 if __name__ == '__main__':
-    app = gui.MainWindow()
+    app = MicroWindow()
     eventLoop = MicroEventLoop(app.viewingPane)
     app.setExitFunc(eventLoop.exit)
     eventLoop.run()

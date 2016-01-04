@@ -5,22 +5,146 @@ Created on Sep 24, 2015
 '''
 import pyglet
 import kytten
-from kytten.widgets import Label
+from kytten.widgets import Label, Spacer
 from kytten.layout import VerticalLayout
-from kytten.frame import Frame
+from kytten.frame import Frame, FoldingSection
 from kytten.dialog import Dialog
+from kytten.menu import Menu
 import widgets
 import gui
+
+
 
 theme = kytten.theme.Theme('res/kyttentheme', override={
 "gui_color": [64, 128, 255, 255],
 "font_size": 16
 })
 
+def on_escape(dialog):
+    '''
+        tears down specified dialog
+    '''
+    dialog.teardown()
+
+
+class MainMenuDialog(Dialog):
+    def __init__(self, mainWindow, activeCity):
+        self.window = mainWindow
+        self.active = True
+        self.activeCity = activeCity
+        frame = self.createLayout()
+        super(MainMenuDialog,self).__init__(frame,
+                                            window=mainWindow,
+                                            batch=mainWindow.dialogBatch,
+                                            anchor=kytten.ANCHOR_CENTER,
+                                            theme=theme,
+                                            on_escape=on_escape)
+        
+    def createLayout(self):
+        title = Label(text="Micropylis")
+        options = ['Back To City', "New City", "Load City", 
+                        "Save City", "Options", "Credits", "Quit"]
+        if not self.activeCity:
+            options.remove('Back To City')
+            options.remove('Save City')
+        self.menu = widgets.ClickMenu(
+                options, on_select=self.on_select_menu,
+                option_padding_x=76, option_padding_y=16)
+        
+        return Frame(VerticalLayout([title,Spacer(height=2),self.menu]))
+       
+    
+    def on_select_menu(self, choice):
+        if choice == "Back To City":
+            self.on_cancel()
+        
+        
+    
+    
+    def on_cancel(self):
+        on_escape(self)
+        
+    def teardown(self):
+        Dialog.teardown(self)
+        self.active = False
+
+class CityEvalDialog(Dialog):
+    def __init__(self, mainWindow, activeCity):
+        self.window = mainWindow
+        frame = self.createLayout()
+        super(CityEvalDialog,self).__init__(frame,
+                                            window=mainWindow,
+                                            batch=mainWindow.dialogBatch,
+                                            anchor=kytten.ANCHOR_CENTER,
+                                            theme=theme,
+                                            on_escape=on_escape)
+        self.active = True
+        
+    def createLayout(self):
+        title = Label(text="Micropylis")
+        self.menu = widgets.ClickMenu(
+                options=["Eval"],
+                on_select=self.on_select_menu)
+        
+        return Frame(VerticalLayout([title,Spacer(height=2),self.menu]))
+       
+    
+    def on_select_menu(self, choice):
+        if choice == "Back To City":
+            self.on_cancel()
+        
+        
+    
+    
+    def on_cancel(self):
+        on_escape(self)
+        
+    def teardown(self):
+        Dialog.teardown(self)
+        self.active = False
+        
+class BudgetDialog(Dialog):
+    def __init__(self, mainWindow, activeCity):
+        self.window = mainWindow
+        frame = self.createLayout()
+        self.active = True
+        super(BudgetDialog,self).__init__(frame,
+                                            window=mainWindow,
+                                            batch=mainWindow.dialogBatch,
+                                            anchor=kytten.ANCHOR_CENTER,
+                                            theme=theme,
+                                            on_escape=on_escape)
+        
+    def createLayout(self):
+        title = Label(text="Micropylis")
+        self.menu = widgets.ClickMenu(
+                options=["Budget"],
+                on_select=self.on_select_menu)
+        
+        return Frame(VerticalLayout([title,Spacer(height=2),self.menu]))
+       
+    
+    def on_select_menu(self, choice):
+        if choice == "Back To City":
+            self.on_cancel()
+        
+        
+    
+    
+    def on_cancel(self):
+        on_escape(self)
+        
+    def teardown(self):
+        Dialog.teardown(self)
+        self.active = False
+        
+        
+        
+
 
 class NewCityDialog(Dialog):
     def __init__(self, mainWindow):
-        self.tilesView = mainWindow
+        self.window = mainWindow
         self.selectedToolLabel = None
         frame = self.createLayout()
         super(NewCityDialog, self).__init__(frame,
@@ -30,7 +154,42 @@ class NewCityDialog(Dialog):
                                     theme=theme)        
         
     def createLayout(self):
+        
+        
         pass
+    
+class LoadCityDialog(Dialog):
+    def __init__(self, mainWindow):
+        self.window = mainWindow
+        self.selectedToolLabel = None
+        frame = self.createLayout()
+        super(NewCityDialog, self).__init__(frame,
+                                    window=mainWindow,
+                                    batch=mainWindow.dialogBatch,
+                                    anchor=kytten.ANCHOR_CENTER, 
+                                    theme=theme)        
+        
+    def createLayout(self):
+        
+        
+        pass
+    
+class SaveCityDialog(Dialog):
+    def __init__(self, mainWindow):
+        self.window = mainWindow
+        self.selectedToolLabel = None
+        frame = self.createLayout()
+        super(NewCityDialog, self).__init__(frame,
+                                    window=mainWindow,
+                                    batch=mainWindow.dialogBatch,
+                                    anchor=kytten.ANCHOR_CENTER, 
+                                    theme=theme)        
+        
+    def createLayout(self):
+        
+        
+        pass
+        
 
 
 class ToolDialog(Dialog):

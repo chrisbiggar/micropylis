@@ -22,7 +22,7 @@ class Speed(object):
     
 
 PAUSED = Speed(0, 999, "Paused")
-SLOW = Speed(0.34, 0.025, "Slow")
-NORMAL = Speed(1.5, 0.018, "Normal")
-FAST = Speed(5, 0.01, "Fast")
-SUPER_FAST = Speed(10, 0.004, "Super Fast")
+SLOW = Speed(0.34, 0.6, "Slow")
+NORMAL = Speed(1.5, 0.3, "Normal")
+FAST = Speed(5, 0.1, "Fast")
+SUPER_FAST = Speed(10, 0.02, "Super Fast")

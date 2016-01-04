@@ -20,7 +20,7 @@ class MenuOption(Control):
     has been chosen.
     """
     def __init__(self, text="", anchor=ANCHOR_CENTER, menu=None,
-                 disabled=False):
+                 disabled=False, option_padding_x=0,option_padding_y=0):
         Control.__init__(self, disabled=disabled)
         self.text = text
         self.anchor = anchor
@@ -29,6 +29,8 @@ class MenuOption(Control):
         self.background = None
         self.highlight = None
         self.is_selected = False
+        self.option_padding_x = option_padding_x
+        self.option_padding_y = option_padding_y
 
     def delete(self):
         if self.label is not None:
@@ -108,8 +110,8 @@ class MenuOption(Control):
                 batch=dialog.batch,
                 group=dialog.fg_group)
             font = self.label.document.get_font()
-            self.width = self.label.content_width
-            self.height = font.ascent - font.descent
+            self.width = self.label.content_width + self.option_padding_x
+            self.height = font.ascent - font.descent + self.option_padding_y
 
         if self.background is None:
             if self.is_selected:
@@ -147,8 +149,10 @@ class Menu(VerticalLayout):
     to send an on_click event.
     """
     def __init__(self, options=[], align=HALIGN_CENTER, padding=4,
-                 on_select=None):
+                 on_select=None, option_padding_x=0,option_padding_y=0):
         self.align = align
+        self.option_padding_x = option_padding_x
+        self.option_padding_y = option_padding_y
         menu_options = self._make_options(options)
         self.options = dict(zip(options, menu_options))
         self.on_select = on_select
@@ -167,7 +171,9 @@ class Menu(VerticalLayout):
             menu_options.append(MenuOption(option,
                                            anchor=(VALIGN_CENTER, self.align),
                                            menu=self,
-                                           disabled=disabled))
+                                           disabled=disabled,
+                                           option_padding_x=self.option_padding_x,
+                                           option_padding_y=self.option_padding_y))
         return menu_options
 
     def get_value(self):

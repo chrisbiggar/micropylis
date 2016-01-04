@@ -9,8 +9,9 @@ from pyglet.text import Label
 from pyglet.text.layout import TextLayout
 from pyglet.text.document import UnformattedDocument, FormattedDocument
 from pyglet.gl import *
-from layoutManager import Widget,Frame,LayoutLabel,VerticalLayout
-
+from layout import Widget,Frame,LayoutLabel,VerticalLayout,\
+                            HALIGN_RIGHT, Spacer, ButtonLabel
+from util import createRect
 
 bgGroup = pyglet.graphics.OrderedGroup(1)
 mgGroup = pyglet.graphics.OrderedGroup(2)
@@ -38,8 +39,10 @@ class Message(object):
     displays messages to user. 
 '''
 class MessageQueue(Widget):
-    def __init__(self, batch):
+    def __init__(self, batch, fontName=None):
         super(MessageQueue,self).__init__()
+        
+        self.font = 'Source Code Pro'
         
         self.titleLabel = None
         self.textLayout = None
@@ -49,6 +52,7 @@ class MessageQueue(Widget):
         self.halfSecs = 0
         self.bgRect = None
         self.doc = FormattedDocument()
+        self.fontName = fontName
 
         self.currentPos = 0
         self.numMsgs = 0
@@ -59,16 +63,18 @@ class MessageQueue(Widget):
         if self.bgRect is not None:
             self.bgRect.delete()
             self.bgRect = None
+        #print "delete message queue"
     
-    def size(self, window):
-        super(MessageQueue,self).size(window)
+    def size(self, frame):
+        super(MessageQueue,self).size(frame)
+        
         
         if self.textLayout is not None:
             self.textLayout.delete()
         if self.titleLabel is not None:
             self.titleLabel.delete()
         
-        self.width = window.width or 200
+        self.width = frame.width or 200
         self.height = 200
         
         if self.textLayout is None:
@@ -77,6 +83,7 @@ class MessageQueue(Widget):
                                          batch=self.batch,
                                          group=fgGroup,
                                          multiline=True)
+            self.savedFrame.setNeedsLayout()
         else:
             self.textLayout.width = self.width
         
@@ -85,36 +92,31 @@ class MessageQueue(Widget):
                                     x=self.x+10,y=self.y+10,
                                     batch=self.batch,
                                     group=fgGroup)
+            self.savedFrame.setNeedsLayout()
         else:
             self.titleLabel.x = self.x + 10
             self.titleLabel.y = self.y + 10
         self.createBackground()
+        
+    
+    def layout(self,x,y):
+        super(MessageQueue,self).layout(x,y)
+        self.textLayout.x = self.x
+        self.textLayout.y = self.y
+        self.textLayout.width = self.width
+        self.textLayout.height = self.height
 
         
     def createBackground(self):
-        x = self.x
-        y = self.y
-        x2 = x + self.width
-        y2 = y + self.height
-        c = (38, 89, 106, 255)
-        colorData = []
-        numVertices = 4
-        for i in xrange(numVertices * len(c)):
-            i2 = i % numVertices
-            colorData.append(c[i2])
-        
-        self.textLayout.x = x
-        self.textLayout.y = y
-        self.textLayout.width = self.width
-        self.textLayout.height = self.height
-        self.doc.set_style(0,0,dict(font_name='Arial', font_size=12))
         if self.bgRect is not None:
             self.bgRect.delete()
             self.bgRect = None
-        self.bgRect = self.batch.add(4, GL_QUADS, mgGroup,
-                                 ('v2f', [x, y, x2, y, x2, y2, x, y2]),
-                                 ('c4B', colorData))
         
+        self.bgRect = createRect(self.x, self.y,
+                             self.width, self.height,
+                             (38, 89, 106, 255),
+                             self.batch,
+                             mgGroup)
         
         
     def deleteMsg(self, item):
@@ -125,7 +127,6 @@ class MessageQueue(Widget):
                 msg.num -= 1
                 msg.index -= len(item)
         
-    
     def addMessage(self, message):
         if len(self.msgs) and message == self.msgs[0].string:
             return
@@ -133,13 +134,16 @@ class MessageQueue(Widget):
         message = message + '\n'
         item = Message(0, message, self.halfSecs, 0)
         
-        self.doc.set_style(0, len(self.doc.text), {'bold' : False})
+        
+        self.doc.set_style(0, len(self.doc.text), {'font_name' : self.font,
+                                                   'bold' : False})
         for msg in self.msgs:
             msg.num += 1
             msg.index += len(item)
         
         self.msgs.insert(0,item)
-        self.doc.insert_text(0, message, {'bold' : True})
+        self.doc.insert_text(0, message, {'font_name' : self.font,
+                                                   'bold' : True})
         
         if self.textLayout is not None:
             while self.textLayout.content_height >= self.height - self.titleLabel.content_height:
@@ -167,34 +171,74 @@ class DemandIndicatorWidget(object):
         pass
 
 
-class InfoPane(Frame):
+
+
+class ControlPanel(Frame, pyglet.event.EventDispatcher):
     WIDTH = 300
     def __init__(self, engine):
-        self.months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        self.register_event_type('gui_invoke')
+        
+        
+        self.months = ["January","Febuary","March","April","May","June","July"
+                       ,"August","September","October","November","December"]
         self.batch = pyglet.graphics.Batch()
         self.engine = engine
-        self.border = 10
         
         self.fgGroup = fgGroup
         
+        self.fontName = 'Source Code Pro'
+        self.fontSize = 16
+        
         self.bg = None
+        layout = self.createLayout()
         
-        self.fundsLabel = LayoutLabel(self)
-        self.dateLabel = LayoutLabel(self)
-        self.populationLabel = LayoutLabel(self)
-        self.msgs = MessageQueue(self.batch)
-        
-        super(InfoPane,self).__init__(
-                            VerticalLayout([self.dateLabel,
-                                            self.fundsLabel,
-                                            self.populationLabel,
-                                            self.msgs]))
-        
-        
+        super(ControlPanel,self).__init__(layout)
         self.reset(engine)
         self.updateDateLabel()
-        self.alive = False
-
+        
+        
+    def createLayout(self):
+        self.msgs = MessageQueue(self.batch)
+        self.mainMenuLabel = ButtonLabel(self, text="Main Menu",
+                                         fontName=self.fontName,
+                                         fontSize=self.fontSize,
+                                         action=self.mainMenuLabelAction)
+        self.fundsLabel = ButtonLabel(self, fontName=self.fontName, 
+                                      fontSize=self.fontSize,
+                                      action=self.fundsLabelAction)
+        self.dateLabel = ButtonLabel(self, fontName=self.fontName, 
+                                     fontSize=self.fontSize,
+                                     action=self.dateLabelAction)
+        self.populationLabel = ButtonLabel(self,
+                                           fontSize=self.fontSize,
+                                           fontName=self.fontName, 
+                                           action=self.populationLabelAction)
+        self.msgs = MessageQueue(self.batch, fontName=self.fontName)
+        return VerticalLayout([VerticalLayout([self.mainMenuLabel,
+                                                  self.dateLabel,
+                                                  self.fundsLabel,
+                                                  self.populationLabel],
+                                                 align=HALIGN_RIGHT,
+                                                 padding=5),
+                                  Spacer(height=10),
+                                  self.msgs],
+                                 align=HALIGN_RIGHT,
+                                 padding=0)
+        
+        
+    def mainMenuLabelAction(self):
+        self.dispatch_event('gui_invoke', 'main_menu')
+        
+    def dateLabelAction(self):
+        #self.dispatch_event('gui_invoke', 'city_graphs')
+        pass
+        
+    def fundsLabelAction(self):
+        self.dispatch_event('gui_invoke', 'budget_menu')
+        
+    def populationLabelAction(self):
+        print "bah"
+        self.dispatch_event('gui_invoke', 'city_eval')
            
     def reset(self, engine):
         self.engine = engine
@@ -202,7 +246,6 @@ class InfoPane(Frame):
         self.lastTime = self.engine.cityTime
         self.on_funds_changed()
         self.on_census_changed()
-        self.resetBackground()
         self.setNeedsLayout()
         
     def delete(self):
@@ -211,30 +254,31 @@ class InfoPane(Frame):
             self.bg = None
         self.content.delete()
         
+    def layout(self, x, y):
+        super(ControlPanel,self).layout(x,y)
+        
+    def expand(self, width, height):
+        Frame.expand(self, width, height)
+        self.width = self.WIDTH
     
-    def size(self,window):
-        super(InfoPane,self).size(window)
-        #print window.width
-        if window.width < 800:
-            self.delete()
-            self.width = self.height = 1
-        self.alive = True
-        self.resetBackground()
-        #print "reset background"
+    def size(self,frame):
+        self.delete()
+        if frame.width < 800:
+            self.disable()
+            self.width = 0
+        if frame.width >= 800:
+            self.enable()
+        if self.active:
+            super(ControlPanel,self).size(frame)
+            self.width, self.height = self.WIDTH, frame.height
+            self.createBg()
 
-    def resetBackground(self):
-        if self.bg is not None:
-            self.bg.delete()
-            self.bg = None
-        x = self.x
-        y = self.y
-        x2 = self.x + self.width
-        y2 = self.x + self.height
-        c = (22, 33, 85, 255)
-        self.bg = self.batch.add(4, GL_QUADS, bgGroup,
-                                 ('v2f', [x, y, x2, y, x2, y2, x, y2]),
-                                 ('c4B', [c[0],c[1],c[2],c[3],c[0],c[1],c[2],c[3]
-                                    ,c[0],c[1],c[2],c[3],c[0],c[1],c[2],c[3]]))
+    def createBg(self):
+        self.bg = createRect(self.x, self.y,
+                             self.width, self.height,
+                             (22, 33, 85, 224),
+                             self.batch,
+                             bgGroup)
         
     
     def addInfoMessage(self, msg):
@@ -246,11 +290,13 @@ class InfoPane(Frame):
 
 
     def on_census_changed(self):
-        self.populationLabel.set_text("Population: 0")
+        if self.populationLabel is not None:
+            self.populationLabel.set_text("Population: 0")
 
      
     def on_funds_changed(self):
-        self.fundsLabel.set_text("Treasury: $" + str(self.engine.budget.funds))
+        if self.fundsLabel is not None:
+            self.fundsLabel.set_text("Treasury: $" + str(self.engine.budget.funds))
         
     
     def update(self, dt):
@@ -271,7 +317,8 @@ class InfoPane(Frame):
     def updateDateLabel(self):
         #print "update date label"
         d = self.formatGameDate(self.engine.cityTime)
-        self.dateLabel.set_text(d)
+        if self.dateLabel is not None:
+            self.dateLabel.set_text(d)
         # update population
         
         

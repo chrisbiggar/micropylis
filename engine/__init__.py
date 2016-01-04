@@ -294,13 +294,19 @@ class Engine(pyglet.event.EventDispatcher):
     
     def setValves(self):
         '''  '''
+        
+        
+        
+        
+        
         pass
+        
+        
+        
     
     def animate(self, dt):
         '''  '''
-        self.aCycle = (self.aCycle + 1) % 960
-        if self.aCycle % 2 == 0:
-            self.step()
+        self.step()
         #self.moveObjects()
     
     def step(self):
