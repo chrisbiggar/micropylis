@@ -338,14 +338,14 @@ class Text(object):
             self._wrap = 'multiline'
             multiline = True
 
-        self._tilesGroup = _TextZGroup()
+        self.tilesGroup = _TextZGroup()
         self._document = pyglet.text.decode_text(text)
         self._layout = pyglet.text.layout.TextLayout(self._document,
                                               width=width,
                                               multiline=multiline,
                                               wrap_lines=width is not None,
                                               dpi=font.dpi,
-                                              group=self._tilesGroup)
+                                              group=self.tilesGroup)
 
         self._layout.begin_update()
         if self._wrap == 'multiline':
@@ -426,10 +426,10 @@ class Text(object):
     y = property(_get_y, _set_y)
 
     def _get_z(self):
-        return self._tilesGroup.z
+        return self.tilesGroup.z
 
     def _set_z(self, z):
-        self._tilesGroup.z = z
+        self.tilesGroup.z = z
 
     z = property(_get_z, _set_z)
 

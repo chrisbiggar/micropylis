@@ -20,7 +20,7 @@ import gui
 from layout import LayoutWindow, HorizontalLayout
 import dialogs
 from dialogs import MainMenuDialog, CityEvalDialog, BudgetDialog
-
+from util import timefunc
 
 
 
@@ -56,23 +56,27 @@ class Keys(pyglet.window.key.KeyStateHandler):
 '''
 class MicroWindow
 
-The main window for micropylis
+The main window for micropylis.
+handles tool dispatching.
+
+
 '''
 class MicroWindow(pyglet.window.Window, LayoutWindow):
-    DEFAULT_WIDTH = 1200
-    DEFAULT_HEIGHT = 660
-    
     def __init__(self):
+        self.DEFAULT_WIDTH = int(gui.config.get('window','DEFAULT_WIDTH'))
+        self.DEFAULT_HEIGHT = int(gui.config.get('window','DEFAULT_HEIGHT'))
         pyglet.window.Window.__init__(self, width=self.DEFAULT_WIDTH,
                                    height=self.DEFAULT_HEIGHT,
                                    resizable=True,
-                                   vsync=True)
+                                   vsync=False)
         
-        tiles.Tiles().readTiles() # load in tile specs
+        # load in tile specs
+        tiles.Tiles().readTilesSpec(gui.config.get('misc','TILES_SPEC_FILE')) 
         
-        # load test map: (would normally just call newCity()
+        # load test map: (would normally just call newCity())
         #self.newCity()
         self.loadCity('cities/hawkins.cty')
+        
         
         self.viewingPane = CityView(self.engine)
         self.engine.push_handlers(self.viewingPane)
@@ -95,16 +99,17 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.lastY = 0
         
         # window stuff
-        self.icon = pyglet.image.load("res/icon32.png") # icon is set at resize
+        self.icon = pyglet.image.load(gui.config.get('window','ICON_FILE')) # icon is set at resize
         self.set_minimum_size(640, 480)
-        self.set_caption("Micropylis")
-        self.set_location(40,40)
+        self.set_caption(gui.config.get('window','CAPTION'))
         self.fpsDisplay = pyglet.clock.ClockDisplay(color=(.2,.2,.2,0.6))
         self.initGuiComponents()
         
-        pyglet.font.add_file('res/SourceCodePro-Regular.otf')
-        pyglet.font.add_file('res/SourceCodePro-Light.otf')
+        self.set_location(40,40)
         
+        # 
+        for (name,font) in gui.config.items('font_files'):
+            pyglet.font.add_file(font)
 
         pyglet.clock.schedule_interval(self.update, 1/60.)
         self.speedKeyMap = {
@@ -116,8 +121,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.speed = None
         self.setSpeed(speed.PAUSED)
         
-        #testing sounds:
-        #music = pyglet.media.load('explosion.wav
+
         
     def setExitFunc(self, func):
         self.exitFunc = func
@@ -156,6 +160,32 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             self.set_fullscreen(True)
         else:
             self.set_fullscreen(False)
+            
+    def initGL(self, width, height):
+        glClearColor(0.8,0.49,0.4,1)
+        
+        glEnable(GL_BLEND)
+        glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        
+        glEnable( GL_LINE_SMOOTH )
+        glEnable( GL_POLYGON_SMOOTH )
+        glHint( GL_LINE_SMOOTH_HINT, GL_NICEST )
+        
+        glViewport(0, 0, width, height)
+        gl.glMatrixMode(gl.GL_PROJECTION)
+        glLoadIdentity()
+        gl.glOrtho(0, width, 0, height, -1, 1)
+        gl.glMatrixMode(gl.GL_MODELVIEW)
+            
+    def on_resize(self, width, height):
+        self.set_icon(self.icon)
+        self.initGL(width,height)
+        LayoutWindow.doLayout(self)
+        
+    def on_close(self):
+        #self.viewingPane.cleanup()
+        self.exitFunc()
+        return pyglet.window.Window.on_close(self)
         
     def on_key_release(self, symbol, modifiers):
         if (symbol == pyglet.window.key.X):
@@ -195,16 +225,6 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         
         if self.viewingPane.hitTest(x, y):
             self.onToolDrag(x, y, dx, dy, buttons, modifiers)
-        
-    def on_resize(self, width, height):
-        pyglet.window.Window.on_resize(self, width, height)
-        LayoutWindow.doLayout(self)
-        self.set_icon(self.icon)
-        
-    def on_close(self):
-        #self.viewingPane.cleanup()
-        self.exitFunc()
-        return pyglet.window.Window.on_close(self)
     
     def set_mouse_cursor(self, cursor=None):
         if cursor == self.cursor:
@@ -242,9 +262,8 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.currentTool = tool
         return tool
         
-    
     def onToolDown(self, x, y, button, modifiers):
-        loc = self.viewingPane.evToCityLocation(x, y)
+        loc = self.viewingPane.screenCoordsToCityLocation(x, y)
         self.lastX = loc.x
         self.lastY = loc.y
         if button == mouse.RIGHT:
@@ -273,7 +292,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
                 buttons & mouse.RIGHT:
             self.viewingPane.moveView(dx, dy)
             return
-        loc = self.viewingPane.evToCityLocation(x, y)
+        loc = self.viewingPane.screenCoordsToCityLocation(x, y)
         tx = loc.x
         ty = loc.y
         if tx == self.lastX and ty == self.lastY:
@@ -296,7 +315,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
                                 self.toolStroke.apply())
             self.toolStroke = None
             self.engine.tileUpdateCheck()
-        loc = self.viewingPane.evToCityLocation(x, y)
+        loc = self.viewingPane.screenCoordsToCityLocation(x, y)
         tx = loc.x
         ty = loc.y
         if button == mouse.RIGHT and self.lastX == tx and self.lastY == ty:
@@ -312,7 +331,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
                 self.viewingPane.setToolCursor(None)
                 return
             
-        loc = self.viewingPane.evToCityLocation(x,y)
+        loc = self.viewingPane.screenCoordsToCityLocation(x,y)
         #print loc
         x = loc.x
         y = loc.y
@@ -373,7 +392,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         pyglet.clock.schedule_interval(self.engine.animate, newSpeed.delay)
 
         
-        
+    
     def update(self, dt):
         self.viewingPane.update(dt)
         self.controlPanel.update(dt)
@@ -383,7 +402,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.dispatch_event('on_update', dt)
         
     def on_draw(self):
-        glClearColor(0.8,0.49,0.4,1)
+        
         self.clear()
         self.viewingPane.batch.draw()
         self.controlPanel.batch.draw()

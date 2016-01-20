@@ -241,8 +241,10 @@ class ToolDialog(Dialog):
         
         return Frame(VerticalLayout([
                             self.selectedToolLabel,
+                            self.selectedToolPriceLabel,
                             self.toolSection,
-                            self.selectedToolPriceLabel]))
+                            Spacer(height=4)
+                            ]))
         
         
     def onToolSelect(self, toolId):

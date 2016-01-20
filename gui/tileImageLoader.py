@@ -5,44 +5,12 @@ Created on Aug 30, 2015
 '''
 import pyglet
 from engine.tileConstants import LOMASK
-from pyglet.image import TextureGrid,AbstractImage\
-,AbstractImageSequence,TextureRegion,ImageException,UniformTextureSequence,\
-    Animation, AnimationFrame
+from pyglet.image import TextureGrid,AbstractImage,\
+    AbstractImageSequence,TextureRegion,UniformTextureSequence,Animation
 from engine.tiles import Tiles
 
-class SizeNotAvaiableError(Exception):
-    pass
 
 
-class Limits(object):
-    '''
-    
-    '''
-    def __init__(self):
-        self.min = None
-        self.max = None
-        
-    def setMin(self, m):
-        self.min = m
-        
-    def setMax(self, m):
-        self.max = m
-        
-    def update(self, new):
-        if self.min == None:
-            self.min = new
-            self.max = new
-            return
-        if new < self.min:
-            self.min = new
-        elif new > self.max:
-            self.max = new
-        
-    def withinRange(self, x):
-        if x >= self.min and x <= self.max:
-            return True
-        else:
-            return False
 
 
 class BorderedImageGrid(AbstractImage, AbstractImageSequence):
@@ -192,7 +160,8 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
     item_width = 0
     item_height = 0
 
-    def __init__(self, animationDelay, grid, exterior_border=1):
+    def __init__(self, animationDelay, grid, 
+                 exterior_border=1, flipTilesVert=False):
         image = grid.get_texture()
         if isinstance(image, TextureRegion):
             owner = image.owner
@@ -208,8 +177,10 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
         for row in xrange(grid.rows):
             x = exterior_border
             for col in xrange(grid.columns):
-                textureItems.append(
-                    self.get_region(x, y, grid.item_width, grid.item_height))
+                region = self.get_region(x, y, grid.item_width, grid.item_height)
+                if flipTilesVert:
+                    region = region.get_transform(flip_y=True)
+                textureItems.append(region)
                 x += grid.item_width + grid.column_padding
             y += grid.item_height + grid.row_padding
         
@@ -305,18 +276,19 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
         
 
 '''
-class TileImages
+class TileImageLoader
 Makes available the individual images for each tile in a set.
 Images are loaded from a given filename in sequential fashion, and are
 referenced by their index into that sequence.
 '''
-class TileImages(object):
+class TileImageLoader(object):
     DEFAULT_ANIMATION_DELAY = 0.2
     
-    def __init__(self, tileSize, padding=2):
+    def __init__(self, fileName, tileSize, flipTilesVert=False, padding=0):
         self.tileSize = tileSize
+        self.flipTilesVert = flipTilesVert
         self.padding = padding
-        self._tileSheetFilename = 'res/tiles.png'
+        self._tileSheetFilename = fileName
         self._tiles = self.loadTileImages()
         
     def loadTileImages(self):
@@ -327,7 +299,8 @@ class TileImages(object):
                             self.DEFAULT_ANIMATION_DELAY,
                             BorderedImageGrid(tileSheet, rows, columns,
                                                    row_padding=self.padding,
-                                                   column_padding=self.padding))
+                                                   column_padding=self.padding),
+                            flipTilesVert=self.flipTilesVert)
     
     def getTileImage(self, cell):
         # low 10 bits give tile index number

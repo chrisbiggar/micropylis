@@ -24,9 +24,9 @@ class Tiles(object):
         else:
             return None
     
-    def readTiles(self):
+    def readTilesSpec(self, tilesSpecFile):
         tilesRc = Properties()
-        tilesRc.load(open("res/tiles.rc"))
+        tilesRc.load(open(tilesSpecFile))
         tileNames = generateTilenames(tilesRc)
         
         tiles = [0 for i in xrange(len(tileNames))]
@@ -36,7 +36,6 @@ class Tiles(object):
             tileName = tileNames[i]
             rawSpec = tilesRc.getProperty(tileName)
             if rawSpec is None:
-                print "blah"
                 break
             
             ts = parseTileSpec(i, tileName, rawSpec, tilesRc)

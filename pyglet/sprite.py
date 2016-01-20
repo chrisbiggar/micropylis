@@ -236,7 +236,7 @@ class Sprite(event.EventDispatcher):
         else:
             self._texture = img.get_texture()
 
-        self._tilesGroup = SpriteGroup(self._texture, blend_src, blend_dest, group)
+        self.tilesGroup = SpriteGroup(self._texture, blend_src, blend_dest, group)
         self._usage = usage
         self._subpixel = subpixel
         self._create_vertex_list()
@@ -262,7 +262,7 @@ class Sprite(event.EventDispatcher):
         self._texture = None
 
         # Easy way to break circular reference, speeds up GC
-        self._tilesGroup = None
+        self.tilesGroup = None
 
     def _animate(self, dt):
         self._frame_index += 1
@@ -288,7 +288,7 @@ class Sprite(event.EventDispatcher):
             return
 
         if batch is not None and self._batch is not None:
-            self._batch.migrate(self._vertex_list, GL_QUADS, self._tilesGroup, batch)
+            self._batch.migrate(self._vertex_list, GL_QUADS, self.tilesGroup, batch)
             self._batch = batch
         else:
             self._vertex_list.delete()
@@ -309,20 +309,20 @@ class Sprite(event.EventDispatcher):
     ''')
 
     def _set_group(self, group):
-        if self._tilesGroup.parent == group:
+        if self.tilesGroup.parent == group:
             return
 
-        self._tilesGroup = SpriteGroup(self._texture,
-                                  self._tilesGroup.blend_src,
-                                  self._tilesGroup.blend_dest,
+        self.tilesGroup = SpriteGroup(self._texture,
+                                  self.tilesGroup.blend_src,
+                                  self.tilesGroup.blend_dest,
                                   group)
 
         if self._batch is not None:
-            self._batch.migrate(self._vertex_list, GL_QUADS, self._tilesGroup,
+            self._batch.migrate(self._vertex_list, GL_QUADS, self.tilesGroup,
                                 self._batch)
 
     def _get_group(self):
-        return self._tilesGroup.parent
+        return self.tilesGroup.parent
 
     group = property(_get_group, _set_group,
                      doc='''Parent graphics group.
@@ -368,10 +368,10 @@ class Sprite(event.EventDispatcher):
 
     def _set_texture(self, texture):
         if texture.id is not self._texture.id:
-            self._tilesGroup = SpriteGroup(texture,
-                                      self._tilesGroup.blend_src,
-                                      self._tilesGroup.blend_dest,
-                                      self._tilesGroup.parent)
+            self.tilesGroup = SpriteGroup(texture,
+                                      self.tilesGroup.blend_src,
+                                      self.tilesGroup.blend_dest,
+                                      self.tilesGroup.parent)
             if self._batch is None:
                 self._vertex_list.tex_coords[:] = texture.tex_coords
             else:
@@ -392,7 +392,7 @@ class Sprite(event.EventDispatcher):
                 vertex_format, 
                 'c4B', ('t3f', self._texture.tex_coords))
         else:
-            self._vertex_list = self._batch.add(4, GL_QUADS, self._tilesGroup,
+            self._vertex_list = self._batch.add(4, GL_QUADS, self.tilesGroup,
                 vertex_format, 
                 'c4B', ('t3f', self._texture.tex_coords))
         self._update_position()
@@ -588,9 +588,9 @@ class Sprite(event.EventDispatcher):
         See the module documentation for hints on drawing multiple sprites
         efficiently.
         '''
-        self._tilesGroup.set_state_recursive()
+        self.tilesGroup.set_state_recursive()
         self._vertex_list.draw(GL_QUADS)
-        self._tilesGroup.unset_state_recursive()
+        self.tilesGroup.unset_state_recursive()
 
     if _is_epydoc:
         def on_animation_end(self):

@@ -2,7 +2,7 @@ import pyglet
 from pyglet.gl import *
 from pyglet.text import Label
 from inspect import isframe
-from util import createHollowRect
+from util import createHollowRect, timefunc
 
 
 (HALIGN_LEFT,HALIGN_CENTER,HALIGN_RIGHT,
@@ -11,6 +11,11 @@ VALIGN_TOP,VALIGN_CENTER,VALIGN_BOTTOM) = range(6)
 
 
 class Widget(object):
+    '''
+    Widget
+    
+    The most basic gui object which all others inherit from.
+    '''
     def __init__(self, width=0, height=0):
         self.x = self.y = 0
         self.width = width
@@ -107,6 +112,12 @@ class Spacer(Widget):
         
 
 class ToolTip(object):
+    '''
+    A rectangle that contains text describing a gui item.
+    
+    When mouse hovers over an object for more than a second, if
+    there is a tooltip assigned to that object, it will show.
+    '''
     def __init__(self, x, y, text, batch, group):
         self.text = text
         self.batch = batch
@@ -159,6 +170,9 @@ class ButtonGraphic(LayoutGraphic):
         
         
 class LayoutLabel(Widget):
+    '''
+    Wraps a pyglet Text Label and allows for layout.
+    '''
     def __init__(self, frame, text="", toolTip=None, fontName=None, fontSize=None):
         super(LayoutLabel,self).__init__()
         self.savedFrame = frame
@@ -210,6 +224,10 @@ class LayoutLabel(Widget):
             
             
 class ButtonLabel(LayoutLabel):
+    '''
+    Text Label that is clickable and will evoke an action.
+    
+    '''
     def __init__(self, frame, 
                  text=None, 
                  fontName=None, 
@@ -224,20 +242,8 @@ class ButtonLabel(LayoutLabel):
         self.color = (255,255,255,255)
         self.pressedColor = (0,0,0,255)
         self.borderColor = (255,255,255,255)
+        self.pressed = False
         
-    def onMousePress(self, x, y, button, modifiers):
-        self.label.color = self.pressedColor
-    
-    def unFocus(self):
-        self.label.color = self.color
-        self.setBorder()
-    
-    def setBorder(self, border=None):
-        if self.border:
-            self.border.delete()
-            self.border = None
-        self.border = border
-    
     def focus(self):
         self.setBorder(createHollowRect(self.x - 4, self.y - 2, 
                                        self.label.content_width + 6, 
@@ -245,11 +251,29 @@ class ButtonLabel(LayoutLabel):
                                        self.borderColor, 
                                        self.savedFrame.batch, 
                                        self.savedFrame.fgGroup))
+
+    def unFocus(self):
+        self.label.color = self.color
+        self.setBorder()
+        self.pressed = False
+        
+    def onMousePress(self, x, y, button, modifiers):
+        self.pressed = True
+        self.label.color = self.pressedColor
             
     def onMouseRelease(self, x, y, button, modifiers):
-        if self.action is not None:
+        if self.pressed and self.action is not None:
             self.action()
         self.label.color = self.color
+        self.pressed = False
+        
+    def setBorder(self, border=None):
+        if self.border:
+            self.border.delete()
+            self.border = None
+        self.border = border
+    
+
     
     def isClickable(self):
         return True
@@ -261,7 +285,10 @@ class Layout(Widget):
     pass
 
 
-class VerticalLayout(Layout):
+class VerticalLayout(Layout):    
+    '''
+    Lays out widgets in a vertical line
+    '''
     def __init__(self, content=[], align=HALIGN_CENTER, padding=5):
         super(VerticalLayout,self).__init__()
         self.align = align
@@ -332,6 +359,9 @@ class VerticalLayout(Layout):
 
     
 class HorizontalLayout(VerticalLayout):
+    '''
+    Lays out widgets in a horizontal line
+    '''
     def __init__(self, content=[], align=HALIGN_CENTER, padding=5):
         super(HorizontalLayout,self).__init__(content, align, padding)
     
@@ -392,6 +422,10 @@ class HorizontalLayout(VerticalLayout):
 
 
 class Frame(Widget):
+    '''
+    Container for gui objects
+    
+    '''
     def __init__(self, content=None):
         self.content = content
         super(Frame,self).__init__()
@@ -433,6 +467,9 @@ class Frame(Widget):
 
 class LayoutWindow(object):
     '''
+    Window gui manager. 
+    Passes mouse events to the intersecting widget.
+    
     
     '''
     def __init__(self, content, pygletWindow):
@@ -448,7 +485,6 @@ class LayoutWindow(object):
         
         if self.content.is_expandable():
             self.content.expand(self.width, self.height)
-        
         
     def doLayout(self):
         #print "content"

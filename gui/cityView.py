@@ -3,24 +3,325 @@ Created on Aug 30, 2015
 
 @author: chris
 '''
+import pyglet
+from pyglet.gl import (glMatrixMode,GL_PROJECTION,GL_MODELVIEW,
+                        glPushMatrix,glPopMatrix,glLoadIdentity,
+                        glOrtho,glColorMask,GL_FALSE,GL_TRUE)
+from pyglet import clock
 from pyglet.window import key
 from pyglet.graphics import OrderedGroup
 from pyglet.sprite import Sprite
-from engine.cityLocation import CityLocation
-from tileImages import TileImages
+
 import gui
-import engine
-from util import create2dArray,createRect,createHollowRect
-from engine.tileConstants import CLEAR
-from pyglet.gl import *
-import math
-from pyglet import clock
-from engine import tileConstants
+from gui.tileImageLoader import TileImageLoader
 import microWindow
 import layout
 
-YOFF = 660
+import engine
+from engine.cityLocation import CityLocation
+from engine.tileConstants import CLEAR
+from engine import tileConstants
+from util import create2dArray,createRect,createHollowRect
 
+
+TILESIZE = 16
+BG_GROUP_ORDER = 1
+MG_GROUP_ORDER = 2
+FG_GROUP_ORDER = 3
+
+
+
+class ViewportGroup(OrderedGroup):
+    '''
+    ViewportGroup
+    
+    Pyglet rendering group. Allows a zoomable and panable orthographic viewport to
+    be controlled. Does not allows one to view outside defined map size.
+    Gradually zooms in and out. Inverts opengl's screen bottom up coordinate sys 
+    so coords start at top and progress down.
+    '''
+    INCREASE_ZOOM = 2
+    DECREASE_ZOOM = 1
+    
+    def __init__(self, order=BG_GROUP_ORDER):
+        super(ViewportGroup, self).__init__(order)
+        
+        self.zoomSpeed = float(gui.config.get('misc', 'ZOOM_TRANSITION_SPEED'))
+        self.zoomInFactor = float(gui.config.get('misc', 'ZOOM_INCREMENT'))
+        self.zoomOutFactor = 1 / self.zoomInFactor
+        self.zoomLevel = 1
+        self.targetZoom = self.zoomLevel
+        self.zoomTransition = None
+        self.deltaZoom = 0
+        self.zoomX = None
+        self.zoomY = None
+        
+        self.mapWidth = 0
+        self.mapHeight = 0
+        self.zoomedWidth  = 0
+        self.zoomedHeight = 0
+        self.renderWidth = 0
+        self.renderHeight = 0
+        self.widgetWidth = 0
+        self.widgetHeight = 0
+        
+        self.left   = 0
+        self.right  = 0
+        self.bottom = 0
+        self.top    = 0
+        
+    def setMapSize(self, width, height):
+        self.mapWidth = width
+        self.mapHeight = height
+        
+    def setViewportSize(self, (width, height),
+                                (windowWidth, windowHeight)):
+        '''
+        Allows the render and widget sizes to be defined,
+        recalculating the viewport accordingly.
+        '''
+        self.renderWidth = windowWidth
+        self.renderHeight = windowHeight
+        self.widgetWidth = width
+        self.widgetHeight = height
+
+        x = self.zoomX or (self.widgetWidth / 2)
+        y = self.zoomY or (self.widgetHeight / 2)
+        self._setZoom(x, y, None)
+        
+    def setFocus(self, dx, dy):
+        '''
+        setFocus
+        
+        Pans the view by the amount given in arguments,
+        restricting the view within limits of map
+        '''
+        left = self.left - dx * self.zoomLevel
+        bottom = self.bottom + dy * self.zoomLevel
+        
+        ''' restrict view '''
+        maxLeft = self.mapWidth - self.zoomedWidth
+        maxBottom = self.mapHeight - self.zoomedHeight
+        
+        left = max(0, left)
+        left = min(maxLeft + 
+                   (self.renderWidth - self.widgetWidth) 
+                    * self.zoomLevel, left)
+        right = left + self.zoomedWidth
+        
+        bottom = max(0, bottom)
+        bottom = min(maxBottom, bottom)
+        top = bottom + self.zoomedHeight
+        
+        self.left   = left
+        self.right  = right
+        self.bottom = bottom
+        self.top    = top
+        
+    def _setZoom(self, x, y, newZoomLevel):
+        '''
+        sets an absolute zoom level, 
+            focused on x and y given in world-space coords.
+        will not allow zoom < 0.2 or so far out that
+        outside of map borders would be revealed.
+        '''
+        if newZoomLevel is None:
+            newZoomLevel = self.zoomLevel
+        
+        if .2 > newZoomLevel:
+            ''' restricts zoom-in to a normal level '''
+            return
+
+        mouseX = x / float(self.renderWidth)
+        mouseY = y / float(self.renderHeight)
+
+        mouseXInWorld = self.left + mouseX * self.zoomedWidth
+        mouseYInWorld = self.bottom + mouseY * self.zoomedHeight
+
+        zoomedWidth  = self.renderWidth * newZoomLevel
+        zoomedHeight = self.renderHeight * newZoomLevel
+
+        left   = mouseXInWorld - mouseX * zoomedWidth
+        right  = mouseXInWorld + (1 - mouseX) * zoomedWidth
+        bottom = mouseYInWorld - mouseY * zoomedHeight
+        top    = mouseYInWorld + (1 - mouseY) * zoomedHeight
+        
+        # restricts zoom so it will not reveal the outside of the map
+        maxRight = (self.mapWidth + 
+                    (self.renderWidth - self.widgetWidth)  
+                        * self.zoomLevel)
+        maxTop = self.mapHeight
+        if left < 0:
+            left = 0
+            if zoomedWidth <= maxRight:
+                right = zoomedWidth
+            else:
+                return
+        if right > maxRight:
+            right = maxRight
+            if right - zoomedWidth >= 0:
+                left = right - zoomedWidth
+            else:
+                return
+        if bottom < 0:
+            bottom = 0
+            if zoomedHeight <= maxTop:
+                top = zoomedHeight
+            else:
+                return
+        if top > maxTop:
+            top = maxTop
+            if top - zoomedHeight >= 0:
+                bottom = top - zoomedHeight
+            else:
+                return
+        
+        self.left = left
+        self.right = right
+        self.bottom = bottom
+        self.top = top
+        self.zoomLevel = newZoomLevel
+        self.zoomedWidth = zoomedWidth
+        self.zoomedHeight = zoomedHeight
+    
+    def setZoom(self, x, y, newZoomLevel):
+        '''
+        triggers a change in zoom level
+        '''
+        self.targetZoom = newZoomLevel
+        self.zoomX = x
+        self.zoomY = y
+        self.deltaZoom = (newZoomLevel - self.zoomLevel) * 10
+        if newZoomLevel > self.zoomLevel:
+            self.zoomTransition = self.INCREASE_ZOOM
+        elif newZoomLevel < self.zoomLevel:
+            self.zoomTransition = self.DECREASE_ZOOM
+
+    def changeZoom(self, x, y, dy):
+        '''
+        allows zoom level to be changed incrementally
+        by a predefined change factor.
+        a negative dy will zoom out while a positive dy will zoom in.
+        '''
+        y = self.renderHeight - y
+        
+        # Get scale factor
+        f = self.zoomInFactor if dy > 0 else self.zoomOutFactor if dy < 0 else 1
+        
+        newZoomLevel = self.zoomLevel * f
+        self.setZoom(x, y, newZoomLevel)
+        
+    def updateZoomTransition(self, dt):
+        if self.zoomTransition is not None:
+            self._setZoom(self.zoomX, self.zoomY, 
+                         self.zoomLevel + self.deltaZoom * dt)
+            if ((self.zoomTransition == self.INCREASE_ZOOM and
+                    self.zoomLevel >= self.targetZoom) or
+                    (self.zoomTransition == self.DECREASE_ZOOM and\
+                    self.zoomLevel <= self.targetZoom)):
+                self.zoomTransition = None
+                self._setZoom(self.zoomX, self.zoomY, self.targetZoom)
+    
+    def update(self, dt):
+        self.updateZoomTransition(dt)
+
+    def screenCoordsToCityLocation(self, x, y):
+        '''
+            returns city relative location from gui coords
+        '''
+        y = self.renderHeight - y
+        mouse_x = x / float(self.renderWidth)
+        mouse_y = y / float(self.renderHeight)
+        
+        mouse_x_in_world = self.left   + mouse_x * self.zoomedWidth
+        mouse_y_in_world = self.bottom + mouse_y * self.zoomedHeight
+        
+        return CityLocation(int(mouse_x_in_world / TILESIZE), 
+                            int(mouse_y_in_world / TILESIZE))
+    
+    def set_state(self):
+        '''
+            sets the viewport
+        '''
+        glMatrixMode(GL_PROJECTION)
+        glPushMatrix()
+        glLoadIdentity()
+        
+        glMatrixMode(GL_MODELVIEW)
+        glPushMatrix()
+        glLoadIdentity()
+        glOrtho(self.left, self.right, self.top, self.bottom, 1, -1)
+
+        
+    def unset_state(self):
+        glMatrixMode(GL_PROJECTION)
+        glPopMatrix()
+        glMatrixMode(GL_MODELVIEW)
+        glPopMatrix()
+
+
+class BlinkingGroup(OrderedGroup):
+    '''
+    BlinkingGroup
+    
+    Uses given class's state and adds a blink
+    functionality.
+    '''
+    def __init__(self, tilesGroup):
+        super(BlinkingGroup,self).__init__(MG_GROUP_ORDER)
+        self.tilesGroup = tilesGroup
+        self.blink = False
+        self.lastChange = 0
+        self.dt = 0
+        self.freq = 0.8
+        self.paused = False
+        
+    def set_state(self):
+        self.tilesGroup.set_state()
+        if self.blink:
+            glColorMask(GL_FALSE,GL_FALSE,GL_FALSE,GL_FALSE)
+    
+    def unset_state(self):
+        self.tilesGroup.unset_state()
+        if self.blink:
+            glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE)
+    
+    def start(self):
+        self.paused = False
+        
+    def stop(self):
+        self.paused = True
+    
+    def update(self, dt):
+        self.dt += dt
+        if self.dt > self.lastChange + self.freq and not self.paused:
+            self.blink = not self.blink
+            self.lastChange = self.dt
+
+
+class ToolCursorGroup(OrderedGroup):
+    def __init__(self, tilesGroup):
+        super(ToolCursorGroup,self).__init__(3)
+        self._tilesGroup = tilesGroup
+    
+    def set_state(self):
+        self._tilesGroup.set_state()
+    
+    def unset_state(self):
+        self._tilesGroup.unset_state()
+
+
+class ToolCursor(object):
+    '''
+    data structure for tool cursor visual
+    '''
+    def __init__(self):
+        self.rect = None # CityRect
+        self.fillColor = None
+        self.borderColor = (0, 0, 0, 255)
+        self.vl = None
+        self.borderVL = None
+        
 
 class TileSprite(Sprite):
     '''
@@ -38,173 +339,46 @@ class TileSprite(Sprite):
     
     def setTile(self, tileNum):
         self.image = self.tileImages.getTileImage(tileNum)
-
-
-
-class TilesGroup(OrderedGroup):
-    def __init__(self, yOff, order=1):
-        super(TilesGroup, self).__init__(order)
-        self.focusX = 0
-        self.focusY = 0
-        self.zoom = 1.0
-        self.zoomToViewCenter = True
         
-    def setViewportSize(self, width, height):
-        self.viewWidth = width
-        self.viewHeight = height
-        self.setViewCentre()
-        
-    def setFocus(self, x=None, y=None):
-        if x is not None:
-            self.focusX = x
-        if y is not None:
-            self.focusY = y
-        if self.zoomToViewCenter:
-            self.setViewCentre()
-            
-    def setViewCentre(self):
-        self.zoomPointX = -self.focusX + (self.viewWidth / 2)
-        self.zoomPointY = -self.focusY + (self.viewHeight / 2)
-        print self.zoomPointX,self.zoomPointY
-
-    def set_state(self):
-        '''
-            translates tilemap to zoom into centre of viewport.
-        '''
-        
-        glPushMatrix()
-        glEnable(GL_BLEND)
-        glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
-        glTranslatef(0.,(self.viewHeight-660) * self.zoom, 0.)
-        glTranslatef(float(self.focusX),float(self.focusY),0.)
-        glTranslatef(self.zoomPointX, self.zoomPointY,0.0)
-        glScalef(self.zoom,self.zoom,1.0)
-        glTranslatef(-self.zoomPointX,-self.zoomPointY,0.0)
-        
-        
-    def unset_state(self):
-        glPopMatrix()
-
-
-class BlinkOverlayGroup(OrderedGroup):
-    def __init__(self, tilesGroup):
-        super(BlinkOverlayGroup,self).__init__(2)
-        self._tilesGroup = tilesGroup
-        self.blink = False
-        self.lastChange = 0
-        self.dt = 0
-        self.freq = 0.8
-        self.paused = False
-        
-    def set_state(self):
-        self._tilesGroup.set_state()
-        if self.blink:
-            glColorMask(GL_FALSE,GL_FALSE,GL_FALSE,GL_FALSE)
-    
-    def unset_state(self):
-        self._tilesGroup.unset_state()
-        if self.blink:
-            glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE)
-    
-    def start(self):
-        self.paused = False
-        
-    def stop(self):
-        self.paused = True
-    
-    def update(self, dt):
-        self.dt += dt
-        if self.dt > self.lastChange + self.freq and not self.paused:
-            self.blink = not self.blink
-            self.lastChange = self.dt
-
-        
-class ToolCursorGroup(OrderedGroup):
-    def __init__(self, tilesGroup):
-        super(ToolCursorGroup,self).__init__(3)
-        self._tilesGroup = tilesGroup
-    
-    def set_state(self):
-        self._tilesGroup.set_state()
-    
-    def unset_state(self):
-        self._tilesGroup.unset_state()
-    
-
-
-class ToolCursor(object):
-    def __init__(self):
-        self.rect = None # CityRect
-        #self.borderColor = None
-        self.fillColor = None
-        self.borderColor = (0, 0, 0, 255)
-        self.vl = None
-        self.borderVL = None
-        
-        
-class ToolManager(object):
-    
-    def __init__(self):
-        pass
-        
-        
-        
-        
-        
+   
         
         
 '''
 class CityView
 
-Displays the Map to the user and allows the current
-tool to act on the map at spot where user clicks
+Controls the rendering of the city.
+
+
 '''
 class CityView(layout.Spacer):
-    YOFF = 660  # tiles are drawn at this height
-    DEFAULT_TILE_SIZE = 16
-    INCREASE = 2
-    DECREASE = 1
-
     def __init__(self, engine):
         super(CityView,self).__init__()
         
         self.animCoefficient = 0
         self.animClock = clock.Clock(time_function=self.getTime)
         self.keys = microWindow.Keys(self)
+        self.scrollSpeed = int(gui.config.get('misc', 'KEYBOARD_SCROLL_SPEED'))
         
-        # zoom related vars
-        self.zoomSpeed = float(gui.config.get('misc', 'ZOOM_TRANSITION_SPEED'))
-        self.zoomChange = float(gui.config.get('misc', 'ZOOM_INCREMENT'))
-        self.scrollSpeed = int(gui.config.get('misc', 'KEY_SCROLL_SPEED'))
-        self._scaleOffX = 0
-        self._scaleOffY = 0
-        self._zoom = 1.0
-        self._targetZoom = self._zoom
-        self.zoomTransition = None
+        self.tileImages = TileImageLoader(
+                            gui.config.get('misc', 'TILES_FILE'), 
+                            TILESIZE, flipTilesVert=True, padding=2)
         
-        self.x = self.y = self._width = self.height = 0
-        
-        self.tileImages = TileImages(self.DEFAULT_TILE_SIZE)
-        self._tilesGroup = TilesGroup(self.YOFF)
-        self._cursorGroup = ToolCursorGroup(self._tilesGroup)
-        self._tilesGroup.setViewportSize(900, 660)
-        self.overlayGroup = OrderedGroup(2)
-        self._tileSprites = None
-        self.blinkGroup = BlinkOverlayGroup(self._tilesGroup)
+        self.tilesGroup = ViewportGroup()
+        self.toolCursorGroup = ToolCursorGroup(self.tilesGroup)
+        self.blinkingGroup = BlinkingGroup(self.tilesGroup)
+        self.tileSprites = None
         
         self.reset(engine)
     
-    
     def layout(self, x, y):
         super(CityView,self).layout(x,y)
-        self._tilesGroup.setViewportSize(self.width, self.height)
-        self.upOff()
+        print self.height,self.savedFrame.pygletWindow.height
+        self.tilesGroup.setViewportSize((self.width, self.height),
+                                         (self.savedFrame.pygletWindow.width,
+                                         self.savedFrame.pygletWindow.height))
         
     def size(self, frame):
         super(CityView,self).size(frame)
-        
         
         
     def reset(self, engine):
@@ -222,8 +396,19 @@ class CityView(layout.Spacer):
     def setEngine(self, eng):
         self._engine = eng
         self._engine.push_handlers(self)
+        self.tilesGroup.setMapSize(eng.getWidth() * TILESIZE, 
+                                   eng.getHeight() * TILESIZE)
+    
+    def getHeight(self):
+        return self.height
+    
+    def getWidth(self):
+        return self.width
             
     def setToolCursor(self, newCursor):
+        '''
+        
+        '''
         if self.toolCursor is None\
             and self.toolCursor == newCursor:
             return
@@ -241,14 +426,17 @@ class CityView(layout.Spacer):
             self.toolCursor.vl = createRect(x, y, x2-x, y2-y, 
                                             self.toolCursor.fillColor, 
                                             self.batch, 
-                                            self._cursorGroup)
+                                            self.toolCursorGroup)
             self.toolCursor.borderVL = createHollowRect(x, y, x2-x, y2-y, 
                                             self.toolCursor.borderColor, 
                                             self.batch, 
-                                            self._cursorGroup)
+                                            self.toolCursorGroup)
             
         
     def newToolCursor(self, newRect, tool):
+        '''
+        
+        '''
         newCursor = ToolCursor()
         newCursor.rect = newRect
         
@@ -257,25 +445,13 @@ class CityView(layout.Spacer):
         newCursor.fillColor = map(int, tuple(roadsBg.split(',')))
         
         self.setToolCursor(newCursor)
-        
-    
-    def expandMapCoords(self, rect):
-        '''
-            world-space coordinates of tile coord
-        '''
-        tileSize = self.DEFAULT_TILE_SIZE
-        x = self.toolCursor.rect.x * tileSize
-        y = (self.YOFF - (self.toolCursor.rect.y - 1)
-                       * tileSize - tileSize)
-        x2 = x + self.toolCursor.rect.width * tileSize
-        y2 = y + self.toolCursor.rect.height * tileSize
-        y2 = y - (y2 - y)
-        return (x,y,x2,y2)
-    
+
     
     def setToolPreview(self, newPreview):
         '''
-            
+        Shows the given preview's tiles in place.
+        If a preview already exists, resets those tiles.
+        
         '''
         
         if self.toolPreview is not None:
@@ -298,169 +474,86 @@ class CityView(layout.Spacer):
                     y2 = y - newPreview.offsetY
                     tNum = newPreview.getTile(x2,y2)
                     if tNum != CLEAR:
-                        self._tileSprites[x2][y2].setTile(tNum)
+                        self.tileSprites[x2][y2].setTile(tNum)
         self.toolPreview = newPreview
         
-
-    def evToCityLocation(self, x, y):
+        
+    def expandMapCoords(self, rect):
         '''
-            returns city relative location from gui coords
+            world-space coordinates of tile coord
         '''
-        tileSize = self.DEFAULT_TILE_SIZE
-        # transformed coords:
-        x = math.floor((x - self._scaleOffX) / self._zoom + self._scrollX)
-        y = math.floor((self.height - y - self._scaleOffY)
-                        / self._zoom + self._scrollY)
-        #print y,self._height,self._scaleOffY,self._scrollY
-        return CityLocation(int(x / tileSize), int(y / tileSize))
-    
-    def getScroll(self):
-        return (self._scrollX, self._scrollY)
-    
-    def getHeight(self):
-        return self.height
-    
-    def getWidth(self):
-        return self.width
-    
-    def printWorldCoords(self,x,y):
-        ''' debugging fncn: print world coords from screen coords
+        x = self.toolCursor.rect.x * TILESIZE
+        y = (self.toolCursor.rect.y - 1) * TILESIZE + TILESIZE
+        x2 = x + self.toolCursor.rect.width * TILESIZE
+        y2 = y + self.toolCursor.rect.height * TILESIZE
+        return (x,y,x2,y2)
+        
+    def screenCoordsToCityLocation(self, x, y):
         '''
-        #print x,self._scaleOffX,self._scrollX,self._zoom
-        x = math.floor((x - self._scaleOffX) / self._zoom + self._scrollX)
-        #print y,self._scaleOffY,self._scrollY,self._zoom
-        y = (math.floor(((self.height - y) - self._scaleOffY)
-                        / self._zoom + self._scrollY))
-        print "World Coords: " + str((x,y))
+        given window-space coords will return CityLocation object
+        through tilesGroup
+        '''
+        return self.tilesGroup.screenCoordsToCityLocation(x, y)
         
     def key_release(self, symbol, modifiers):
         if symbol == key.EQUAL:
-            self.setZoom(increment=self.zoomChange)
-            self._tilesGroup.zoomToViewCenter = True
+            self.changeZoom(increment=1)
+            self.tilesGroup.zoomToViewCenter = True
         if symbol == key.MINUS:
-            self.setZoom(increment=-self.zoomChange)
-            self._tilesGroup.zoomToViewCenter = True
+            self.changeZoom(increment=-1)
+            self.tilesGroup.zoomToViewCenter = True
         if symbol == key._0:
-            self.setZoom(newValue=1.0)
-            self._tilesGroup.zoomToViewCenter = True
+            self.changeZoom(newValue=1.0)
+            self.tilesGroup.zoomToViewCenter = True
             
-    def getTime(self):
-        ''' dilates time for controlling animation clock speed'''
-        return clock._default_time_function() * self.animCoefficient
-            
-    def setSpeed(self, lastSpeed, speed):
-        if lastSpeed:
-            lastSpeed.lastTs = self.getTime()
-        self.animClock.restore_time(speed.lastTs)
-        self.animCoefficient = speed.animCoefficient
-        if speed == engine.speed.PAUSED:
-            self.blinkGroup.stop()
-        else:
-            self.blinkGroup.start()
-            
-    def setZoom(self, newValue=None, increment=None):
+    def changeZoom(self, newValue=None, increment=None):
         '''
             pass one value but not both. changeZoom increments
         '''
         assert newValue or increment and not (newValue and increment)
         
         if increment:
-            newValue = round(self._zoom * (1 + increment), 2)
-            
-        tileSize = self.DEFAULT_TILE_SIZE
-        if (self._engine.getWidth() * tileSize * newValue
-                >= self.width) and\
-                (self._engine.getHeight() * tileSize * newValue
-                 >= self.height):
-            self._targetZoom = newValue
-            self.deltaZoom = (newValue - self._zoom) * 3
-            if newValue > self._zoom:
-                self.zoomTransition = self.INCREASE
-            elif newValue < self._zoom:
-                self.zoomTransition = self.DECREASE
-            print self.height,newValue
+            self.tilesGroup.changeZoom(self.width/2, self.height/2, 
+                                        -increment)
+        else:
+            self.tilesGroup.setZoom(self.width/2, self.height/2, 
+                                        newValue)
+        
             
     def zoomToPoint(self, x, y, change):
-        print change,x,y
-        self._tilesGroup.zoomToViewCenter = False
-        return
-        self._tilesGroup.zoomPointX = (x + self._scrollX) * self._zoom
-        self._tilesGroup.zoomPointY = ((self.height) - y + self._scrollY) * self._zoom
-        #print self._tilesGroup.zoomPointX,self._tilesGroup.zoomPointY
-        self._zoom += change * 0.5
-        self._tilesGroup.zoom = self._zoom
-        
+        self.tilesGroup.changeZoom(x, y, -change)
                 
     def moveView(self, mx, my):
-        if mx != 0:
-            mx = mx / self._zoom
-            self._setScroll(x=-mx+self._scrollX)
-        if my != 0:
-            my = my / self._zoom
-            self._setScroll(y=my+self._scrollY)
-            
-    def validateScroll(self, zoom=None):
-        self._setScroll(self._scrollX, self._scrollY, zoom)
-        
-    def _setScrollFree(self, x=None, y=None):
-        ''' non restricted scrolling '''
-        if x is not None:
-            self._scrollX = x
-        if y is not None:
-            self._scrollY = y
-            #print y
-        self._tilesGroup.setFocus(-self._scrollX, self._scrollY)
-        #print self._scrollY
-        
-    def _setScroll(self, x=None, y=None, zoom=None):
-        #self._setScrollFree(x,y)
-        #return
-        
-        ''' restricts within limits of map '''
-        if zoom is None:
-            zoom = self._zoom
-        if x is not None:
-            width = ((self._engine.getWidth() *
-                     (self.DEFAULT_TILE_SIZE * zoom))
-                     - self.width) / zoom
-            minX = math.ceil(self._scaleOffX / zoom)
-            maxX = math.floor(minX + width)
-            self._scrollX = max(minX,x)
-            self._scrollX = min(maxX,self._scrollX)
-        if y is not None:
-            height = ((self._engine.getHeight() * self.DEFAULT_TILE_SIZE * zoom) 
-                    - self.height) / zoom
-            minY = math.floor(self._scaleOffY / zoom)
-            maxY = math.floor(minY + height)
-            self._scrollY = max(minY,y)
-            self._scrollY = min(maxY,self._scrollY)
-            #print self._scrollY
-        self._tilesGroup.setFocus(-self._scrollX, self._scrollY)
-        
+        self.tilesGroup.setFocus(mx, my)
+    
     def _renderTileMap(self):
+        '''
+        creates pyglet sprite objects for everytile
+        at its static position. Stores in 2d list as member var
+        '''
         mapWidth = self._engine.getWidth()
         mapHeight = self._engine.getHeight()
-        if self._tileSprites is not None:
+        if self.tileSprites is not None:
             for y in xrange(mapHeight):
                 for x in xrange(mapWidth):
-                    if self._tileSprites[x][y] is not None:
-                        self._tileSprites[x][y].delete()
+                    if self.tileSprites[x][y] is not None:
+                        self.tileSprites[x][y].delete()
         else:
-            self._tileSprites = create2dArray(mapWidth, mapHeight, None)
+            self.tileSprites = create2dArray(mapWidth, mapHeight, None)
         self.batch = pyglet.graphics.Batch()
-        tileSize = self.DEFAULT_TILE_SIZE
         for y in xrange(mapHeight):
             for x in xrange(mapWidth):
                 cell = self._engine.getTile(x,y)
-                x2 = (x * tileSize)
-                y2 = (self.YOFF - y * tileSize - tileSize)
-                self._tileSprites[x][y] = TileSprite(cell,
+                x2 = (x * TILESIZE)
+                y2 = (y * TILESIZE + TILESIZE)
+                self.tileSprites[x][y] = TileSprite(cell,
                                     x2,
                                     y2,
                                     self.batch,
-                                    self._tilesGroup,
+                                    self.tilesGroup,
                                     self.tileImages,
                                     self.animClock)
+            
 
     def on_map_changed(self, tilesList):
         '''
@@ -470,29 +563,49 @@ class CityView(layout.Spacer):
             x = tile[0]
             y = tile[1]
             cell = self._engine.getTile(x,y)
-            self._tileSprites[x][y].setTile(cell)
-            
+            self.tileSprites[x][y].setTile(cell)
+     
     def on_power_indicator_changed(self, pos):
         x = pos[0]
         y = pos[1]
         ind = self._engine.getTileIndicator(x,y)
         if ind and self._tileIndicators[x][y] is None:
             img = self.tileImages.getTileImage(tileConstants.LIGHTNINGBOLT)
-            tileSize = self.DEFAULT_TILE_SIZE
-            x2 = x * tileSize
-            y2 = (self.YOFF - y * tileSize - tileSize)
+            x2 = x * TILESIZE
+            y2 = y * TILESIZE + TILESIZE
             self._tileIndicators[x][y] = Sprite(img,
                                                 batch=self.batch,
-                                                group=self.blinkGroup,
+                                                group=self.blinkingGroup,
                                                 x=x2,
                                                 y=y2)
         if not ind and self._tileIndicators[x][y] is not None:
             self._tileIndicators[x][y].delete()
             self._tileIndicators[x][y] = None
             
+    def getTime(self):
+        ''' dilates time for controlling animation clock speed'''
+        return clock._default_time_function() * self.animCoefficient
+            
+    def setSpeed(self, lastSpeed, newSpeed):
+        '''
+        sets the animation speed
+        
+        Paremeters:
+        lastSpeed the last speed obj so cityview can save lastTs
+        newSpeed the new newSpeed to set
+        '''
+        if lastSpeed:
+            lastSpeed.lastTs = self.getTime()
+        self.animClock.restore_time(newSpeed.lastTs)
+        self.animCoefficient = newSpeed.animCoefficient
+        if newSpeed == engine.speed.PAUSED:
+            self.blinkingGroup.stop()
+        else:
+            self.blinkingGroup.start()
+            
     def _checkScrollKeys(self, dt):
         # move 12 tiles per second
-        delta = int(self.scrollSpeed * self.DEFAULT_TILE_SIZE * dt) 
+        delta = int(self.scrollSpeed * TILESIZE * dt) 
         if (self.keys[key.LEFT]):
             self.moveView(delta, 0)
         elif (self.keys[key.RIGHT]):
@@ -501,31 +614,11 @@ class CityView(layout.Spacer):
             self.moveView(0, delta)
         elif (self.keys[key.UP]):
             self.moveView(0, -delta)
-    
-    def upOff(self):
-        self._scaleOffX = self.width / 2 * (1-self._zoom)
-        self._scaleOffY = self.height / 2 * (1-self._zoom)
-        self.validateScroll(self._zoom)
-    
-    def updateZoom(self, dt):
-        self._zoom += self.deltaZoom * dt
-        if ((self.zoomTransition == self.INCREASE and
-                self._zoom >= self._targetZoom) or
-                (self.zoomTransition == self.DECREASE and\
-                self._zoom <= self._targetZoom)):
-            self.zoomTransition = None
-            self._zoom = self._targetZoom
-        self._tilesGroup.zoom = self._zoom
-        self.upOff()
-        self.setToolCursor(self.toolCursor)
-        
-
+            
     def update(self, dt):
         self._checkScrollKeys(dt)
-        if self.zoomTransition is not None:
-            self.updateZoom(dt)
-        self.blinkGroup.update(dt)
-        
+        self.blinkingGroup.update(dt)
+        self.tilesGroup.update(dt)
         
         
         

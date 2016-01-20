@@ -6,7 +6,7 @@ import ConfigParser
 import pyglet
 from array import *
 from engine.tileConstants import *
-from util import readShort, readInt, create2dArray
+from util import readShort, readInt, create2dArray, timefunc
 from engine.terrainBehaviour import TerrainBehaviour
 from mapScanner import MapScanner
 from cityLocation import CityLocation
@@ -313,7 +313,8 @@ class Engine(pyglet.event.EventDispatcher):
         '''  '''
         self.fCycle = (self.fCycle + 1) % 1024
         self.simulate(self.fCycle % 16)
-            
+    
+    
     def simulate(self, mod16):
         '''  '''
         band = self.getWidth() / 8
@@ -379,6 +380,7 @@ class Engine(pyglet.event.EventDispatcher):
         loc.y = ySave
         return rv,loc
     
+    
     def movePowerLocation(self, loc, dir):
         ''' 
             will move the given location a direction.
@@ -415,6 +417,7 @@ class Engine(pyglet.event.EventDispatcher):
         return False,loc
             
 
+    
     def powerScan(self):
         ''' called once a cycle. does the actual work of populating powermap 
             starts at all powerplants and traces the power path'''
