@@ -11,7 +11,11 @@ from util import create2dArray
 
 
 class ToolPreview(object):
-
+    '''
+    ToolPreview
+    
+    
+    '''
     def __init__(self):
         self.offsetX = 0 #?
         self.offsetY = 0 #?

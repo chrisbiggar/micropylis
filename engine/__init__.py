@@ -6,7 +6,7 @@ import ConfigParser
 import pyglet
 from array import *
 from engine.tileConstants import *
-from util import readShort, readInt, create2dArray, timefunc
+from util import readShort, readInt, create2dArray
 from engine.terrainBehaviour import TerrainBehaviour
 from mapScanner import MapScanner
 from cityLocation import CityLocation

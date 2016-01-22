@@ -7,7 +7,6 @@ import pyglet
 from pyglet.gl import (glMatrixMode,GL_PROJECTION,GL_MODELVIEW,
                         glPushMatrix,glPopMatrix,glLoadIdentity,
                         glOrtho,glColorMask,GL_FALSE,GL_TRUE)
-from pyglet import clock
 from pyglet.window import key
 from pyglet.graphics import OrderedGroup
 from pyglet.sprite import Sprite
@@ -88,6 +87,10 @@ class ViewportGroup(OrderedGroup):
         x = self.zoomX or (self.widgetWidth / 2)
         y = self.zoomY or (self.widgetHeight / 2)
         self._setZoom(x, y, None)
+        
+    def changeFocus(self, dx, dy):
+        #self.setFocus()
+        pass
         
     def setFocus(self, dx, dy):
         '''
@@ -301,7 +304,7 @@ class BlinkingGroup(OrderedGroup):
 
 class ToolCursorGroup(OrderedGroup):
     def __init__(self, tilesGroup):
-        super(ToolCursorGroup,self).__init__(3)
+        super(ToolCursorGroup,self).__init__(FG_GROUP_ORDER)
         self._tilesGroup = tilesGroup
     
     def set_state(self):
@@ -351,11 +354,12 @@ Controls the rendering of the city.
 
 '''
 class CityView(layout.Spacer):
-    def __init__(self, engine):
+    def __init__(self, animClock):
         super(CityView,self).__init__()
         
-        self.animCoefficient = 0
-        self.animClock = clock.Clock(time_function=self.getTime)
+        self.engine = None
+        
+        self.animClock = animClock
         self.keys = microWindow.Keys(self)
         self.scrollSpeed = int(gui.config.get('misc', 'KEYBOARD_SCROLL_SPEED'))
         
@@ -368,42 +372,147 @@ class CityView(layout.Spacer):
         self.blinkingGroup = BlinkingGroup(self.tilesGroup)
         self.tileSprites = None
         
-        self.reset(engine)
-    
-    def layout(self, x, y):
-        super(CityView,self).layout(x,y)
-        print self.height,self.savedFrame.pygletWindow.height
-        self.tilesGroup.setViewportSize((self.width, self.height),
-                                         (self.savedFrame.pygletWindow.width,
-                                         self.savedFrame.pygletWindow.height))
-        
-    def size(self, frame):
-        super(CityView,self).size(frame)
-        
-        
-    def reset(self, engine):
         self._scrollX = 0
         self._scrollY = 0
         self.toolCursor = None
         self.toolPreview = None
-        self.setEngine(engine)
-        self._renderTileMap()
-        self._tileIndicators = create2dArray(
-                                    self._engine.getWidth(), 
-                                    self._engine.getHeight(), 
-                                    None)
-            
+        self._tileIndicators = None
+        self.engine = None
+        
     def setEngine(self, eng):
-        self._engine = eng
-        self._engine.push_handlers(self)
+        self.engine = eng
+        if eng is None:
+            return
+        eng.push_handlers(self)
+        eng.push_handlers(self.keys)
         self.tilesGroup.setMapSize(eng.getWidth() * TILESIZE, 
                                    eng.getHeight() * TILESIZE)
+        
+    def setRenderSize(self, width, height):
+        self.renderWidth = width
+        self.renderHeight = height
+        
+    def size(self, frame):
+        super(CityView,self).size(frame)
+    
+    def layout(self, x, y):
+        super(CityView,self).layout(x,y)
+        self.tilesGroup.setViewportSize((self.width, self.height),
+                                         (self.renderWidth, self.renderHeight))
+        self.batch = self.savedFrame.batch
+        if self.tileSprites is None:
+            self._generateTileSprites()
+        
+
+    def reset(self, engine):
+        '''
+        To be called when city engine has changed, to update
+        cityview to new engine.
+        
+        '''
+        self._scrollX = 0
+        self._scrollY = 0
+        self.toolPreview = None
+        
+        self.deletePowerIndicators()
+        self.deleteToolCursor()
+        self._deleteTileSprites()
+        
+        self.setEngine(engine)
+        if self.engine is not None:
+            self._tileIndicators = create2dArray(
+                                        self.engine.getWidth(), 
+                                        self.engine.getHeight(), 
+                                        None)
+            
+    def _deleteTileSprites(self):
+        if self.tileSprites is not None:
+            for y in xrange(self.mapHeight):
+                for x in xrange(self.mapWidth):
+                    if self.tileSprites[x][y] is not None:
+                        self.tileSprites[x][y].delete()
+                        self.tileSprites[x][y] = None
+            self.tileSprites = None
+            
+    def deletePowerIndicators(self):
+        if not self._tileIndicators:
+            return
+        for y in xrange(self.mapHeight):
+            for x in xrange(self.mapWidth):
+                if self._tileIndicators[x][y] is not None:
+                    self._tileIndicators[x][y].delete()
+                    self._tileIndicators[x][y] = None
+        self._tileIndicators = None
+    
+    def _generateTileSprites(self):
+        '''
+        creates pyglet sprite objects for everytile
+        at its static position. Stores in 2d list as member var
+        '''
+        if self.engine is None:
+            return
+        self.mapWidth = self.engine.getWidth()
+        self.mapHeight = self.engine.getHeight()
+        if self.tileSprites is not None:
+            self._deleteTileSprites()
+        self.tileSprites = create2dArray(self.mapWidth, self.mapHeight, None)
+        for y in xrange(self.mapHeight):
+            for x in xrange(self.mapWidth):
+                cell = self.engine.getTile(x,y)
+                x2 = (x * TILESIZE)
+                y2 = (y * TILESIZE + TILESIZE)
+                self.tileSprites[x][y] = TileSprite(cell,
+                                    x2,
+                                    y2,
+                                    self.batch,
+                                    self.tilesGroup,
+                                    self.tileImages,
+                                    self.animClock)
+            
+
+    def on_map_changed(self, tilesList):
+        '''
+        modifies tile batch with tilesList
+        '''
+        for tile in tilesList:
+            x = tile[0]
+            y = tile[1]
+            cell = self.engine.getTile(x,y)
+            self.tileSprites[x][y].setTile(cell)
+     
+    def on_power_indicator_changed(self, pos):
+        x = pos[0]
+        y = pos[1]
+        ind = self.engine.getTileIndicator(x,y)
+        if ind and self._tileIndicators[x][y]:
+            self._tileIndicators[x][y].delete()
+            self._tileIndicators[x][y] = None
+        if ind:
+            img = self.tileImages.getTileImage(tileConstants.LIGHTNINGBOLT)
+            x2 = x * TILESIZE
+            y2 = y * TILESIZE + TILESIZE
+            self._tileIndicators[x][y] = Sprite(img,
+                                                batch=self.batch,
+                                                group=self.blinkingGroup,
+                                                x=x2,
+                                                y=y2)
+        if not ind and self._tileIndicators[x][y] is not None:
+            self._tileIndicators[x][y].delete()
+            self._tileIndicators[x][y] = None
+            
+
     
     def getHeight(self):
         return self.height
     
     def getWidth(self):
         return self.width
+    
+    def deleteToolCursor(self):
+        if self.toolCursor is not None:
+            self.toolCursor.vl.delete()
+            self.toolCursor.borderVL.delete()
+            self.toolCursor = None
             
     def setToolCursor(self, newCursor):
         '''
@@ -413,21 +522,18 @@ class CityView(layout.Spacer):
             and self.toolCursor == newCursor:
             return
         
-        if self.toolCursor is not None:
-            self.toolCursor.vl.delete()
-            self.toolCursor.borderVL.delete()
-            self.toolCursor = None
-            
+        self.deleteToolCursor()
         self.toolCursor = newCursor
         
         if self.toolCursor is not None:
             x,y,x2,y2 = self.expandMapCoords(self.toolCursor.rect)
-            
-            self.toolCursor.vl = createRect(x, y, x2-x, y2-y, 
+            width = x2-x
+            height = y2-y
+            self.toolCursor.vl = createRect(x, y, width, height, 
                                             self.toolCursor.fillColor, 
                                             self.batch, 
                                             self.toolCursorGroup)
-            self.toolCursor.borderVL = createHollowRect(x, y, x2-x, y2-y, 
+            self.toolCursor.borderVL = createHollowRect(x, y, width, height,
                                             self.toolCursor.borderColor, 
                                             self.batch, 
                                             self.toolCursorGroup)
@@ -437,6 +543,9 @@ class CityView(layout.Spacer):
         '''
         
         '''
+        if self.toolCursor and self.toolCursor.rect.equals(newRect):
+            return
+        
         newCursor = ToolCursor()
         newCursor.rect = newRect
         
@@ -525,80 +634,13 @@ class CityView(layout.Spacer):
                 
     def moveView(self, mx, my):
         self.tilesGroup.setFocus(mx, my)
-    
-    def _renderTileMap(self):
-        '''
-        creates pyglet sprite objects for everytile
-        at its static position. Stores in 2d list as member var
-        '''
-        mapWidth = self._engine.getWidth()
-        mapHeight = self._engine.getHeight()
-        if self.tileSprites is not None:
-            for y in xrange(mapHeight):
-                for x in xrange(mapWidth):
-                    if self.tileSprites[x][y] is not None:
-                        self.tileSprites[x][y].delete()
-        else:
-            self.tileSprites = create2dArray(mapWidth, mapHeight, None)
-        self.batch = pyglet.graphics.Batch()
-        for y in xrange(mapHeight):
-            for x in xrange(mapWidth):
-                cell = self._engine.getTile(x,y)
-                x2 = (x * TILESIZE)
-                y2 = (y * TILESIZE + TILESIZE)
-                self.tileSprites[x][y] = TileSprite(cell,
-                                    x2,
-                                    y2,
-                                    self.batch,
-                                    self.tilesGroup,
-                                    self.tileImages,
-                                    self.animClock)
-            
 
-    def on_map_changed(self, tilesList):
-        '''
-        modifies tile batch with tilesList
-        '''
-        for tile in tilesList:
-            x = tile[0]
-            y = tile[1]
-            cell = self._engine.getTile(x,y)
-            self.tileSprites[x][y].setTile(cell)
-     
-    def on_power_indicator_changed(self, pos):
-        x = pos[0]
-        y = pos[1]
-        ind = self._engine.getTileIndicator(x,y)
-        if ind and self._tileIndicators[x][y] is None:
-            img = self.tileImages.getTileImage(tileConstants.LIGHTNINGBOLT)
-            x2 = x * TILESIZE
-            y2 = y * TILESIZE + TILESIZE
-            self._tileIndicators[x][y] = Sprite(img,
-                                                batch=self.batch,
-                                                group=self.blinkingGroup,
-                                                x=x2,
-                                                y=y2)
-        if not ind and self._tileIndicators[x][y] is not None:
-            self._tileIndicators[x][y].delete()
-            self._tileIndicators[x][y] = None
             
-    def getTime(self):
-        ''' dilates time for controlling animation clock speed'''
-        return clock._default_time_function() * self.animCoefficient
-            
-    def setSpeed(self, lastSpeed, newSpeed):
+    def setSpeed(self, speed):
         '''
-        sets the animation speed
         
-        Paremeters:
-        lastSpeed the last speed obj so cityview can save lastTs
-        newSpeed the new newSpeed to set
         '''
-        if lastSpeed:
-            lastSpeed.lastTs = self.getTime()
-        self.animClock.restore_time(newSpeed.lastTs)
-        self.animCoefficient = newSpeed.animCoefficient
-        if newSpeed == engine.speed.PAUSED:
+        if speed == engine.speed.PAUSED:
             self.blinkingGroup.stop()
         else:
             self.blinkingGroup.start()

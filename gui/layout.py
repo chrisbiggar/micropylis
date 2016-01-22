@@ -2,7 +2,7 @@ import pyglet
 from pyglet.gl import *
 from pyglet.text import Label
 from inspect import isframe
-from util import createHollowRect, timefunc
+from util import createHollowRect
 
 
 (HALIGN_LEFT,HALIGN_CENTER,HALIGN_RIGHT,
@@ -22,6 +22,9 @@ class Widget(object):
         self.height = height
         self.savedFrame = None
         self.active = True
+        
+    def setNeedsLayout(self):
+        self.savedFrame.needsLayout = True
         
     def unFocus(self):
         pass
@@ -199,6 +202,7 @@ class LayoutLabel(Widget):
         
         
     def set_text(self, text):
+        #print text
         self.text = text
         self.delete()
         #print "set text: " + text
@@ -210,6 +214,7 @@ class LayoutLabel(Widget):
             return
         Widget.size(self, frame)
         if self.label is None:
+            #print self.text
             #print "create: " + self.text
             self.group = self.savedFrame.fgGroup
             self.label = Label(self.text,
@@ -428,6 +433,7 @@ class Frame(Widget):
     '''
     def __init__(self, content=None):
         self.content = content
+        self.batch = None
         super(Frame,self).__init__()
 
     def setNeedsLayout(self):
@@ -451,6 +457,7 @@ class Frame(Widget):
     
     def size(self, frame):
         super(Frame,self).size(frame)
+        self.batch = frame.batch
         if self.content is not None and self.active:
             self.content.size(self)
             
@@ -465,44 +472,37 @@ class Frame(Widget):
         self.content.layout(self.x,self.y)
 
 
-class LayoutWindow(object):
+class LayoutWindow():
     '''
     Window gui manager. 
     Passes mouse events to the intersecting widget.
     
     
     '''
-    def __init__(self, content, pygletWindow):
+    def __init__(self, content):
         self.content = content
         self.needsLayout = True
-        self.pygletWindow = pygletWindow
         self.focus = None
         self.cursor = None
         self.batch = pyglet.graphics.Batch()
         
-    def size(self):
-        self.content.size(self)
-        
-        if self.content.is_expandable():
-            self.content.expand(self.width, self.height)
-        
-    def doLayout(self):
-        #print "content"
-        self.needsLayout = False
-        self.size()
-        self.content.layout(0, 0)
-        
-        self.size()
-        self.content.layout(0, 0)
-        
-    def update(self, dt):
-        if self.needsLayout:
-            #print "do content update"
-            self.doLayout()
-    
     def setNeedsLayout(self):
         self.needsLayout = True
-    
+        
+    def doLayout(self, width, height):
+        #print "content"
+        self.needsLayout = False
+        
+        self.content.size(self)
+        if self.content.is_expandable():
+            self.content.expand(width, height)
+        self.content.layout(0, 0)
+        
+        self.content.size(self)
+        if self.content.is_expandable():
+            self.content.expand(width, height)
+        self.content.layout(0, 0)
+        
         
     def getWidgetAtPoint(self, x, y):
         content = self.content
@@ -553,14 +553,16 @@ class LayoutWindow(object):
             widget.onMouseMotion(x, y, dx, dy)
             self.focus = widget
             widget.focus()
-        if widget.isClickable():
-            self.pygletWindow.set_mouse_cursor(self.pygletWindow.CURSOR_HAND)
-        else:
-            self.pygletWindow.set_mouse_cursor()
+
         #if widget.toolTip is not None:
         #    self.curToolTip = ToolTip(text=widget.toolTip)
         
-
+    def update(self, width, height):
+        if self.needsLayout:
+            self.doLayout(width, height)
+        
+    def draw(self):
+        self.batch.draw()
 
 
 

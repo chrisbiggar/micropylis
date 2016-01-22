@@ -10,13 +10,13 @@ from pyglet.text.layout import TextLayout
 from pyglet.text.document import UnformattedDocument, FormattedDocument
 from pyglet.gl import *
 import gui
-from layout import Widget,Frame,LayoutLabel,VerticalLayout,\
+from layout import Widget,Frame,VerticalLayout,\
                             HALIGN_RIGHT, Spacer, ButtonLabel
-from util import createRect, tupleFromString
+from util import createRect
 
-bgGroup = pyglet.graphics.OrderedGroup(1)
-mgGroup = pyglet.graphics.OrderedGroup(2)
-fgGroup = pyglet.graphics.OrderedGroup(3)
+bgGroup = pyglet.graphics.OrderedGroup(4)
+mgGroup = pyglet.graphics.OrderedGroup(5)
+fgGroup = pyglet.graphics.OrderedGroup(6)
 
 MSG_SHOW_TIME = 8 # in seconds
 MSG_DELETE_FREQ = 0.5
@@ -40,7 +40,7 @@ class Message(object):
     displays messages to user. 
 '''
 class MessageQueue(Widget):
-    def __init__(self, batch, fontName=None, padding=0):
+    def __init__(self, fontName=None, padding=0):
         super(MessageQueue,self).__init__()
         
         self.font = gui.config.get('control_panel', 'MSG_QUEUE_FONT')
@@ -51,7 +51,6 @@ class MessageQueue(Widget):
         
         self.titleLabel = None
         self.textLayout = None
-        self.batch = batch
         self.msgs = list()
         self.dt = 0
         self.halfSecs = 0
@@ -63,6 +62,8 @@ class MessageQueue(Widget):
 
         self.currentPos = 0
         self.numMsgs = 0
+        
+        self.engine = None
     
     def delete(self):
         if self.textLayout is not None:
@@ -94,7 +95,7 @@ class MessageQueue(Widget):
         if self.textLayout is None:
             self.textLayout = TextLayout(self.doc,
                                          width=self.width,
-                                         batch=self.batch,
+                                         batch=self.savedFrame.batch,
                                          group=fgGroup,
                                          multiline=True)
             self.savedFrame.setNeedsLayout()
@@ -104,7 +105,7 @@ class MessageQueue(Widget):
         if self.titleLabel is None:
             self.titleLabel = Label(self.titleLabelText,
                                     x=self.x+10,y=self.y+10,
-                                    batch=self.batch,
+                                    batch=self.savedFrame.batch,
                                     group=fgGroup,
                                     color=(0,0,0,255),
                                     font_name=self.font,
@@ -136,13 +137,13 @@ class MessageQueue(Widget):
         self.bgRect = createRect(self.x, self.y,
                              self.width, self.height,
                              self.bgColor,
-                             self.batch,
+                             self.savedFrame.batch,
                              mgGroup)
         
         self.border = createRect(self.x, self.y + self.height,
                              self.width, 1,
                              (0,0,0,255),
-                             self.batch,
+                             self.savedFrame.batch,
                              fgGroup)
         
         
@@ -240,8 +241,10 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
     
     '''
     WIDTH = 300
-    def __init__(self, engine):
+    def __init__(self):
         self.register_event_type('gui_invoke')
+        
+        self.engine = None
         
         self.months = []
         for (name,month) in gui.config.items('month_strings'):
@@ -257,15 +260,44 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
         bgColorStr = gui.config.get('control_panel', 'BG_COLOR')
         self.bgColor = map(int, tuple(bgColorStr.split(',')))
         
-        self.batch = pyglet.graphics.Batch()
+        #self.batch = pyglet.graphics.Batch()
         self.fgGroup = fgGroup
         self.bg = None
         self.border = None
         layout = self.createLayout()
         super(ControlPanel,self).__init__(layout)
         
-        self.reset(engine)
+        #self.reset(engine)
         self.updateDateLabel()
+        self.on_funds_changed()
+        self.on_census_changed()
+    
+    def reset(self, eng):
+        self.engine = eng
+        if eng:
+            eng.push_handlers(self)
+            self.lastTime = self.engine.cityTime
+        self.on_funds_changed()
+        self.on_census_changed()
+        
+    def size(self,frame):
+        self.delete()
+        if frame.width < self.minWindowWidth:
+            self.disable()
+            self.width = 0
+        if frame.width >= self.minWindowWidth:
+            self.enable()
+        if self.active:
+            super(ControlPanel,self).size(frame)
+            self.width, self.height = self.WIDTH, frame.height
+            self.createBg()
+            
+    def expand(self, width, height):
+        Frame.expand(self, width, height)
+        self.width = self.WIDTH
+        
+    def layout(self, x, y):
+        super(ControlPanel,self).layout(x,y)
         
         
     def createLayout(self):
@@ -283,7 +315,7 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
                                            fontSize=self.fontSize,
                                            fontName=self.fontName, 
                                            action=self.populationLabelAction)
-        self.msgs = MessageQueue(self.batch, fontName=self.fontName, padding=3)
+        self.msgs = MessageQueue(fontName=self.fontName, padding=3)
         return VerticalLayout([VerticalLayout([self.mainMenuLabel,
                                                   self.dateLabel,
                                                   self.fundsLabel,
@@ -309,14 +341,6 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
     def populationLabelAction(self):
         #print "bah"
         self.dispatch_event('gui_invoke', 'city_eval')
-           
-    def reset(self, engine):
-        self.engine = engine
-        engine.push_handlers(self)
-        self.lastTime = self.engine.cityTime
-        self.on_funds_changed()
-        self.on_census_changed()
-        self.setNeedsLayout()
         
     def delete(self):
         if self.bg is not None:
@@ -326,36 +350,17 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
             self.border.delete()
             self.border = None
         self.content.delete()
-        
-    def layout(self, x, y):
-        super(ControlPanel,self).layout(x,y)
-        
-    def expand(self, width, height):
-        Frame.expand(self, width, height)
-        self.width = self.WIDTH
-    
-    def size(self,frame):
-        self.delete()
-        if frame.width < self.minWindowWidth:
-            self.disable()
-            self.width = 0
-        if frame.width >= self.minWindowWidth:
-            self.enable()
-        if self.active:
-            super(ControlPanel,self).size(frame)
-            self.width, self.height = self.WIDTH, frame.height
-            self.createBg()
 
     def createBg(self):
         self.bg = createRect(self.x, self.y,
                              self.width, self.height,
                              self.bgColor,
-                             self.batch,
+                             self.savedFrame.batch,
                              bgGroup)
         self.border = createRect(self.x, self.y, 
                                  1, self.height, 
                                  (0, 0, 0, 255),
-                                 self.batch, 
+                                 self.savedFrame.batch, 
                                  fgGroup)
         
     
@@ -373,14 +378,21 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
 
      
     def on_funds_changed(self):
+        if self.engine:
+            t = self.fundsText + str(self.engine.budget.funds)
+        else:
+            #print "fundschanged"
+            #print self.fundsText
+            t = self.fundsText
         if self.fundsLabel is not None:
-            self.fundsLabel.set_text(self.fundsText + str(self.engine.budget.funds))
+            self.fundsLabel.set_text(t)
         
     
     def update(self, dt):
         self.msgs.update(dt)
-        if (self.lastTime != self.engine.cityTime and
-                self.lastTime + 4 <= self.engine.cityTime):
+        if (self.engine and
+            (self.lastTime != self.engine.cityTime and
+                self.lastTime + 4 <= self.engine.cityTime)):
             self.lastTime = self.engine.cityTime
             self.updateDateLabel()
             
@@ -393,7 +405,10 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
         
         
     def updateDateLabel(self):
-        d = self.formatGameDate(self.engine.cityTime)
+        if self.engine:
+            d = self.formatGameDate(self.engine.cityTime)
+        else:
+            d = "Jan 1990"
         if self.dateLabel is not None:
             self.dateLabel.set_text(d)
         # update population

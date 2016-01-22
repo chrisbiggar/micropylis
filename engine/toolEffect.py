@@ -10,6 +10,11 @@ from engine.tileConstants import CLEAR
 
 
 class ToolEffect(object):
+    '''
+    ToolEffect
+    
+    
+    '''
     def __init__(self, engine, xPos=0, yPos=0):
         self.engine = engine
         self.preview = ToolPreview()

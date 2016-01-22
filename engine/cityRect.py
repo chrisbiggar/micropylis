@@ -16,10 +16,10 @@ class CityRect(object):
         self.height = height
         
     def equals(self, rect):
-        if rect is CityRect:
-            return self.x == rect.x and self.y == rect.y\
-                and self.height == rect.height\
-                and self.width == rect.width
+        if isinstance(rect, CityRect):
+            return (self.x == rect.x and self.y == rect.y
+                    and self.height == rect.height
+                    and self.width == rect.width)
         else:
             return False
     

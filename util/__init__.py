@@ -1,18 +1,8 @@
 import struct
 import pyglet
 from pyglet.gl import GL_LINE_STRIP,GL_QUADS
-import time
 
 
-
-def timefunc(f):
-    def f_timer(*args, **kwargs):
-        start = time.time()
-        result = f(*args, **kwargs)
-        end = time.time()
-        print f.__name__, 'took', end - start, 'time'
-        return result
-    return f_timer
 
 ''' 
 

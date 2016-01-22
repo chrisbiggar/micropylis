@@ -153,7 +153,11 @@ class MapScanner(TileBehaviour):
             self.repairZone(tileConstants.PORT)
     
     def repairZone(self, base):
-        '''  '''
+        '''  
+        Repairs a zones tile after that tile has been destroyed.
+        Only works is tile is not rubble or zonecenter.
+        
+        '''
         assert isZoneCenter(base)
         
         powerOn = self.city.isTilePowered(self.x, self.y)

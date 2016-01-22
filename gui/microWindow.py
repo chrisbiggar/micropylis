@@ -20,7 +20,6 @@ import gui
 from layout import LayoutWindow, HorizontalLayout
 import dialogs
 from dialogs import MainMenuDialog, CityEvalDialog, BudgetDialog
-from util import timefunc
 
 
 
@@ -62,7 +61,7 @@ handles tool dispatching.
 
 '''
 class MicroWindow(pyglet.window.Window, LayoutWindow):
-    def __init__(self):
+    def __init__(self, animLoop):
         self.DEFAULT_WIDTH = int(gui.config.get('window','DEFAULT_WIDTH'))
         self.DEFAULT_HEIGHT = int(gui.config.get('window','DEFAULT_HEIGHT'))
         pyglet.window.Window.__init__(self, width=self.DEFAULT_WIDTH,
@@ -73,23 +72,17 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         # load in tile specs
         tiles.Tiles().readTilesSpec(gui.config.get('misc','TILES_SPEC_FILE')) 
         
-        # load test map: (would normally just call newCity())
-        #self.newCity()
-        self.loadCity('cities/hawkins.cty')
+        self.animLoop = animLoop
+        self.engine = None
         
-        
-        self.viewingPane = CityView(self.engine)
-        self.engine.push_handlers(self.viewingPane)
-        self.push_handlers(self.viewingPane.keys)
-        self.controlPanel = ControlPanel(self.engine)
+        self.cityView = CityView(self.animLoop.getClock())
+        self.controlPanel = ControlPanel()
         self.controlPanel.push_handlers(self)
-        self.engine.push_handlers(self.controlPanel)
         
         LayoutWindow.__init__(self,HorizontalLayout([
-                                                   self.viewingPane,
+                                                   self.cityView,
                                                    self.controlPanel],
-                                                  padding=0),
-                              self)
+                                                  padding=0))
         
         # tool vars:
         self.dragStart = (0,0)
@@ -119,22 +112,27 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
                 pyglet.window.key._4 : speed.FAST,
                 pyglet.window.key._5 : speed.SUPER_FAST}
         self.speed = None
-        self.setSpeed(speed.PAUSED)
+        
+        #self.newCity()
+        self.loadCity('cities/hawkins.cty')
         
 
-        
-    def setExitFunc(self, func):
-        self.exitFunc = func
-        
+
     def newCity(self):
         #newCityDialog = NewCityDialog(self)
         
         self.engine = Engine()
+        self.cityView.reset(self.engine)
+        self.controlPanel.reset(self.engine)
+        self.setSpeed(speed.PAUSED)
         
     
     def loadCity(self, filePath):
         self.engine = Engine()
         self.engine.loadCity(filePath)
+        self.cityView.reset(self.engine)
+        self.controlPanel.reset(self.engine)
+        self.setSpeed(speed.PAUSED)
         
     def initGuiComponents(self):
         self.setupDialogs()
@@ -180,17 +178,21 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
     def on_resize(self, width, height):
         self.set_icon(self.icon)
         self.initGL(width,height)
-        LayoutWindow.doLayout(self)
+        self.cityView.setRenderSize(width, height)
+        LayoutWindow.doLayout(self, self.width, self.height)
+        
         
     def on_close(self):
-        #self.viewingPane.cleanup()
-        self.exitFunc()
+        self.animLoop.exit()
         return pyglet.window.Window.on_close(self)
         
     def on_key_release(self, symbol, modifiers):
         if (symbol == pyglet.window.key.X):
-            self.engine.testChange()
-        elif (modifiers & pyglet.window.key.MOD_ALT and
+            #self.engine.testChange()
+            self.loadCity('cities/hawkins.cty')
+        elif (symbol == pyglet.window.key.S):
+            self.newCity()
+        if (modifiers & pyglet.window.key.MOD_ALT and
                 symbol == pyglet.window.key.ENTER):
             self.toggleFullscreen()
         else:
@@ -198,32 +200,38 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
                 self.setSpeed(self.speedKeyMap[symbol])
                 
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
-        if self.viewingPane.hitTest(x, y):
-            self.viewingPane.zoomToPoint(x, y, scroll_y)
+        if self.engine and self.cityView.hitTest(x, y):
+            self.cityView.zoomToPoint(x, y, scroll_y)
             
     def on_mouse_motion(self, x, y, dx, dy):
         LayoutWindow.onMouseMotion(self, x, y, dx, dy)
+        # set hand cursor if mouse over clickable widget
+        widget = self.getWidgetAtPoint(x, y)
+        if widget.isClickable():
+            self.set_mouse_cursor(self.CURSOR_HAND)
+        else:
+            self.set_mouse_cursor()
         
-        if self.viewingPane.hitTest(x, y):
+        if self.engine and self.cityView.hitTest(x, y):
             self.onToolHover(x, y)
             
     def on_mouse_press(self, x, y, button, modifiers):
         LayoutWindow.onMousePress(self, x, y, button, modifiers)
         
         self.dragStart = (x,y)
-        if self.viewingPane.hitTest(x, y):
+        if self.engine and self.cityView.hitTest(x, y):
             self.onToolDown(x, y, button, modifiers)
         
     def on_mouse_release(self, x, y, button, modifiers):
         LayoutWindow.onMouseRelease(self, x, y, button, modifiers)
         
-        if self.viewingPane.hitTest(x, y):
+        if self.engine and self.cityView.hitTest(x, y):
             self.onToolUp(x, y, button, modifiers)
             
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         LayoutWindow.onMouseDrag(self, x, y, dx, dy, buttons, modifiers)
         
-        if self.viewingPane.hitTest(x, y):
+        if self.engine and self.cityView.hitTest(x, y):
             self.onToolDrag(x, y, dx, dy, buttons, modifiers)
     
     def set_mouse_cursor(self, cursor=None):
@@ -244,13 +252,45 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         else:
             self.dialogs[guiItemName].teardown()
             
+    def setSpeed(self, newSpeed):
+        if newSpeed == self.speed:
+            return
+        pyglet.clock.unschedule(self.engine.animate)
+        self.animLoop.setSpeed(self.speed, newSpeed)
+        self.cityView.setSpeed(newSpeed)
+        self.speed = newSpeed
+        self.controlPanel.addInfoMessage(newSpeed.name + " Speed")
+        if self.speed == speed.PAUSED:
+            return
+        pyglet.clock.schedule_interval(self.engine.animate, newSpeed.delay)
+
     
-    '''
-        selectTool(tooltype)
-        accepts a string specifying what tool should
-        be currently active. returns tool type object
-    '''
+    def update(self, dt):
+        #if self.layoutNeeded:
+        LayoutWindow.update(self,self.width,self.height)
+        self.cityView.update(dt)
+        self.controlPanel.update(dt)
+        
+    def updateKytten(self, dt):
+        self.dispatch_event('on_update', dt)
+        
+    def on_draw(self):
+        self.clear()
+        #self.cityView.batch.draw()
+        LayoutWindow.draw(self)
+        self.dialogBatch.draw()
+        self.fpsDisplay.draw()
+            
+            
+            
+    ''' Tools Functions '''
+
     def selectTool(self, toolType):
+        '''
+            selectTool(tooltype)
+            accepts a string specifying what tool should
+            be currently active. returns tool type object
+        '''
         if self.currentTool is not None and \
                 toolType == self.currentTool.name:
             return
@@ -263,7 +303,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         return tool
         
     def onToolDown(self, x, y, button, modifiers):
-        loc = self.viewingPane.screenCoordsToCityLocation(x, y)
+        loc = self.cityView.screenCoordsToCityLocation(x, y)
         self.lastX = loc.x
         self.lastY = loc.y
         if button == mouse.RIGHT:
@@ -286,13 +326,13 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             
         
     def onToolDrag(self, x, y, dx, dy, buttons, modifiers):
-        if not self.viewingPane.hitTest(self.dragStart[0], self.dragStart[1]):
+        if not self.cityView.hitTest(self.dragStart[0], self.dragStart[1]):
             return
         if self.currentTool is None or\
                 buttons & mouse.RIGHT:
-            self.viewingPane.moveView(dx, dy)
+            self.cityView.moveView(dx, dy)
             return
-        loc = self.viewingPane.screenCoordsToCityLocation(x, y)
+        loc = self.cityView.screenCoordsToCityLocation(x, y)
         tx = loc.x
         ty = loc.y
         if tx == self.lastX and ty == self.lastY:
@@ -310,12 +350,12 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         
     def onToolUp(self, x, y, button, modifiers):
         if self.toolStroke is not None:
-            self.viewingPane.setToolPreview(None)
+            self.cityView.setToolPreview(None)
             self.showToolResult(self.toolStroke.getLocation(),
                                 self.toolStroke.apply())
             self.toolStroke = None
             self.engine.tileUpdateCheck()
-        loc = self.viewingPane.screenCoordsToCityLocation(x, y)
+        loc = self.cityView.screenCoordsToCityLocation(x, y)
         tx = loc.x
         ty = loc.y
         if button == mouse.RIGHT and self.lastX == tx and self.lastY == ty:
@@ -328,10 +368,10 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
     def onToolHover(self, x, y):
         if self.currentTool is None or\
             self.currentTool.type == micropolistool.QUERY:
-                self.viewingPane.setToolCursor(None)
+                self.cityView.setToolCursor(None)
                 return
             
-        loc = self.viewingPane.screenCoordsToCityLocation(x,y)
+        loc = self.cityView.screenCoordsToCityLocation(x,y)
         #print loc
         x = loc.x
         y = loc.y
@@ -344,15 +384,15 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             y -= 1
         
         rect = CityRect(x,y,w,h)
-        self.viewingPane.newToolCursor(rect, self.currentTool)
+        self.cityView.newToolCursor(rect, self.currentTool)
         
     def previewTool(self):
         assert self.toolStroke is not None
         assert self.currentTool is not None
         
-        self.viewingPane.newToolCursor(self.toolStroke.getBounds(), 
+        self.cityView.newToolCursor(self.toolStroke.getBounds(), 
                                         self.currentTool)
-        self.viewingPane.setToolPreview(self.toolStroke.getPreview())
+        self.cityView.setToolPreview(self.toolStroke.getPreview())
         
     def showToolResult(self, loc, result):
         if result.value == ToolResult.SUCCESS:
@@ -380,34 +420,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
                 str(xPos), str(yPos), str(self.engine.getTile(xPos, yPos)))'''
         self.controlPanel.addInfoMessage(queryMsg)
         
-    def setSpeed(self, newSpeed):
-        if newSpeed == self.speed:
-            return
-        pyglet.clock.unschedule(self.engine.animate)
-        self.viewingPane.setSpeed(self.speed, newSpeed)
-        self.speed = newSpeed
-        self.controlPanel.addInfoMessage(newSpeed.name + " Speed")
-        if self.speed == speed.PAUSED:
-            return
-        pyglet.clock.schedule_interval(self.engine.animate, newSpeed.delay)
 
-        
-    
-    def update(self, dt):
-        self.viewingPane.update(dt)
-        self.controlPanel.update(dt)
-        LayoutWindow.update(self, dt)
-        
-    def updateKytten(self, dt):
-        self.dispatch_event('on_update', dt)
-        
-    def on_draw(self):
-        
-        self.clear()
-        self.viewingPane.batch.draw()
-        self.controlPanel.batch.draw()
-        self.dialogBatch.draw()
-        self.fpsDisplay.draw()
 
 
 
