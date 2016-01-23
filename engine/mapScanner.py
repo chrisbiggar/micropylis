@@ -92,7 +92,14 @@ class MapScanner(TileBehaviour):
           
     def doResidential(self):
         powerOn = self.checkZonePower()
-        #print "dores"
+        
+        
+        
+        
+        
+        
+        
+        
         
     
     def doHospitalChurch(self):

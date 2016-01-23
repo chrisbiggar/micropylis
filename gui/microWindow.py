@@ -76,6 +76,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.engine = None
         
         self.cityView = CityView(self.animLoop.getClock())
+        self.push_handlers(self.cityView.keys)
         self.controlPanel = ControlPanel()
         self.controlPanel.push_handlers(self)
         
@@ -163,11 +164,11 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         glClearColor(0.8,0.49,0.4,1)
         
         glEnable(GL_BLEND)
-        glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         
-        glEnable( GL_LINE_SMOOTH )
-        glEnable( GL_POLYGON_SMOOTH )
-        glHint( GL_LINE_SMOOTH_HINT, GL_NICEST )
+        glEnable(GL_LINE_SMOOTH)
+        glEnable(GL_POLYGON_SMOOTH)
+        glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
         
         glViewport(0, 0, width, height)
         gl.glMatrixMode(gl.GL_PROJECTION)
@@ -266,7 +267,6 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
 
     
     def update(self, dt):
-        #if self.layoutNeeded:
         LayoutWindow.update(self,self.width,self.height)
         self.cityView.update(dt)
         self.controlPanel.update(dt)
@@ -276,7 +276,6 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         
     def on_draw(self):
         self.clear()
-        #self.cityView.batch.draw()
         LayoutWindow.draw(self)
         self.dialogBatch.draw()
         self.fpsDisplay.draw()

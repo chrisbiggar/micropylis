@@ -77,7 +77,6 @@ class MessageQueue(Widget):
         if self.border is not None:
             self.border.delete()
             self.border = None
-        #print "delete message queue"
     
     def size(self, frame):
         super(MessageQueue,self).size(frame)
@@ -113,10 +112,9 @@ class MessageQueue(Widget):
         else:
             self.titleLabel.x = self.x + 10
             self.titleLabel.y = self.y + 10
-        self.createBackground()
         
     
-    def layout(self,x,y):
+    def layout(self, x, y):
         super(MessageQueue,self).layout(x,y)
         self.textLayout.x = self.x + self.padding
         self.textLayout.y = self.y - self.padding
@@ -124,7 +122,8 @@ class MessageQueue(Widget):
         self.textLayout.height = self.height
         self.titleLabel.x = self.x + 10
         self.titleLabel.y = self.y + 10
-
+        
+        self.createBackground()
         
     def createBackground(self):
         if self.bgRect is not None:
@@ -290,7 +289,6 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
         if self.active:
             super(ControlPanel,self).size(frame)
             self.width, self.height = self.WIDTH, frame.height
-            self.createBg()
             
     def expand(self, width, height):
         Frame.expand(self, width, height)
@@ -298,7 +296,8 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
         
     def layout(self, x, y):
         super(ControlPanel,self).layout(x,y)
-        
+        if self.active:
+            self.createBg()
         
     def createLayout(self):
         self.mainMenuLabel = ButtonLabel(self, text=self.mainMenuText,

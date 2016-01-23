@@ -384,7 +384,6 @@ class CityView(layout.Spacer):
         if eng is None:
             return
         eng.push_handlers(self)
-        eng.push_handlers(self.keys)
         self.tilesGroup.setMapSize(eng.getWidth() * TILESIZE, 
                                    eng.getHeight() * TILESIZE)
         
@@ -607,13 +606,10 @@ class CityView(layout.Spacer):
     def key_release(self, symbol, modifiers):
         if symbol == key.EQUAL:
             self.changeZoom(increment=1)
-            self.tilesGroup.zoomToViewCenter = True
         if symbol == key.MINUS:
             self.changeZoom(increment=-1)
-            self.tilesGroup.zoomToViewCenter = True
         if symbol == key._0:
             self.changeZoom(newValue=1.0)
-            self.tilesGroup.zoomToViewCenter = True
             
     def changeZoom(self, newValue=None, increment=None):
         '''

@@ -490,13 +490,7 @@ class LayoutWindow():
         self.needsLayout = True
         
     def doLayout(self, width, height):
-        #print "content"
         self.needsLayout = False
-        
-        self.content.size(self)
-        if self.content.is_expandable():
-            self.content.expand(width, height)
-        self.content.layout(0, 0)
         
         self.content.size(self)
         if self.content.is_expandable():

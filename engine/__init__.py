@@ -10,6 +10,7 @@ from util import readShort, readInt, create2dArray
 from engine.terrainBehaviour import TerrainBehaviour
 from mapScanner import MapScanner
 from cityLocation import CityLocation
+from util import profile
 
 
 class CityBudget(object):
@@ -67,6 +68,8 @@ cityMessages = ConfigParser.ConfigParser()
 cityMessages.read('res/citymessages.cfg')    
 
 
+
+
 '''
     class Engine
     city simulation engine
@@ -122,7 +125,7 @@ class Engine(pyglet.event.EventDispatcher):
         self.map = create2dArray(height, width)
         self.updatedTiles = list()
         
-        self.powerMap = create2dArray(height, width, False)
+        self.powerMap = create2dArray(self.getHeight(), self.getWidth(), False)
         self.noPowerIndicators = create2dArray(width, height, False)
         
         ''' misc engine vars '''
@@ -417,10 +420,10 @@ class Engine(pyglet.event.EventDispatcher):
         return False,loc
             
 
-    
     def powerScan(self):
         ''' called once a cycle. does the actual work of populating powermap 
             starts at all powerplants and traces the power path'''
+        
         self.powerMap = create2dArray(self.getHeight(), self.getWidth(), False)
         
         maxPower = self.coalCount * 700 + self.nuclearCount * 2000
