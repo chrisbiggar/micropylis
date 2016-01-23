@@ -306,6 +306,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         loc = self.cityView.screenCoordsToCityLocation(x, y)
         self.lastX = loc.x
         self.lastY = loc.y
+        self.drag = False
         if button == mouse.RIGHT:
             self.set_mouse_cursor(self.CURSOR_CROSSHAIR)
             return
@@ -328,8 +329,9 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
     def onToolDrag(self, x, y, dx, dy, buttons, modifiers):
         if not self.cityView.hitTest(self.dragStart[0], self.dragStart[1]):
             return
-        if self.currentTool is None or\
-                buttons & mouse.RIGHT:
+        self.drag = True
+        if (self.currentTool is None or
+                buttons & mouse.RIGHT):
             self.cityView.moveView(dx, dy)
             return
         loc = self.cityView.screenCoordsToCityLocation(x, y)
@@ -358,7 +360,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         loc = self.cityView.screenCoordsToCityLocation(x, y)
         tx = loc.x
         ty = loc.y
-        if button == mouse.RIGHT and self.lastX == tx and self.lastY == ty:
+        if button == mouse.RIGHT and not self.drag:
             self.doQueryTool(tx, ty)
         self.set_mouse_cursor()  
         self.onToolHover(x,y)
