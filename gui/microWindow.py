@@ -226,6 +226,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
     def on_mouse_release(self, x, y, button, modifiers):
         LayoutWindow.onMouseRelease(self, x, y, button, modifiers)
         
+        self.set_mouse_cursor()
         if self.engine and self.cityView.hitTest(x, y):
             self.onToolUp(x, y, button, modifiers)
             
