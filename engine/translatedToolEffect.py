@@ -7,6 +7,11 @@ Created on Oct 24, 2015
 
 
 class TranslatedToolEffect(object):
+    '''
+    TranslatedToolEffect
+    
+    
+    '''
     def __init__(self, base, dx, dy):
         self.base = base
         self.dX = dx

@@ -3,20 +3,21 @@ Created on Oct 29, 2015
 
 @author: chris
 '''
-from math import floor
 import pyglet
 from pyglet.text import Label
 from pyglet.text.layout import TextLayout
-from pyglet.text.document import UnformattedDocument, FormattedDocument
+from pyglet.text.document import FormattedDocument
 from pyglet.gl import *
 import gui
+from gui import GUI_BG_RENDER_ORDER, GUI_FG_RENDER_ORDER
 from layout import Widget,Frame,VerticalLayout,\
                             HALIGN_RIGHT, Spacer, ButtonLabel
 from util import createRect
+from util.profile import timefunc
 
-bgGroup = pyglet.graphics.OrderedGroup(4)
-mgGroup = pyglet.graphics.OrderedGroup(5)
-fgGroup = pyglet.graphics.OrderedGroup(6)
+bgGroup = pyglet.graphics.OrderedGroup(GUI_BG_RENDER_ORDER)
+mgGroup = pyglet.graphics.OrderedGroup(GUI_BG_RENDER_ORDER + 1)
+fgGroup = pyglet.graphics.OrderedGroup(GUI_FG_RENDER_ORDER)
 
 MSG_SHOW_TIME = 8 # in seconds
 MSG_DELETE_FREQ = 0.5
@@ -177,7 +178,6 @@ class MessageQueue(Widget):
                 item = self.msgs[len(self.msgs)-1]
                 self.deleteMsg(item)
         
-            
     def update(self, dt):
         self.dt += dt
         if self.dt >= MSG_DELETE_FREQ:
@@ -205,11 +205,10 @@ class DemandIndicator(Widget):
         self.width = 120
         self.height = 200
         
-        self.createBackground()
-        
     
     def layout(self,x,y):
         super(MessageQueue,self).layout(x,y)
+        self.createBackground()
 
         
     def createBackground(self):

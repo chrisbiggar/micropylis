@@ -5,6 +5,7 @@ Created on Dec 31, 2015
 '''
 import math
 import pyglet
+#pyglet.options['debug_gl'] = False
 from pyglet.gl import *
 from pyglet.window import mouse
 import kytten
@@ -28,8 +29,8 @@ class Keys(pyglet.window.key.KeyStateHandler):
         responds to keypresses, notifying an event handler
         while storing the current state of the keys for querying.
     '''
-    def __init__(self, parent):
-        self.parent = parent
+    def __init__(self, viewportGroup):
+        self.parent = viewportGroup
 
     def on_key_press(self, symbol, modifiers):
         try:

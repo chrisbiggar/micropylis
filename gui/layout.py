@@ -190,6 +190,24 @@ class LayoutLabel(Widget):
             self.label.delete()
             self.label = None
             #print 'delete: ' + self.text
+            
+    def size(self, frame):
+        if frame is None:
+            return
+        Widget.size(self, frame)
+        if self.label is None:
+            #print self.text
+            #print "create: " + self.text
+            self.group = self.savedFrame.fgGroup
+            self.label = Label(self.text,
+                               batch=self.savedFrame.batch,
+                               group=self.savedFrame.fgGroup,
+                               font_name=self.fontName,
+                               font_size=self.fontSize)
+            
+            font = self.label.document.get_font()
+            self.width = self.label.content_width
+            self.height = font.ascent - font.descent
     
     def layout(self, x, y):
         Widget.layout(self, x, y)
@@ -208,24 +226,6 @@ class LayoutLabel(Widget):
         #print "set text: " + text
         if self.savedFrame is not None:
             self.savedFrame.setNeedsLayout()
-
-    def size(self, frame):
-        if frame is None:
-            return
-        Widget.size(self, frame)
-        if self.label is None:
-            #print self.text
-            #print "create: " + self.text
-            self.group = self.savedFrame.fgGroup
-            self.label = Label(self.text,
-                               batch=self.savedFrame.batch,
-                               group=self.savedFrame.fgGroup,
-                               font_name=self.fontName,
-                               font_size=self.fontSize)
-            
-            font = self.label.document.get_font()
-            self.width = self.label.content_width
-            self.height = font.ascent - font.descent
             
             
 class ButtonLabel(LayoutLabel):

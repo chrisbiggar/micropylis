@@ -13,7 +13,8 @@ class ToolEffect(object):
     '''
     ToolEffect
     
-    
+    Takes the modifications made with a tool and applies 
+    the modification to the city engine
     '''
     def __init__(self, engine, xPos=0, yPos=0):
         self.engine = engine

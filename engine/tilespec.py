@@ -60,7 +60,9 @@ class BuildingInfo(object):
 
 class Scanner(object):
     '''
-    TODO comment this
+    Scanner
+    
+    Scans in a single tilespec
     '''
     def __init__(self, aStr):
         self.str = aStr
