@@ -14,5 +14,4 @@ setup(
             "script":"micro.py",
             "icon_resources": [(1, "res/icon32.ico")],
             "dest_base":"Micropylis"
-            }]
-)
+            }])

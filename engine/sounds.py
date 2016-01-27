@@ -5,3 +5,5 @@ Created on Jan 24, 2016
 '''
 
 
+class Sounds(object):
+    pass

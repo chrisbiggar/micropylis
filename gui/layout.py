@@ -1,8 +1,9 @@
 import pyglet
 from pyglet.gl import *
 from pyglet.text import Label
-from inspect import isframe
+from gui import GUI_BG_RENDER_ORDER,GUI_FG_RENDER_ORDER
 from util import createHollowRect
+from pyglet.graphics import OrderedGroup
 
 
 (HALIGN_LEFT,HALIGN_CENTER,HALIGN_RIGHT,
@@ -21,6 +22,7 @@ class Widget(object):
         self.width = width
         self.height = height
         self.savedFrame = None
+        self.enabled = True
         self.active = True
         
     def setNeedsLayout(self):
@@ -45,13 +47,13 @@ class Widget(object):
         pass
         
     def enable(self):
-        if not self.active:
-            self.active = True
+        if not self.enabled:
+            self.enabled = True
             self.savedFrame.setNeedsLayout()
     
     def disable(self):
-        if self.active:
-            self.active = False
+        if self.enabled:
+            self.enabled = False
             self.savedFrame.setNeedsLayout()
         
     def size(self, frame):
@@ -121,15 +123,16 @@ class ToolTip(object):
     When mouse hovers over an object for more than a second, if
     there is a tooltip assigned to that object, it will show.
     '''
-    def __init__(self, x, y, text, batch, group):
+    def __init__(self, x, y, text, batch):
         self.text = text
         self.batch = batch
-        self.group = group
+        self.bgGroup = OrderedGroup(GUI_FG_RENDER_ORDER + 1)
+        self.fgGroup = OrderedGroup(self.bgGroup.order + 1)
         self.x = x
         self.y = y
     
     def show(self):
-        self.label = pyglet.text.Label(text=self.text,group=self.group+1)
+        self.label = pyglet.text.Label(text=self.text,group=GUI_FG_RENDER_ORDER)
         self.makeRect(self.x, self.y)
         
 
@@ -176,16 +179,15 @@ class LayoutLabel(Widget):
     '''
     Wraps a pyglet Text Label and allows for layout.
     '''
-    def __init__(self, frame, text="", toolTip=None, fontName=None, fontSize=None):
+    def __init__(self, text="", fontName=None, fontSize=None):
         super(LayoutLabel,self).__init__()
-        self.savedFrame = frame
         self.text = text
         self.label = None
         self.fontName = fontName
         self.fontSize = fontSize
-        self.toolTip = toolTip
         
     def delete(self):
+        self.active = False
         if self.label is not None:
             self.label.delete()
             self.label = None
@@ -195,9 +197,8 @@ class LayoutLabel(Widget):
         if frame is None:
             return
         Widget.size(self, frame)
+        self.active = True
         if self.label is None:
-            #print self.text
-            #print "create: " + self.text
             self.group = self.savedFrame.fgGroup
             self.label = Label(self.text,
                                batch=self.savedFrame.batch,
@@ -211,9 +212,7 @@ class LayoutLabel(Widget):
     
     def layout(self, x, y):
         Widget.layout(self, x, y)
-        #print self.text,x,y
         if self.label is not None:
-            #print self.label.text,x,y
             font = self.label.document.get_font()
             self.label.x = x
             self.label.y = y - font.descent
@@ -233,13 +232,12 @@ class ButtonLabel(LayoutLabel):
     Text Label that is clickable and will evoke an action.
     
     '''
-    def __init__(self, frame, 
+    def __init__(self,
                  text=None, 
                  fontName=None, 
                  fontSize=None,
                  action=None):
-        super(ButtonLabel,self).__init__(frame, 
-                                         text=text, 
+        super(ButtonLabel,self).__init__(text=text, 
                                          fontName=fontName,
                                          fontSize=fontSize)
         self.action = action
@@ -248,6 +246,12 @@ class ButtonLabel(LayoutLabel):
         self.pressedColor = (0,0,0,255)
         self.borderColor = (255,255,255,255)
         self.pressed = False
+    
+    def delete(self):
+        super(ButtonLabel,self).delete()
+        if self.border:
+            self.border.delete()
+            self.border = None
         
     def focus(self):
         self.setBorder(createHollowRect(self.x - 4, self.y - 2, 
@@ -258,7 +262,9 @@ class ButtonLabel(LayoutLabel):
                                        self.savedFrame.fgGroup))
 
     def unFocus(self):
-        self.label.color = self.color
+        #print "unfocus: " + self.text
+        if self.label:
+            self.label.color = self.color
         self.setBorder()
         self.pressed = False
         
@@ -269,7 +275,8 @@ class ButtonLabel(LayoutLabel):
     def onMouseRelease(self, x, y, button, modifiers):
         if self.pressed and self.action is not None:
             self.action()
-        self.label.color = self.color
+        if self.label:
+            self.label.color = self.color
         self.pressed = False
         
     def setBorder(self, border=None):
@@ -277,8 +284,7 @@ class ButtonLabel(LayoutLabel):
             self.border.delete()
             self.border = None
         self.border = border
-    
-
+        self.setNeedsLayout()
     
     def isClickable(self):
         return True
@@ -286,7 +292,11 @@ class ButtonLabel(LayoutLabel):
             
             
 class Layout(Widget):
-    ''' base class for all layouts '''
+    ''' base class for all layouts 
+    
+    layouts can either be the size of their content
+    or can fill their parent frame's space.
+    '''
     pass
 
 
@@ -294,12 +304,12 @@ class VerticalLayout(Layout):
     '''
     Lays out widgets in a vertical line
     '''
-    def __init__(self, content=[], align=HALIGN_CENTER, padding=5):
+    def __init__(self, content=[], align=HALIGN_CENTER, padding=5, fillWidth=False):
         super(VerticalLayout,self).__init__()
         self.align = align
         self.padding = padding
         self.content = content
-        
+        self.fillWidth = fillWidth
     
     def delete(self):
         for item in self.content:
@@ -322,6 +332,8 @@ class VerticalLayout(Layout):
             item.size(frame)
             height += item.height + self.padding
             width = max(width, item.width)
+        if self.fillWidth:
+            width = frame.width
         self.width, self.height = width,height
         
         self.expandable = [x for x in self.content if x.isExpandable()]
@@ -369,6 +381,26 @@ class HorizontalLayout(VerticalLayout):
     '''
     def __init__(self, content=[], align=HALIGN_CENTER, padding=5):
         super(HorizontalLayout,self).__init__(content, align, padding)
+        
+    def size(self, frame):
+        if frame is None:
+            return
+        if len(self.content) < 2:
+            width = 0
+        else:
+            width = -self.padding
+        
+        Widget.size(self, frame)
+            
+        height = 0
+        for item in self.content:
+            item.size(frame)
+            width += item.width + self.padding
+            
+            height = max(height, item.height)
+        self.width, self.height = width,height
+        
+        self.expandable = [x for x in self.content if x.isExpandable()]
     
     def layout(self, x, y):
         Widget.layout(self, x, y)
@@ -401,28 +433,7 @@ class HorizontalLayout(VerticalLayout):
             else:
                 item.expand(item.width + available, item.height)
         self.width = width
-        
-        
-    
-    def size(self, frame):
-        if frame is None:
-            return
-        if len(self.content) < 2:
-            width = 0
-        else:
-            width = -self.padding
-        
-        Widget.size(self, frame)
-            
-        height = 0
-        for item in self.content:
-            item.size(frame)
-            width += item.width + self.padding
-            
-            height = max(height, item.height)
-        self.width, self.height = width,height
-        
-        self.expandable = [x for x in self.content if x.isExpandable()]
+
     
 
 
@@ -435,6 +446,10 @@ class Frame(Widget):
         self.content = content
         self.batch = None
         super(Frame,self).__init__()
+        
+    def delete(self):
+        if self.content:
+            self.content.delete()
 
     def setNeedsLayout(self):
         if self.savedFrame is not None:
@@ -442,7 +457,7 @@ class Frame(Widget):
     
     def expand(self, width, height):
         """
-        Expand the spacer to fill the maximum space.
+        Expand the frame to fill the maximum space.
 
         @param width Available width
         @param height Available height
@@ -458,7 +473,7 @@ class Frame(Widget):
     def size(self, frame):
         super(Frame,self).size(frame)
         self.batch = frame.batch
-        if self.content is not None and self.active:
+        if self.content is not None and self.enabled:
             self.content.size(self)
             
             # do we want this?
@@ -504,7 +519,7 @@ class LayoutWindow():
             if isinstance(content, Layout):
                 hit = False
                 for item in content.content:
-                    if item.hitTest(x,y):
+                    if item.hitTest(x,y) and item.active:
                         hit = True
                         if isinstance(item, Layout):
                             content = item
@@ -541,7 +556,7 @@ class LayoutWindow():
     def onMouseMotion(self, x, y, dx, dy):
         widget = self.getWidgetAtPoint(x, y)
         if widget:
-            if self.focus:
+            if self.focus and self.focus is not widget:
                 self.focus.unFocus()
                 self.focus = None
             widget.onMouseMotion(x, y, dx, dy)

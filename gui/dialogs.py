@@ -7,18 +7,12 @@ import pyglet
 import kytten
 from kytten.widgets import Label, Spacer
 from kytten.layout import VerticalLayout
-from kytten.frame import Frame, FoldingSection
+from kytten.frame import Frame
 from kytten.dialog import Dialog
 from kytten.menu import Menu
 import widgets
 import gui
-
-
-
-theme = kytten.theme.Theme('res/kyttentheme', override={
-"gui_color": [64, 128, 255, 255],
-"font_size": 16
-})
+from pyglet.graphics import Batch
 
 def on_escape(dialog):
     '''
@@ -26,27 +20,84 @@ def on_escape(dialog):
     '''
     dialog.teardown()
 
+theme = kytten.theme.Theme('res/kyttentheme', override={
+"gui_color": [64, 128, 255, 255],
+"font_size": 16
+})
 
-class MainMenuDialog(Dialog):
-    def __init__(self, mainWindow, activeCity):
-        self.window = mainWindow
-        self.active = True
-        self.activeCity = activeCity
+
+window = None
+batch = Batch()
+
+
+class SingularDialog(Dialog):
+    current = None
+    
+    def onCreation(self, cls):
+        print "create"
+        cls.current = self
+    
+    def onDestruction(self, cls):
+        print "destroy"
+        cls.current = None
+        
+    @classmethod
+    def toggle(cls):
+        print cls.current
+        if cls.current is None:
+            cls()
+        else:
+            cls.current.teardown()
+
+
+
+'''class ExitConfirmDialog(SingularDialog):
+    def __init__(self):
+        text = "Are You Sure You Want To Quit?"
+        
+        def on_ok_click(dialog=None):
+            if on_ok is not None:
+                on_ok(self)
+            self.teardown()
+
+        def on_cancel_click(dialog=None):
+            if on_cancel is not None:
+                on_cancel(self)
+            self.teardown()
+
+        return Dialog.__init__(self, content=Frame(
+            VerticalLayout([
+                Label(text),
+                HorizontalLayout([
+                    Button(ok, on_click=on_ok_click),
+                    None,
+                    Button(cancel, on_click=on_cancel_click)
+                ]),
+            ])),
+            window=window, batch=batch, group=group,
+            theme=theme, movable=True,
+            on_enter=on_ok_click, on_escape=on_cancel_click)'''
+    
+    
+
+
+
+class MainMenuDialog(SingularDialog):
+    def __init__(self):
+        self.onCreation(self.__class__)
+        self.window = window
         frame = self.createLayout()
         super(MainMenuDialog,self).__init__(frame,
-                                            window=mainWindow,
-                                            batch=mainWindow.dialogBatch,
+                                            window=window,
+                                            batch=batch,
                                             anchor=kytten.ANCHOR_CENTER,
                                             theme=theme,
                                             on_escape=on_escape)
         
     def createLayout(self):
         title = Label(text="Micropylis")
-        options = ['Back To City', "New City", "Load City", 
+        options = ['Back', "New City", "Load City", 
                         "Save City", "Options", "Credits", "Quit"]
-        if not self.activeCity:
-            options.remove('Back To City')
-            options.remove('Save City')
         self.menu = widgets.ClickMenu(
                 options, on_select=self.on_select_menu,
                 option_padding_x=76, option_padding_y=16)
@@ -55,7 +106,7 @@ class MainMenuDialog(Dialog):
        
     
     def on_select_menu(self, choice):
-        if choice == "Back To City":
+        if choice == "Back":
             self.on_cancel()
         
         
@@ -66,24 +117,26 @@ class MainMenuDialog(Dialog):
         
     def teardown(self):
         Dialog.teardown(self)
-        self.active = False
+        self.onDestruction(self.__class__)
+        
+        
 
-class CityEvalDialog(Dialog):
-    def __init__(self, mainWindow, activeCity):
-        self.window = mainWindow
+class CityEvalDialog(SingularDialog):
+    def __init__(self):
+        self.onCreation(self.__class__)
+        self.window = window
         frame = self.createLayout()
         super(CityEvalDialog,self).__init__(frame,
-                                            window=mainWindow,
-                                            batch=mainWindow.dialogBatch,
+                                            window=window,
+                                            batch=batch,
                                             anchor=kytten.ANCHOR_CENTER,
                                             theme=theme,
                                             on_escape=on_escape)
-        self.active = True
         
     def createLayout(self):
-        title = Label(text="Micropylis")
+        title = Label(text="City Evaluation")
         self.menu = widgets.ClickMenu(
-                options=["Eval"],
+                options=["Stuff here"],
                 on_select=self.on_select_menu)
         
         return Frame(VerticalLayout([title,Spacer(height=2),self.menu]))
@@ -101,24 +154,24 @@ class CityEvalDialog(Dialog):
         
     def teardown(self):
         Dialog.teardown(self)
-        self.active = False
+        self.onDestruction(self.__class__)
         
-class BudgetDialog(Dialog):
-    def __init__(self, mainWindow, activeCity):
-        self.window = mainWindow
+class BudgetDialog(SingularDialog):
+    def __init__(self):
+        self.onCreation(self.__class__)
+        self.window = window
         frame = self.createLayout()
-        self.active = True
         super(BudgetDialog,self).__init__(frame,
-                                            window=mainWindow,
-                                            batch=mainWindow.dialogBatch,
+                                            window=window,
+                                            batch=batch,
                                             anchor=kytten.ANCHOR_CENTER,
                                             theme=theme,
                                             on_escape=on_escape)
         
     def createLayout(self):
-        title = Label(text="Micropylis")
+        title = Label(text="City Budget")
         self.menu = widgets.ClickMenu(
-                options=["Budget"],
+                options=["Stuff here"],
                 on_select=self.on_select_menu)
         
         return Frame(VerticalLayout([title,Spacer(height=2),self.menu]))
@@ -136,8 +189,7 @@ class BudgetDialog(Dialog):
         
     def teardown(self):
         Dialog.teardown(self)
-        self.active = False
-        
+        self.onDestruction(self.__class__)
         
         
 
@@ -148,8 +200,8 @@ class NewCityDialog(Dialog):
         self.selectedToolLabel = None
         frame = self.createLayout()
         super(NewCityDialog, self).__init__(frame,
-                                    window=mainWindow,
-                                    batch=mainWindow.dialogBatch,
+                                    window=window,
+                                    batch=batch,
                                     anchor=kytten.ANCHOR_CENTER, 
                                     theme=theme)        
         
@@ -165,7 +217,7 @@ class LoadCityDialog(Dialog):
         frame = self.createLayout()
         super(NewCityDialog, self).__init__(frame,
                                     window=mainWindow,
-                                    batch=mainWindow.dialogBatch,
+                                    batch=batch,
                                     anchor=kytten.ANCHOR_CENTER, 
                                     theme=theme)        
         
@@ -181,7 +233,7 @@ class SaveCityDialog(Dialog):
         frame = self.createLayout()
         super(NewCityDialog, self).__init__(frame,
                                     window=mainWindow,
-                                    batch=mainWindow.dialogBatch,
+                                    batch=batch,
                                     anchor=kytten.ANCHOR_CENTER, 
                                     theme=theme)        
         
@@ -200,7 +252,7 @@ class ToolDialog(Dialog):
         frame = self.createLayout()
         super(ToolDialog, self).__init__(frame,
                                     window=mainWindow,
-                                    batch=mainWindow.dialogBatch,
+                                    batch=batch,
                                     anchor=kytten.ANCHOR_TOP_LEFT, 
                                     theme=theme)
         firstToolId = self.toolSection.options.itervalues().next().id

@@ -74,6 +74,8 @@ cityMessages.read('res/citymessages.cfg')
     class Engine
     city simulation engine
     
+    Created new everytime a new or loaded city is created.
+    
     instance data:
     map data
     census data
@@ -85,43 +87,17 @@ class Engine(pyglet.event.EventDispatcher):
     
     def __init__(self, width=None, height=None):
         self.register_event_type("on_map_changed")
+        self.register_event_type("on_date_changed")
         self.register_event_type("on_funds_changed")
         self.register_event_type("on_census_changed")
         self.register_event_type("on_power_indicator_changed")
-        self.register_event_type("city_message")
+        self.register_event_type("on_city_message")
         
-        self.initTileBehaviours()
-        
-        self.canAutoBulldoze = True
-
-        self.newCity(width, height)
-
-        
-    def cityMessage(self, category, stringOption):
-            self.dispatch_event("city_message", 
-                                cityMessages.get(category,
-                                                 stringOption))
-        
-    def spend(self, amount):
-        self.budget.funds -= amount
-        self.dispatch_event("on_funds_changed")
-    
-    def testBounds(self, x, y):
-        return x >= 0 and x < self.getWidth()\
-            and y >= 0 and y < self.getHeight()
-        
-    def getWidth(self):
-        return len(self.map[0])
-    
-    def getHeight(self):
-        return len(self.map)
-        
-    def newCity(self, width=None, height=None):
-        ''' mapdata is stored as [column][row] '''
         if (width == None):
             width = self.DEFAULT_WIDTH
         if (height == None):
             height = self.DEFAULT_HEIGHT
+        ''' mapdata is stored as [column][row] '''
         self.map = create2dArray(height, width)
         self.updatedTiles = list()
         
@@ -141,7 +117,36 @@ class Engine(pyglet.event.EventDispatcher):
         
         self.clearCensus()
         
-
+        self.initTileBehaviours()
+        
+        self.canAutoBulldoze = True
+        
+        
+        
+        
+    def cityMessage(self, category, stringOption):
+            self.dispatch_event("city_message", 
+                                cityMessages.get(category,
+                                                 stringOption))
+        
+    def spend(self, amount):
+        self.budget.funds -= amount
+        self.dispatch_event("on_funds_changed", self.budget.funds)
+    
+    def testBounds(self, x, y):
+        return x >= 0 and x < self.getWidth()\
+            and y >= 0 and y < self.getHeight()
+        
+    def getWidth(self):
+        return len(self.map[0])
+    
+    def getHeight(self):
+        return len(self.map)
+        
+    def newCity(self):
+        self.dispatch_event("on_funds_changed", self.budget.funds)
+        self.dispatch_event('on_date_changed', self.cityTime)
+        self.dispatch_event('on_census_changed', 0)
         
     def clearCensus(self):
         '''  '''
@@ -183,11 +188,15 @@ class Engine(pyglet.event.EventDispatcher):
             self.loadMap(saveFile)
         except IOError as err:
             print str(err)
+            saveFile.close()
+            return
         finally:
             saveFile.close()
-            #self.checkPowerMap()
-            self.dispatch_event("on_map_changed", self.updatedTiles)
-            self.dispatch_event("on_funds_changed")
+        #self.checkPowerMap()
+        self.dispatch_event("on_map_changed", self.updatedTiles)
+        self.dispatch_event("on_funds_changed", self.budget.funds)
+        self.dispatch_event('on_date_changed', self.cityTime)
+        self.dispatch_event('on_census_changed', 0)
     
     
     def checkPowerMap(self):
@@ -237,8 +246,6 @@ class Engine(pyglet.event.EventDispatcher):
             readShort(saveFile)
             
         self.budget.funds = readInt(saveFile) # budget.totalFunds
-        
-        self.budget.funds = 10000
         
         readShort(saveFile) # autoBulldoze
         readShort(saveFile) # autoBudget
@@ -326,6 +333,7 @@ class Engine(pyglet.event.EventDispatcher):
             #print "bah"
             self.sCycle = (self.sCycle + 1) % 1024
             self.cityTime += 1
+            self.dispatch_event('on_date_changed', self.cityTime)
             if self.sCycle % 2 == 0:
                 self.setValves()
             self.clearCensus()
@@ -488,7 +496,7 @@ class Engine(pyglet.event.EventDispatcher):
     
         
     def tileUpdateCheck(self):
-        ''' fires an on_map_changed event if their are dirty tiles'''
+        ''' fires an on_map_changed event if there are dirty tiles'''
         if (len(self.updatedTiles) != 0):
             self.dispatch_event("on_map_changed", self.updatedTiles)
             self.updatedTiles = list()

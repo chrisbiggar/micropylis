@@ -86,6 +86,10 @@ class ViewportGroup(OrderedGroup):
         y = self.zoomY or (self.widgetHeight / 2)
         self._setZoom(x, y, None)
         
+    def gotoSpot(self, x, y, zoom):
+        self.setFocus(x, y)
+        self._setZoom(0, 0, zoom)
+        
     def changeFocus(self, dx, dy):
         self.setFocus(self.left - dx * self.zoomLevel,
                       self.bottom + dy * self.zoomLevel)
@@ -185,7 +189,7 @@ class ViewportGroup(OrderedGroup):
         self.zoomedWidth = zoomedWidth
         self.zoomedHeight = zoomedHeight
     
-    def setZoom(self, x, y, newZoomLevel):
+    def setZoom(self, x, y, newZoomLevel, keepFocus=False):
         '''
         triggers a change in zoom level
         '''
@@ -193,6 +197,7 @@ class ViewportGroup(OrderedGroup):
         self.zoomX = x
         self.zoomY = y
         self.deltaZoom = (newZoomLevel - self.zoomLevel) * 10
+        self.keepFocus = keepFocus
         if newZoomLevel > self.zoomLevel:
             self.zoomTransition = self.INCREASE_ZOOM
         elif newZoomLevel < self.zoomLevel:
@@ -221,7 +226,15 @@ class ViewportGroup(OrderedGroup):
                     (self.zoomTransition == self.DECREASE_ZOOM and\
                     self.zoomLevel <= self.targetZoom)):
                 self.zoomTransition = None
-                self._setZoom(self.zoomX, self.zoomY, self.targetZoom)
+                if self.keepFocus:
+                    x = self.left
+                    y = self.bottom
+                    print "change"
+                    self._setZoom(self.zoomX, self.zoomY, self.targetZoom)
+                    self.setFocus(x, y)
+                else:
+                    self._setZoom(self.zoomX, self.zoomY, self.targetZoom)
+
     
     def update(self, dt):
         self.updateZoomTransition(dt)
@@ -330,7 +343,8 @@ class ToolCursorGroup(OrderedGroup):
         
     def __eq__(self, other):
         return (self.__class__ is other.__class__ and
-                self.viewportGroup == other.viewportGroup and
+                self.viewportGroup.left == other.viewportGroup.left and
+                self.viewportGroup.bottom == other.viewportGroup.bottom and
                 self.parent == other.parent)
 
     def __hash__(self):
@@ -385,7 +399,7 @@ class CityView(layout.Spacer):
         
         self.viewportGroup = ViewportGroup(BG_RENDER_ORDER)
         self.blinkingGroup = BlinkingGroup(MG_RENDER_ORDER, self.viewportGroup)
-        self.toolCursorGroup = OrderedGroup(FG_RENDER_ORDER, self.viewportGroup)
+        self.toolCursorGroup = ToolCursorGroup(FG_RENDER_ORDER, self.viewportGroup)
         
         self.tileSprites = None
         self.toolCursor = None
@@ -626,8 +640,7 @@ class CityView(layout.Spacer):
         if symbol == key._0:
             self.changeZoom(newValue=1.0)
         if symbol == key.A:
-            self.viewportGroup.setFocus(1000, 800)
-            self.changeZoom(newValue=0.74)
+            self.viewportGroup.gotoSpot(500, 400, 0.86)
             
             
     def changeZoom(self, newValue=None, increment=None):

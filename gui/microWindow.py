@@ -3,24 +3,19 @@ Created on Dec 31, 2015
 
 @author: chris
 '''
-import math
 import pyglet
 #pyglet.options['debug_gl'] = False
 from pyglet.gl import *
 from pyglet.window import mouse
-import kytten
-import engine
-from engine import Engine, micropolistool, speed, tiles, tileConstants
+from engine import Engine, micropolistool, speed, tiles
 from engine.micropolistool import MicropylisTool
 from engine.cityRect import CityRect
 from gui.cityView import CityView
-import dialogs
 from engine.toolResult import ToolResult
 from gui.controlPanel import ControlPanel
 import gui
 from layout import LayoutWindow, HorizontalLayout
 import dialogs
-from dialogs import MainMenuDialog, CityEvalDialog, BudgetDialog
 
 
 
@@ -79,8 +74,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.cityView = CityView(self.animLoop.getClock())
         self.push_handlers(self.cityView.keys)
         self.controlPanel = ControlPanel()
-        self.controlPanel.push_handlers(self)
-        
+        #self.controlPanel.attachToEvents(self)
         LayoutWindow.__init__(self,HorizontalLayout([
                                                    self.cityView,
                                                    self.controlPanel],
@@ -98,7 +92,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.set_minimum_size(640, 480)
         self.set_caption(gui.config.get('window','CAPTION'))
         self.fpsDisplay = pyglet.clock.ClockDisplay(color=(.2,.2,.2,0.6))
-        self.initGuiComponents()
+        self.setupDialogs()
         
         self.set_location(40,40)
         
@@ -115,8 +109,8 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
                 pyglet.window.key._5 : speed.SUPER_FAST}
         self.speed = None
         
-        #self.newCity()
-        self.loadCity('cities/hawkins.cty')
+        self.newCity()
+        #self.loadCity('cities/hawkins.cty')
         
 
 
@@ -126,6 +120,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.engine = Engine()
         self.cityView.reset(self.engine)
         self.controlPanel.reset(self.engine)
+        self.engine.newCity()
         self.setSpeed(speed.PAUSED)
         
     
@@ -135,25 +130,16 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.cityView.reset(self.engine)
         self.controlPanel.reset(self.engine)
         self.setSpeed(speed.PAUSED)
-        
-    def initGuiComponents(self):
-        self.setupDialogs()
 
         
     def setupDialogs(self):
+        dialogs.window = self
         self.dialogBatch = pyglet.graphics.Batch()
         self.mainDialog = dialogs.ToolDialog(self)
         self.register_event_type('on_update')
         self.push_handlers(self.mainDialog)
         pyglet.clock.schedule_interval(self.updateKytten, 1/60.)
-        self.dialogs = {'main_menu':None,
-              'budget_menu':None,
-              'city_eval':None,
-              'city_graphs':None}
-        self.dialogTypes = {'main_menu':MainMenuDialog,
-              'budget_menu':BudgetDialog,
-              'city_eval':CityEvalDialog,
-              'city_graphs':None}
+
         
     def toggleFullscreen(self):
         if not self._fullscreen:
@@ -246,14 +232,10 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         pyglet.window.Window.set_mouse_cursor(self, cursor)
         
         
-    def gui_invoke(self, guiItemName):
-        cityActive = True
-        if self.dialogs[guiItemName] is None or\
-                not self.dialogs[guiItemName].active:
-            self.dialogs[guiItemName] = self.dialogTypes[guiItemName]\
-                                            (self,cityActive)
-        else:
-            self.dialogs[guiItemName].teardown()
+    def invoke_dialog(self, guiItemName):
+        #cityActive = True
+        pass
+
             
     def setSpeed(self, newSpeed):
         if newSpeed == self.speed:
@@ -279,7 +261,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
     def on_draw(self):
         self.clear()
         LayoutWindow.draw(self)
-        self.dialogBatch.draw()
+        dialogs.batch.draw()
         self.fpsDisplay.draw()
             
             
