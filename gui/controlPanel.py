@@ -205,7 +205,7 @@ class MessageQueue(Widget):
 class DemandIndicator(Widget):
     def __init__(self):
         super(DemandIndicator,self).__init__()
-        self.bgColor = (100,140,128,255)
+        self.bgColor = (100,140,128,160)
         self.bgRect = None
         self.border = None
         
@@ -244,15 +244,16 @@ class DemandIndicator(Widget):
                              highlightGroup)
         
 class View(pyglet.event.EventDispatcher):
-    def __init__(self, layout):
+    def __init__(self, controlPanel, layout):
         self.layout = layout
-        self.register_event_type('switch_menu')
+        self.controlPanel = controlPanel
     
     def getLayout(self):
         return self.layout
         
 class CityMenu(View):
-    def __init__(self):
+    def __init__(self, controlPanel, microWindow):
+        self.microWindow = microWindow
         
         self.months = []
         for (name,month) in gui.config.items('month_strings'):
@@ -260,10 +261,11 @@ class CityMenu(View):
         self.populationText = gui.config.get('control_panel_strings', 
                                              'POPULATION')
         self.fundsText = gui.config.get('control_panel_strings', 'FUNDS')
+        self.speedText = " Speed"
         
         self.lastCityTime = -4 # one month in past
         
-        super(CityMenu,self).__init__(self.createLayout())
+        super(CityMenu,self).__init__(controlPanel, self.createLayout())
         
     def createLayout(self):
         self.demandIndicator = DemandIndicator()
@@ -272,6 +274,10 @@ class CityMenu(View):
                                          fontName=fontName,
                                          fontSize=fontSize,
                                          action=self.mainMenuAction)
+        self.speedButton = ButtonLabel("",
+                                       fontName=fontName,
+                                      fontSize=fontSize,
+                                      action=self.speedAction)
         self.dataViewButton = ButtonLabel(text="Data View",
                                       fontName=fontName,
                                       fontSize=fontSize,
@@ -287,6 +293,7 @@ class CityMenu(View):
                                            action=self.populationAction)
         return VerticalLayout([self.demandIndicator,
                                  self.mainMenuButton,
+                                 self.speedButton,
                                  self.dataViewButton,
                                  self.fundsButton,
                                  self.dateButton,
@@ -301,8 +308,11 @@ class CityMenu(View):
         self.lastCityTime = eng.cityTime - 4
         self.on_date_changed(eng.cityTime)
         
+    def speedAction(self):
+        self.microWindow.incrementSpeed()
+        
     def dataViewAction(self):
-        self.dispatch_event('switch_menu', 'DataVisualsMenu')
+        self.controlPanel.switchMenu('DataVisualsMenu')
             
     def mainMenuAction(self):
         MainMenuDialog.toggle()
@@ -315,6 +325,9 @@ class CityMenu(View):
         
     def populationAction(self):
         CityEvalDialog.toggle()
+        
+    def speed_changed(self, newSpeed):
+        self.speedButton.set_text(newSpeed.name + self.speedText)
                                         
     def on_date_changed(self, cityTime):
         if cityTime - self.lastCityTime >= 4:
@@ -341,8 +354,10 @@ class CityMenu(View):
     
 
 class DataVisualsMenu(View):
-    def __init__(self):
-        super(DataVisualsMenu,self).__init__(self.createLayout())
+    def __init__(self, controlPanel, cityView):
+        super(DataVisualsMenu,self).__init__(controlPanel,
+                                             self.createLayout())
+        self.cityView = cityView
         
     def createLayout(self):
         self.titleLabel = LayoutLabel(text="Data Views",
@@ -416,7 +431,7 @@ class DataVisualsMenu(View):
                                 fillWidth=True)
         
     def backAction(self):
-        self.dispatch_event('switch_menu')
+        self.controlPanel.switchMenu()
     
     def resAction(self):
         pass
@@ -530,20 +545,17 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
     '''
     WIDTH = 300
     DEFAULT_MENU = 'CityMenu'
-    def __init__(self):
+    def __init__(self, microWindow, cityView):
         self.fgGroup = fgGroup
         self.bg = None
         self.border = None
         
         self.msgs = MessageQueue(padding=3)
 
-        self.cityMenu = CityMenu()
+        self.cityMenu = CityMenu(self, microWindow)
         self.views = {
                       'CityMenu': self.cityMenu,
-                      'DataVisualsMenu': DataVisualsMenu()}
-        
-        for view in self.views:
-            self.views[view].push_handlers(self)
+                      'DataVisualsMenu': DataVisualsMenu(self, cityView)}
         
         self.setLayout(self.DEFAULT_MENU)
         super(ControlPanel,self).__init__(self.content)
@@ -552,11 +564,14 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
         bgColorStr = gui.config.get('control_panel', 'BG_COLOR')
         self.bgColor = map(int, tuple(bgColorStr.split(',')))
     
-    def reset(self, eng):
+    def reset(self, window, eng):
         if eng:
             self.cityMenu.reset(eng)
             eng.push_handlers(self,self.cityMenu)
+            window.push_handlers(self, self.cityMenu)
             
+    def speed_changed(self, newSpeed):
+        self.addInfoMessage(newSpeed.name + " Speed")
         
     def size(self,frame):
         self.delete()
@@ -577,11 +592,9 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
         super(ControlPanel,self).layout(x,y)
         if self.enabled:
             self.createBg()
-        print self.content.content[0].width
+        #print self.content.content[0].width
         
-    def switch_menu(self, viewName=None):
-        print "switch view"
-
+    def switchMenu(self, viewName=None):
         oldContent = self.content
         oldContent.delete()
         self.setLayout(viewName)

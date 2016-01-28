@@ -1,4 +1,4 @@
-
+from collections import OrderedDict
 
 
 '''
@@ -14,15 +14,18 @@ animationCoefficient:
 '''
 
 class Speed(object):
-    def __init__(self, animCoefficient, delay, name):
+    def __init__(self, animCoefficient, delay):
         self.animCoefficient = animCoefficient
         self.delay = delay
-        self.name = name
         self.lastTs = 0
-    
+        self.name = None # set by key string in speeds
 
-PAUSED = Speed(0, 999, "Paused")
-SLOW = Speed(0.34, 0.6, "Slow")
-NORMAL = Speed(1.5, 0.3, "Normal")
-FAST = Speed(5, 0.1, "Fast")
-SUPER_FAST = Speed(10, 0.02, "Super Fast")
+
+speeds = OrderedDict((('Paused',Speed(0, 999)),
+                       ('Slow',Speed(0.34, 0.6)),
+                       ('Normal',Speed(1.5, 0.3)),
+                       ('Fast',Speed(5, 0.1)),
+                       ('Super Fast',Speed(10, 0.02))))
+
+for speedKey in speeds.keys():
+    speeds[speedKey].name = speedKey

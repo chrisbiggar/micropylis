@@ -7,7 +7,8 @@ import pyglet
 #pyglet.options['debug_gl'] = False
 from pyglet.gl import *
 from pyglet.window import mouse
-from engine import Engine, micropolistool, speed, tiles
+from engine import Engine, micropolistool, tiles
+from engine.speed import speeds
 from engine.micropolistool import MicropylisTool
 from engine.cityRect import CityRect
 from gui.cityView import CityView
@@ -58,6 +59,8 @@ handles tool dispatching.
 '''
 class MicroWindow(pyglet.window.Window, LayoutWindow):
     def __init__(self, animLoop):
+        self.register_event_type('speed_changed')
+        
         self.DEFAULT_WIDTH = int(gui.config.get('window','DEFAULT_WIDTH'))
         self.DEFAULT_HEIGHT = int(gui.config.get('window','DEFAULT_HEIGHT'))
         pyglet.window.Window.__init__(self, width=self.DEFAULT_WIDTH,
@@ -72,9 +75,10 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.engine = None
         
         self.cityView = CityView(self.animLoop.getClock())
-        self.push_handlers(self.cityView.keys)
-        self.controlPanel = ControlPanel()
-        #self.controlPanel.attachToEvents(self)
+        self.controlPanel = ControlPanel(self, self.cityView)
+        self.push_handlers(self.cityView, 
+                           self.controlPanel, 
+                           self.cityView.keys)
         LayoutWindow.__init__(self,HorizontalLayout([
                                                    self.cityView,
                                                    self.controlPanel],
@@ -89,24 +93,22 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         
         # window stuff
         self.icon = pyglet.image.load(gui.config.get('window','ICON_FILE')) # icon is set at resize
+        self.set_location(40,40)
         self.set_minimum_size(640, 480)
         self.set_caption(gui.config.get('window','CAPTION'))
         self.fpsDisplay = pyglet.clock.ClockDisplay(color=(.2,.2,.2,0.6))
         self.setupDialogs()
         
-        self.set_location(40,40)
-        
-        # 
         for (name,font) in gui.config.items('font_files'):
             pyglet.font.add_file(font)
 
         pyglet.clock.schedule_interval(self.update, 1/60.)
         self.speedKeyMap = {
-                pyglet.window.key._1 : speed.PAUSED,
-                pyglet.window.key._2 : speed.SLOW,
-                pyglet.window.key._3 : speed.NORMAL,
-                pyglet.window.key._4 : speed.FAST,
-                pyglet.window.key._5 : speed.SUPER_FAST}
+                pyglet.window.key._1 : speeds['Paused'],
+                pyglet.window.key._2 : speeds['Slow'],
+                pyglet.window.key._3 : speeds['Normal'],
+                pyglet.window.key._4 : speeds['Fast'],
+                pyglet.window.key._5 : speeds['Super Fast']}
         self.speed = None
         
         self.newCity()
@@ -116,20 +118,20 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
 
     def newCity(self):
         #newCityDialog = NewCityDialog(self)
-        
         self.engine = Engine()
         self.cityView.reset(self.engine)
-        self.controlPanel.reset(self.engine)
+        self.controlPanel.reset(self, self.engine)
         self.engine.newCity()
-        self.setSpeed(speed.PAUSED)
+        self.setSpeed(speeds['Paused'])
         
     
     def loadCity(self, filePath):
+        
         self.engine = Engine()
-        self.engine.loadCity(filePath)
         self.cityView.reset(self.engine)
-        self.controlPanel.reset(self.engine)
-        self.setSpeed(speed.PAUSED)
+        self.controlPanel.reset(self, self.engine)
+        self.engine.loadCity(filePath)
+        self.setSpeed(speeds['Paused'])
 
         
     def setupDialogs(self):
@@ -235,20 +237,21 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
     def invoke_dialog(self, guiItemName):
         #cityActive = True
         pass
-
+    
+    def incrementSpeed(self):
+        curSpeedIndex = speeds.keys().index(self.speed.name)
+        newSpeedNum = (curSpeedIndex + 1) % len(speeds)
+        self.setSpeed(speeds.items()[newSpeedNum][1])
             
     def setSpeed(self, newSpeed):
         if newSpeed == self.speed:
             return
+        self.dispatch_event('speed_changed', newSpeed)
         pyglet.clock.unschedule(self.engine.animate)
         self.animLoop.setSpeed(self.speed, newSpeed)
-        self.cityView.setSpeed(newSpeed)
         self.speed = newSpeed
-        self.controlPanel.addInfoMessage(newSpeed.name + " Speed")
-        if self.speed == speed.PAUSED:
-            return
-        pyglet.clock.schedule_interval(self.engine.animate, newSpeed.delay)
-
+        if self.speed != speeds['Paused']:
+            pyglet.clock.schedule_interval(self.engine.animate, newSpeed.delay)
     
     def update(self, dt):
         LayoutWindow.update(self,self.width,self.height)

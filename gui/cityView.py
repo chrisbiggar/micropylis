@@ -23,7 +23,7 @@ from engine.cityLocation import CityLocation
 from engine.tileConstants import CLEAR
 from engine import tileConstants
 from util import create2dArray,createRect,createHollowRect
-
+from engine.speed import speeds
 
 TILESIZE = 16
 
@@ -668,7 +668,7 @@ class CityView(layout.Spacer):
         '''
         
         '''
-        if speed == engine.speed.PAUSED:
+        if speed == speeds['Paused']:
             self.blinkingGroup.stop()
         else:
             self.blinkingGroup.start()
