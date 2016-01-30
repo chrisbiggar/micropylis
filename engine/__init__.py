@@ -193,6 +193,7 @@ class Engine(pyglet.event.EventDispatcher):
         finally:
             saveFile.close()
         #self.checkPowerMap()
+        self.dispatch_event("on_map_changed", self.updatedTiles)
         self.dispatch_event("on_funds_changed", self.budget.funds)
         self.dispatch_event('on_date_changed', self.cityTime)
         self.dispatch_event('on_census_changed', 0)
@@ -327,7 +328,9 @@ class Engine(pyglet.event.EventDispatcher):
     def simulate(self, mod16):
         '''  '''
         band = self.getWidth() / 8
+        #print "simulate " + str(mod16)
         if mod16 == 0:
+            #print "bah"
             self.sCycle = (self.sCycle + 1) % 1024
             self.cityTime += 1
             self.dispatch_event('on_date_changed', self.cityTime)

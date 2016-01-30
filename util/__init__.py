@@ -3,6 +3,7 @@ import pyglet
 from pyglet.gl import GL_LINE_STRIP,GL_QUADS
 
 
+
 ''' 
 
 #  misc functions
@@ -33,11 +34,6 @@ def readInt(aFile):
     return struct.unpack('>I', aFile.read(4))[0]
 
 def createHollowRect(x,y,width,height,color,batch,group):
-    '''
-    create a hollow rect vertex list and add to given batch group.
-    
-    uses gl linestips
-    '''
     x2 = x + width
     y2 = y + height
     numVertices = 5
@@ -52,9 +48,6 @@ def createHollowRect(x,y,width,height,color,batch,group):
                                 ('c4B', colorData))
 
 def createRect(x,y,width,height,color,batch,group):
-    '''
-    create a solid rect vertex list and add to batch given
-    '''
     x2 = x + width
     y2 = y + height
     colorData = []
@@ -67,9 +60,6 @@ def createRect(x,y,width,height,color,batch,group):
                              ('c4B', colorData))
     
 def createLine(x,y,x2,y2,color,width,batch,group):
-    '''
-    create a single line vertex list and add to batch given
-    '''
     colorData = []
     numVertices = 2
     for i in xrange(numVertices * len(color)):

@@ -39,10 +39,6 @@ class ViewportGroup(OrderedGroup):
     '''
     INCREASE_ZOOM = 2
     DECREASE_ZOOM = 1
-    LEFT = 1
-    RIGHT = 2
-    DOWN = 4
-    UP = 8
     
     def __init__(self, order):
         super(ViewportGroup, self).__init__(order)
@@ -56,12 +52,6 @@ class ViewportGroup(OrderedGroup):
         self.deltaZoom = 0
         self.zoomX = None
         self.zoomY = None
-        
-        self.focusTransition = None
-        self.deltaX = 0
-        self.deltaY= 0
-        self.targetX = 0
-        self.targetY = 0
         
         self.mapWidth = 0
         self.mapHeight = 0
@@ -202,21 +192,16 @@ class ViewportGroup(OrderedGroup):
     def setZoom(self, x, y, newZoomLevel, keepFocus=False):
         '''
         triggers a change in zoom level
-        
-        
-        change = (newZoomLevel - self.zoomLevel)
-        factor = 0.8 / abs(change)
         '''
         self.targetZoom = newZoomLevel
         self.zoomX = x
         self.zoomY = y
+        self.deltaZoom = (newZoomLevel - self.zoomLevel) * 10
         self.keepFocus = keepFocus
         if newZoomLevel > self.zoomLevel:
             self.zoomTransition = self.INCREASE_ZOOM
-            self.deltaZoom = 0.8
         elif newZoomLevel < self.zoomLevel:
             self.zoomTransition = self.DECREASE_ZOOM
-            self.deltaZoom = -0.8
 
     def changeZoom(self, x, y, dy):
         '''
@@ -233,9 +218,6 @@ class ViewportGroup(OrderedGroup):
         self.setZoom(x, y, newZoomLevel)
         
     def updateZoomTransition(self, dt):
-        '''
-        changes zoom at a gradual rate
-        '''
         if self.zoomTransition is not None:
             self._setZoom(self.zoomX, self.zoomY, 
                          self.zoomLevel + self.deltaZoom * dt)
@@ -247,14 +229,12 @@ class ViewportGroup(OrderedGroup):
                 if self.keepFocus:
                     x = self.left
                     y = self.bottom
+                    print "change"
                     self._setZoom(self.zoomX, self.zoomY, self.targetZoom)
                     self.setFocus(x, y)
                 else:
                     self._setZoom(self.zoomX, self.zoomY, self.targetZoom)
-                    
-    def updateFocusTransition(self, dt):
-        pass
-            
+
     
     def update(self, dt):
         self.updateZoomTransition(dt)
@@ -385,14 +365,12 @@ class ToolCursor(object):
 
 class TileSprite(Sprite):
     '''
-        Sprite object that can be changed to any tile in given tileImageLoader
-    
         static buffer object usage hint because only texture will change.
     '''
-    def __init__(self, tileNum, x, y, batch, group, tileImageLoader, clock):
-        self.tileImageLoader = tileImageLoader
+    def __init__(self, tileNum, x, y, batch, group, tileImages, clock):
+        self.tileImages = tileImages
         super(TileSprite,self).__init__(
-                            self.tileImageLoader.getTileImage(tileNum),
+                            self.tileImages.getTileImage(tileNum),
                             x=x, y=y,
                             batch=batch,
                             group=group,
@@ -400,7 +378,7 @@ class TileSprite(Sprite):
                             custom_clock=clock)
     
     def setTile(self, tileNum):
-        self.image = self.tileImageLoader.getTileImage(tileNum)
+        self.image = self.tileImages.getTileImage(tileNum)
         
    
         
@@ -409,15 +387,13 @@ class TileSprite(Sprite):
 class CityView
 
 Controls the rendering of the city.
-Provides panning and zoom through a ViewportGroup object.
-
 
 '''
 class CityView(layout.Spacer):
     def __init__(self, animClock):
         super(CityView,self).__init__()
         self.animClock = animClock
-        self.tileImageLoader = TileImageLoader(
+        self.tileImages = TileImageLoader(
                             gui.config.get('misc', 'TILES_FILE'), 
                             TILESIZE, flipTilesVert=True, padding=2)
         
@@ -439,7 +415,8 @@ class CityView(layout.Spacer):
         if eng is None:
             return
         eng.push_handlers(self)
-        
+        self.viewportGroup.setMapSize(eng.getWidth() * TILESIZE, 
+                                   eng.getHeight() * TILESIZE)
         
     def setRenderSize(self, width, height):
         self.renderWidth = width
@@ -452,11 +429,12 @@ class CityView(layout.Spacer):
         super(CityView,self).layout(x,y)
         self.viewportGroup.setViewportSize((self.width, self.height),
                                          (self.renderWidth, self.renderHeight))
+        self.batch = self.savedFrame.batch
         if self.tileSprites is None:
             self._generateTileSprites()
         
 
-    def reset(self, eng):
+    def reset(self, engine):
         '''
         To be called when city engine has changed, to update
         cityview to new engine.
@@ -468,10 +446,8 @@ class CityView(layout.Spacer):
         self.deleteToolCursor()
         self._deleteTileSprites()
         
-        self.setEngine(eng)
+        self.setEngine(engine)
         if self.engine is not None:
-            self.viewportGroup.setMapSize(eng.getWidth() * TILESIZE, 
-                           eng.getHeight() * TILESIZE)
             self.noPowerIndicators = create2dArray(
                                         self.engine.getWidth(), 
                                         self.engine.getHeight(), 
@@ -516,9 +492,9 @@ class CityView(layout.Spacer):
                 self.tileSprites[x][y] = TileSprite(cell,
                                     x2,
                                     y2,
-                                    self.savedFrame.batch,
+                                    self.batch,
                                     self.viewportGroup,
-                                    self.tileImageLoader,
+                                    self.tileImages,
                                     self.animClock)
             
 
@@ -526,8 +502,6 @@ class CityView(layout.Spacer):
         '''
         modifies tile batch with tilesList
         '''
-        if self.tileSprites is None:
-            return
         for tile in tilesList:
             x = tile[0]
             y = tile[1]
@@ -542,11 +516,11 @@ class CityView(layout.Spacer):
             self.noPowerIndicators[x][y].delete()
             self.noPowerIndicators[x][y] = None
         if ind:
-            img = self.tileImageLoader.getTileImage(tileConstants.LIGHTNINGBOLT)
+            img = self.tileImages.getTileImage(tileConstants.LIGHTNINGBOLT)
             x2 = x * TILESIZE
             y2 = y * TILESIZE + TILESIZE
             self.noPowerIndicators[x][y] = Sprite(img,
-                                                batch=self.savedFrame.batch,
+                                                batch=self.batch,
                                                 group=self.blinkingGroup,
                                                 x=x2,
                                                 y=y2)
@@ -585,11 +559,11 @@ class CityView(layout.Spacer):
             height = y2-y
             self.toolCursor.vl = createRect(x, y, width, height, 
                                             self.toolCursor.fillColor, 
-                                            self.savedFrame.batch, 
+                                            self.batch, 
                                             self.toolCursorGroup)
             self.toolCursor.borderVL = createHollowRect(x, y, width, height,
                                             self.toolCursor.borderColor, 
-                                            self.savedFrame.batch, 
+                                            self.batch, 
                                             self.toolCursorGroup)
             
         

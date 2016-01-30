@@ -157,7 +157,7 @@ class FileSaveDialog(FileLoadDialog):
             self.on_escape(self)
         else:
             self.delete()
-            self.window.remove_handlers(self)
+            self.tilesView.remove_handlers(self)
 
     def _do_select(self):
         filename = self.text_input.get_text()
@@ -220,7 +220,7 @@ class DirectorySelectDialog(FileLoadDialog):
             self.on_escape(self)
         else:
             self.delete()
-            self.window.remove_handlers(self)
+            self.tilesView.remove_handlers(self)
 
     def _do_open(self):
         filename = self.text_input.get_text()

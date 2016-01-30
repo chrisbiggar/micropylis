@@ -25,7 +25,7 @@ speeds = OrderedDict((('Paused',Speed(0, 999)),
                        ('Slow',Speed(0.34, 0.6)),
                        ('Normal',Speed(1.5, 0.3)),
                        ('Fast',Speed(5, 0.1)),
-                       ('Super Fast',Speed(6, 0.02))))
+                       ('Super Fast',Speed(10, 0.02))))
 
 for speedKey in speeds.keys():
     speeds[speedKey].name = speedKey

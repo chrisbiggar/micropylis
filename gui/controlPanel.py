@@ -48,14 +48,6 @@ class Message(object):
     displays messages to user. 
 '''
 class MessageQueue(Widget):
-    '''
-    Pane that displays messages for a set duration.
-    Messages are displayed in descending vertical order.
-    Most recent msg displayed bold.
-    Does not allow overflow below box.
-    
-    Uses efficient text insertion to pyglet document.
-    '''
     MSG_DELETE_FREQ = 0.5 # in seconds
     def __init__(self, padding=0):
         super(MessageQueue,self).__init__()
@@ -96,6 +88,7 @@ class MessageQueue(Widget):
     
     def size(self, frame):
         super(MessageQueue,self).size(frame)
+        
         
         if self.textLayout is not None:
             self.textLayout.delete()
@@ -250,7 +243,7 @@ class DemandIndicator(Widget):
                              self.savedFrame.batch,
                              highlightGroup)
         
-class MenuView(pyglet.event.EventDispatcher):
+class View(pyglet.event.EventDispatcher):
     def __init__(self, controlPanel, layout):
         self.layout = layout
         self.controlPanel = controlPanel
@@ -258,7 +251,7 @@ class MenuView(pyglet.event.EventDispatcher):
     def getLayout(self):
         return self.layout
         
-class CityMenu(MenuView):
+class CityMenu(View):
     def __init__(self, controlPanel, microWindow):
         self.microWindow = microWindow
         
@@ -281,31 +274,27 @@ class CityMenu(MenuView):
                                          fontName=fontName,
                                          fontSize=fontSize,
                                          action=self.mainMenuAction)
-        self.speedButton = ButtonLabel(text="",
+        self.speedButton = ButtonLabel("",
                                        fontName=fontName,
                                       fontSize=fontSize,
                                       action=self.speedAction)
-        self.dataViewButton = ButtonLabel(text="Data Menu",
+        self.dataViewButton = ButtonLabel(text="Data View",
                                       fontName=fontName,
                                       fontSize=fontSize,
                                       action=self.dataViewAction)
-        self.fundsButton = ButtonLabel(text="",
-                                       fontName=fontName,
+        self.fundsButton = ButtonLabel(fontName=fontName,
                                       fontSize=fontSize,
                                       action=self.fundsAction)
-        self.dateButton = ButtonLabel(text="",
-                                      fontName=fontName,
+        self.dateButton = ButtonLabel(fontName=fontName,
                                       fontSize=fontSize,
                                      action=self.dateAction)
-        self.populationButton = ButtonLabel(text="",
-                                            fontName=fontName,
+        self.populationButton = ButtonLabel(fontName=fontName,
                                            fontSize=fontSize, 
                                            action=self.populationAction)
         return VerticalLayout([self.demandIndicator,
                                  self.mainMenuButton,
                                  self.speedButton,
                                  self.dataViewButton,
-                                 Spacer(height=4),
                                  self.fundsButton,
                                  self.dateButton,
                                  self.populationButton],
@@ -364,7 +353,7 @@ class CityMenu(MenuView):
     
     
 
-class DataVisualsMenu(MenuView):
+class DataVisualsMenu(View):
     def __init__(self, controlPanel, cityView):
         super(DataVisualsMenu,self).__init__(controlPanel,
                                              self.createLayout())
@@ -375,10 +364,6 @@ class DataVisualsMenu(MenuView):
                                       fontName=fontName,
                                       fontSize=fontSize+8)
         self.backLabel = ButtonLabel(text="Back",
-                                      fontName=fontName,
-                                      fontSize=fontSize - 2,
-                                      action=self.backAction)
-        self.noneLabel = ButtonLabel(text="No View",
                                       fontName=fontName,
                                       fontSize=fontSize - 2,
                                       action=self.backAction)
@@ -430,7 +415,6 @@ class DataVisualsMenu(MenuView):
                                 Spacer(height=2),
                                 self.backLabel,
                                 Spacer(height=2),
-                                self.noneLabel,
                                 self.resLabel,
                                 self.comLabel,
                                 self.indLabel,
@@ -483,7 +467,7 @@ class DataVisualsMenu(MenuView):
         pass
     
 
-'''class GraphsMenu(MenuView):
+'''class GraphsMenu(View):
     def __init__(self):
         super(GraphsMenu,self).__init__(self.createLayout())
         
@@ -556,7 +540,7 @@ class DataVisualsMenu(MenuView):
 
 class ControlPanel(Frame, pyglet.event.EventDispatcher):
     '''
-    Provides an interface to control program and city details.
+    
     
     '''
     WIDTH = 300
@@ -623,7 +607,7 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
         try:
             self.currentView = self.views[viewName].getLayout()
         except KeyError:
-            print "Invalid MenuView Name"
+            print "Invalid View Name"
             return
         self.content = VerticalLayout([self.currentView,
                                   Spacer(height=10),

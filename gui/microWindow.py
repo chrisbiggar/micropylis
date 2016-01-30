@@ -17,7 +17,6 @@ from gui.controlPanel import ControlPanel
 import gui
 from layout import LayoutWindow, HorizontalLayout
 import dialogs
-from dialogs import MainMenuDialog
 
 
 
@@ -50,17 +49,15 @@ class Keys(pyglet.window.key.KeyStateHandler):
 
 
 
+'''
+class MicroWindow
 
+The main window for micropylis.
+handles tool dispatching.
+
+
+'''
 class MicroWindow(pyglet.window.Window, LayoutWindow):
-    '''
-    class MicroWindow
-    
-    The main window for micropylis.
-    Handles tool dispatching and controls program animation/simulation speed.
-    Controls the updating of the rest of the program.
-    Implements LayoutWindow which allows a tree of widgets to be
-    sized and positioned within this window.
-    '''
     def __init__(self, animLoop):
         self.register_event_type('speed_changed')
         
@@ -100,14 +97,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.set_minimum_size(640, 480)
         self.set_caption(gui.config.get('window','CAPTION'))
         self.fpsDisplay = pyglet.clock.ClockDisplay(color=(.2,.2,.2,0.6))
-        
-        # setup kytten and main dialog:
-        dialogs.window = self
-        self.register_event_type('on_update') # called in our update method
-        self.mainDialog = dialogs.ToolDialog(self)
-        self.push_handlers(self.mainDialog)
-        self.cityLoaded = False
-        #MainMenuDialog.toggle()
+        self.setupDialogs()
         
         for (name,font) in gui.config.items('font_files'):
             pyglet.font.add_file(font)
@@ -121,13 +111,13 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
                 pyglet.window.key._5 : speeds['Super Fast']}
         self.speed = None
         
-        #self.newCity()
-        self.loadCity('cities/kyoto.cty')
+        self.newCity()
+        #self.loadCity('cities/hawkins.cty')
         
 
 
     def newCity(self):
-        self.cityLoaded = True
+        #newCityDialog = NewCityDialog(self)
         self.engine = Engine()
         self.cityView.reset(self.engine)
         self.controlPanel.reset(self, self.engine)
@@ -136,12 +126,21 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         
     
     def loadCity(self, filePath):
-        self.cityLoaded = True
+        
         self.engine = Engine()
         self.cityView.reset(self.engine)
         self.controlPanel.reset(self, self.engine)
         self.engine.loadCity(filePath)
         self.setSpeed(speeds['Paused'])
+
+        
+    def setupDialogs(self):
+        dialogs.window = self
+        self.dialogBatch = pyglet.graphics.Batch()
+        self.mainDialog = dialogs.ToolDialog(self)
+        self.register_event_type('on_update')
+        self.push_handlers(self.mainDialog)
+        pyglet.clock.schedule_interval(self.updateKytten, 1/60.)
 
         
     def toggleFullscreen(self):
@@ -233,6 +232,11 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         if cursor is not None:
             cursor = self.get_system_mouse_cursor(cursor)
         pyglet.window.Window.set_mouse_cursor(self, cursor)
+        
+        
+    def invoke_dialog(self, guiItemName):
+        #cityActive = True
+        pass
     
     def incrementSpeed(self):
         curSpeedIndex = speeds.keys().index(self.speed.name)
@@ -250,10 +254,12 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             pyglet.clock.schedule_interval(self.engine.animate, newSpeed.delay)
     
     def update(self, dt):
-        self.dispatch_event('on_update', dt) # kytten needs this
         LayoutWindow.update(self,self.width,self.height)
         self.cityView.update(dt)
         self.controlPanel.update(dt)
+        
+    def updateKytten(self, dt):
+        self.dispatch_event('on_update', dt)
         
     def on_draw(self):
         self.clear()
@@ -283,9 +289,6 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         return tool
         
     def onToolDown(self, x, y, button, modifiers):
-        '''
-        
-        '''
         loc = self.cityView.screenCoordsToCityLocation(x, y)
         self.lastX = loc.x
         self.lastY = loc.y
@@ -380,10 +383,6 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.cityView.setToolPreview(self.toolStroke.getPreview())
         
     def showToolResult(self, loc, result):
-        '''
-        showToolResult
-        Creates string from toolresult and adds it to controlpanel's messages
-        '''
         if result.value == ToolResult.SUCCESS:
             formatString = gui.cityMessages.get('toolresults','SUCCESS')
             msg = formatString.format(cost=str(result.cost))
@@ -400,10 +399,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         
     
     def doQueryTool(self, xPos, yPos):
-        ''' 
-        doQueryTool
-        print tilevalue to infopane messages 
-        '''
+        ''' print tilevalue to infopane messages '''
         tileValue = self.engine.getTile(xPos,yPos)
         '''self.engine.setTile(xPos,yPos,tileConstants.DIRT)'''
         queryMsg = "Power of ({0},{1}): {2}".format(
