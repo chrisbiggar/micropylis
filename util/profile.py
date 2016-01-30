@@ -1,6 +1,6 @@
 '''
 profile module.
-Contains all the profiling resources for micropylis.
+Contains profiling resources.
 
 '''
 import time

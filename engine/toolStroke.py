@@ -17,6 +17,7 @@ from engine.toolResult import ToolResult
 class ToolStroke(object):
     '''
     
+    
     '''
     def __init__(self, engine, tool, xPos, yPos):
         self.engine = engine

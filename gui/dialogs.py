@@ -3,6 +3,7 @@ Created on Sep 24, 2015
 
 @author: chris
 '''
+import os
 import pyglet
 import kytten
 from kytten.widgets import Label, Spacer
@@ -10,6 +11,7 @@ from kytten.layout import VerticalLayout
 from kytten.frame import Frame
 from kytten.dialog import Dialog
 from kytten.menu import Menu
+from kytten import FileLoadDialog,FileSaveDialog
 import widgets
 import gui
 from pyglet.graphics import Batch
@@ -34,16 +36,13 @@ class SingularDialog(Dialog):
     current = None
     
     def onCreation(self, cls):
-        print "create"
         cls.current = self
     
     def onDestruction(self, cls):
-        print "destroy"
         cls.current = None
         
     @classmethod
     def toggle(cls):
-        print cls.current
         if cls.current is None:
             cls()
         else:
@@ -84,8 +83,8 @@ class SingularDialog(Dialog):
 
 class MainMenuDialog(SingularDialog):
     def __init__(self):
+        print "mainmenu"
         self.onCreation(self.__class__)
-        self.window = window
         frame = self.createLayout()
         super(MainMenuDialog,self).__init__(frame,
                                             window=window,
@@ -96,8 +95,12 @@ class MainMenuDialog(SingularDialog):
         
     def createLayout(self):
         title = Label(text="Micropylis")
-        options = ['Back', "New City", "Load City", 
-                        "Save City", "Options", "Credits", "Quit"]
+        if window.cityLoaded:
+            options = ["Back", "New City", "Load City", 
+                            "Save City", "Options", "Credits", "Quit"]
+        else:
+            options = ["New City", "Load City", 
+                            "Options", "Credits", "Quit"]
         self.menu = widgets.ClickMenu(
                 options, on_select=self.on_select_menu,
                 option_padding_x=76, option_padding_y=16)
@@ -106,9 +109,39 @@ class MainMenuDialog(SingularDialog):
        
     
     def on_select_menu(self, choice):
+        def on_load_select(filePath):
+            window.loadCity(filePath)
+            loadDialog.teardown()
+            self.teardown()
+            
+        def on_save_select(filePath):
+            #window.saveCity(filePath)
+            print "save city as " + filePath
+            saveDialog.tearDown()
+            self.teardown()
+            
         if choice == "Back":
             self.on_cancel()
-        
+        elif choice == "Load City":
+            loadDialog = FileLoadDialog(
+                           os.getcwd() + '\cities',
+                           extensions=['.cty'],
+                           window=window,
+                           on_select=on_load_select,
+                           batch=batch,
+                           theme=theme,
+                           on_escape=on_escape)
+        elif choice == "Save City":
+            saveDialog = FileSaveDialog(
+                           os.getcwd() + '\cities',
+                           extensions=['.cty'],
+                           window=window,
+                           on_select=on_save_select,
+                           batch=batch,
+                           theme=theme,
+                           on_escape=on_escape)
+        elif choice == "Quit":
+            window.on_close()
         
     
     

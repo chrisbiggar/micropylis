@@ -1,5 +1,7 @@
 '''
-Created on Jan 22, 2016
+NOT CURRENTLY USED
+
+A would be convenience class for a 2D array.
 
 @author: chris
 '''
