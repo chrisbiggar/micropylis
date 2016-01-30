@@ -3,7 +3,7 @@
 
 import pyglet
 from pyglet import gl
-from pyglet.graphics import OrderedGroup
+
 from widgets import Widget, Control, Label
 from button import Button
 from frame import Wrapper, Frame
@@ -58,13 +58,13 @@ class DialogEventManager(Control):
         @param symbol Key pressed
         @param modifiers Modifiers for key press
         """
-        if symbol in [pyglet.tilesView.key.TAB, pyglet.tilesView.key.ENTER]:
+        if symbol in [pyglet.window.key.TAB, pyglet.window.key.ENTER]:
             focusable = [x for x in self.controls
                          if x.is_focusable() and not x.is_disabled()]
             if not focusable:
                 return
 
-            if modifiers & pyglet.tilesView.key.MOD_SHIFT:
+            if modifiers & pyglet.window.key.MOD_SHIFT:
                 dir = -1
             else:
                 dir = 1
@@ -80,11 +80,11 @@ class DialogEventManager(Control):
 
             # If we hit ENTER, and wrapped back to the first focusable,
             # pass the ENTER back so the Dialog can call its on_enter callback
-            if symbol != pyglet.tilesView.key.ENTER or \
+            if symbol != pyglet.window.key.ENTER or \
                new_focus != focusable[0]:
                 return pyglet.event.EVENT_HANDLED
 
-        elif symbol != pyglet.tilesView.key.ESCAPE:
+        elif symbol != pyglet.window.key.ESCAPE:
             if self.focus is not None and hasattr(self.focus, 'on_key_press'):
                 return self.focus.on_key_press(symbol, modifiers)
 
@@ -358,7 +358,7 @@ class Dialog(Wrapper, DialogEventManager):
     element can be a Layout of some kind which can contain multiple elements.
     Pass a Theme in to set the graphic appearance of the Dialog.
 
-    The Dialog is always repositioned in relationship to the tilesView, and
+    The Dialog is always repositioned in relationship to the window, and
     handles resize events accordingly.
     """
     def __init__(self, content=None, window=None, batch=None, group=None,
@@ -368,18 +368,18 @@ class Dialog(Wrapper, DialogEventManager):
         Creates a new dialog.
 
         @param content The Widget which we wrap
-        @param tilesView The tilesView to which we belong; used to set the
+        @param window The window to which we belong; used to set the
                       mouse cursor when appropriate.  If set, we will
-                      add ourself to the tilesView as a handler.
+                      add ourself to the window as a handler.
         @param batch Batch in which we are to place our graphic elements;
                      may be None if we are to create our own Batch
         @param group Group in which we are to place our graphic elements;
                      may be None
-        @param anchor Anchor point of the tilesView, relative to which we
+        @param anchor Anchor point of the window, relative to which we
                       are positioned.  If ANCHOR_TOP_LEFT is specified,
-                      our top left corner will be aligned to the tilesView's
+                      our top left corner will be aligned to the window's
                       top left corner; if ANCHOR_CENTER is specified,
-                      our center will be aligned to the tilesView's center,
+                      our center will be aligned to the window's center,
                       and so forth.
         @param offset Offset from the anchor point.  A positive X is always
                       to the right, a positive Y to the upward direction.
@@ -394,7 +394,7 @@ class Dialog(Wrapper, DialogEventManager):
         Wrapper.__init__(self, content=content)
         DialogEventManager.__init__(self)
 
-        self.tilesView = window
+        self.window = window
         self.anchor = anchor
         self.offset = offset
         self.theme = theme
@@ -425,13 +425,13 @@ class Dialog(Wrapper, DialogEventManager):
     def do_layout(self):
         """
         We lay out the Dialog by first determining the size of all its
-        chlid Widgets, then laying ourself out relative to the parent tilesView.
+        chlid Widgets, then laying ourself out relative to the parent window.
         """
         # Determine size of all components
         self.size(self)
 
-        # Calculate our position relative to our containing tilesView,
-        # making sure that we fit completely on the tilesView.  If our offset
+        # Calculate our position relative to our containing window,
+        # making sure that we fit completely on the window.  If our offset
         # would send us off the screen, constrain it.
         x, y = GetRelativePoint(self.screen, self.anchor,
                                 self, None, (0, 0))
@@ -478,11 +478,11 @@ class Dialog(Wrapper, DialogEventManager):
         """
         retval = DialogEventManager.on_key_press(self, symbol, modifiers)
         if not retval:
-            if symbol in [pyglet.tilesView.key.TAB, pyglet.tilesView.key.ENTER]:
+            if symbol in [pyglet.window.key.TAB, pyglet.window.key.ENTER]:
                 if self.on_enter is not None:
                     self.on_enter(self)
                     return pyglet.event.EVENT_HANDLED
-            elif symbol == pyglet.tilesView.key.ESCAPE:
+            elif symbol == pyglet.window.key.ESCAPE:
                 if self.on_escape is not None:
                     self.on_escape(self)
                     return pyglet.event.EVENT_HANDLED
@@ -491,7 +491,7 @@ class Dialog(Wrapper, DialogEventManager):
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         """
         Handles mouse dragging.  If we have a focus, pass it in.  Otherwise
-        if we are movable, and we were being dragged, move the tilesView.
+        if we are movable, and we were being dragged, move the window.
 
         @param x X coordinate of mouse
         @param y Y coordinate of mouse
@@ -547,10 +547,10 @@ class Dialog(Wrapper, DialogEventManager):
 
     def on_resize(self, width, height):
         """
-        Update our knowledge of the tilesView's width and height.
+        Update our knowledge of the window's width and height.
 
-        @param width Width of the tilesView
-        @param height Height of the tilesView
+        @param width Width of the window
+        @param height Height of the window
         """
         if self.screen.width != width or self.screen.height != height:
             self.screen.width, self.screen.height = width, height
@@ -571,14 +571,14 @@ class Dialog(Wrapper, DialogEventManager):
     def pop_to_top(self):
         """
         Pop our dialog group to the top, and force our batch to re-sort
-        the groups.  Also, puts our event handler on top of the tilesView's
+        the groups.  Also, puts our event handler on top of the window's
         event handler stack.
         """
         self.root_group.pop_to_top()
         self.batch._draw_list_dirty = True  # forces resorting groups
-        if self.tilesView is not None:
-            self.tilesView.remove_handlers(self)
-            self.tilesView.push_handlers(self)
+        if self.window is not None:
+            self.window.remove_handlers(self)
+            self.window.push_handlers(self)
 
     def set_needs_layout(self):
         """
@@ -591,9 +591,9 @@ class Dialog(Wrapper, DialogEventManager):
         if self.content is not None:
             self.content.teardown()
             self.content = None
-        if self.tilesView is not None:
-            self.tilesView.remove_handlers(self)
-            self.tilesView = None
+        if self.window is not None:
+            self.window.remove_handlers(self)
+            self.window = None
         self.batch._draw_list_dirty = True  # forces resorting groups
 
 class PopupMessage(Dialog):

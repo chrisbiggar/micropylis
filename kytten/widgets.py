@@ -150,7 +150,7 @@ class Control(Widget, pyglet.event.EventDispatcher):
 
         @param id Controls may have ids, which can be used to identify
                   them to the outside application.
-        @param value Controls may be assigned values at start startTime.  The
+        @param value Controls may be assigned values at start time.  The
                      values of all controls which have ids can be obtained
                      through the containing Dialog.
         @param x Initial X coordinate of lower left corner
@@ -207,10 +207,10 @@ class Control(Widget, pyglet.event.EventDispatcher):
     def on_lose_highlight(self):
         self.highlight_flag = False
 
-# Controls can potentially accept most of the events defined for the tilesView,
+# Controls can potentially accept most of the events defined for the window,
 # but in practice we'll only pass selected events from Dialog.  This avoids
 # a large number of unsightly empty method declarations.
-for event_type in pyglet.tilesView.Window.event_types:
+for event_type in pyglet.window.Window.event_types:
     Control.register_event_type(event_type)
 
 Control.register_event_type('on_gain_focus')
@@ -329,9 +329,6 @@ class Label(Widget):
         self.delete()
         if self.saved_dialog is not None:
             self.saved_dialog.set_needs_layout()
-    
-    def get_font(self):
-        return self.label.document.get_font()
 
     def size(self, dialog):
         if dialog is None:
