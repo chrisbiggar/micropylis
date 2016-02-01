@@ -1,25 +1,26 @@
-'''
-Created on Oct 24, 2015
-
-@author: chris
-'''
-from toolStroke import ToolStroke
 import micropolistool
 from engine import tileConstants
+from toolStroke import ToolStroke
+
+'''
+    BuildingTool
+
+    Allows a building to be placed.
+
+    :arg tool: micropolistool corresponding to building to place
+'''
 
 
 class BuildingTool(ToolStroke):
-    
-    
     def __init__(self, engine, tool, xPos, yPos):
-        super(BuildingTool,self).__init__(engine, tool, xPos, yPos)
-    
+        super(BuildingTool, self).__init__(engine, tool, xPos, yPos)
+
     def dragTo(self, xDest, yDest):
         self.xPos = xDest
         self.yPos = yDest
         self.xDest = xDest
         self.yDest = yDest
-    
+
     def apply1(self, eff):
         if self.tool.type == micropolistool.FIRE:
             return self.applyZone(eff, tileConstants.FIRESTATION)

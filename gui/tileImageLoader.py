@@ -5,36 +5,25 @@ Created on Aug 30, 2015
 '''
 import pyglet
 from engine.tileConstants import LOMASK
-from pyglet.image import TextureGrid,AbstractImage,\
-    AbstractImageSequence,TextureRegion,UniformTextureSequence,Animation
 from engine.tiles import Tiles
+from pyglet.image import TextureGrid, AbstractImage, \
+    AbstractImageSequence, TextureRegion, UniformTextureSequence, Animation
 
 
+'''
+BorderedImageGrid
 
+Extends pyglet's imagegrid class functionality to allow for borders
+of a specific size around the specified source image edges.
+'''
 
 
 class BorderedImageGrid(AbstractImage, AbstractImageSequence):
-    '''An imaginary grid placed over an image allowing easy access to
-    regular regions of that image.
-
-    The grid can be accessed either as a complete image, or as a sequence
-    of _images.  The most useful applications are to access the grid
-    as a `TextureGrid`::
-
-        image_grid = ImageGrid(...)
-        texture_grid = image_grid.get_texture_sequence()
-
-    or as a `Texture3D`::
-
-        image_grid = ImageGrid(...)
-        texture_3d = Texture3D.create_for_image_grid(image_grid)
-
-    '''
     EXTERIOR_BORDER = 1
     _items = ()
     _texture_grid = None
 
-    def __init__(self, image, rows, columns, 
+    def __init__(self, image, rows, columns,
                  item_width=None, item_height=None,
                  row_padding=0, column_padding=0,
                  exterior_border=1):
@@ -71,7 +60,7 @@ class BorderedImageGrid(AbstractImage, AbstractImageSequence):
                 (image.width - column_padding * (columns - 1) - exterior_border) // columns
         if item_height is None:
             item_height = \
-                (image.height - row_padding * (rows - 1) - exterior_border) // rows 
+                (image.height - row_padding * (rows - 1) - exterior_border) // rows
         self.image = image
         self.rows = rows
         self.columns = columns
@@ -122,45 +111,23 @@ class BorderedImageGrid(AbstractImage, AbstractImageSequence):
         return iter(self._items)
 
 
+'''
+BorderedAnimatedTextureGrid
+
+Extends BorderedImageGrid to store image as texture and uses engine.tiles.Tiles to
+process animations to store them as pyglet animations.
+Due to pyglet's sprite module treating images generically, one does not
+have to know whether they have retreived a textureregion or animation when using this class.
+'''
+
 class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
-    '''A texture containing a regular grid of texture regions.
-
-    To construct, create an `ImageGrid` first::
-
-        image_grid = ImageGrid(...)
-        texture_grid = TextureGrid(image_grid)
-
-    The texture grid can be accessed as a single texture, or as a sequence
-    of `TextureRegion`.  When accessing as a sequence, you can specify
-    integer indexes, in which the _images are arranged in rows from the
-    bottom-left to the top-right::
-
-        # assume the texture_grid is 3x3:
-        current_texture = texture_grid[3] # get the middle-left image
-
-    You can also specify tuples in the sequence methods, which are addressed
-    as ``row, column``::
-
-        # equivalent to the previous example:
-        current_texture = texture_grid[1, 0]
-
-    When using tuples in a slice, the returned sequence is over the
-    rectangular region defined by the slice::
-
-        # returns center, center-right, center-top, top-right _images in that
-        # order:
-        _images = texture_grid[(1,1):]
-        # equivalent to
-        _images = texture_grid[(1,1):(3,3)]
-
-    '''
     items = ()
     rows = 1
     columns = 1
     item_width = 0
     item_height = 0
 
-    def __init__(self, animationDelay, grid, 
+    def __init__(self, animationDelay, grid,
                  exterior_border=1, flipTilesVert=False):
         image = grid.get_texture()
         if isinstance(image, TextureRegion):
@@ -170,7 +137,7 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
 
         super(BorderedAnimatedTextureGrid, self).__init__(
             image.x, image.y, image.z, image.width, image.height, owner)
-        
+
         textureItems = []
         y = exterior_border
         tileNum = 0
@@ -183,7 +150,7 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
                 textureItems.append(region)
                 x += grid.item_width + grid.column_padding
             y += grid.item_height + grid.row_padding
-        
+
         # process animations
         tileNum = 0
         tiles = Tiles()
@@ -208,9 +175,9 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
                                 break
                         spec = tiles.get(curFrame)
                     anim = Animation.from_image_sequence(
-                                                    frames, 
-                                                    animationDelay, 
-                                                    True)
+                        frames,
+                        animationDelay,
+                        True)
                     finalItems[tileNum] = anim
                 tileNum += 1
 
@@ -220,14 +187,14 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
         self.item_width = grid.item_width
         self.item_height = grid.item_height
         self.exterior_border = exterior_border
-        
+
     def get(self, row, column):
         return self[(row, column)]
 
     def __getitem__(self, index):
         if type(index) is slice:
             if type(index.start) is not tuple and \
-               type(index.stop) is not tuple:
+                            type(index.stop) is not tuple:
                 return self.items[index]
             else:
                 row1 = 0
@@ -253,7 +220,7 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
                 result = []
                 i = row1 * self.columns
                 for row in range(row1, row2):
-                    result += self.items[i+col1:i+col2]
+                    result += self.items[i + col1:i + col2]
                     i += self.columns
                 return result
         else:
@@ -270,50 +237,40 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
 
     def __iter__(self):
         return iter(self.items)
-    
-    
 
-        
 
 '''
-class TileImageLoader
-Makes available the individual images for each tile in a set.
-Images are loaded from a given filename in sequential fashion, and are
-referenced by their index into that sequence.
+TileImageLoader
+
+Loads the specified tile sheet into a BorderedAnimatedTextureGrid.
+Allows access by tile number with getTIleImage(cell)
+
+Tiles image returned will either be an animation or textureregion.
 '''
+
+
 class TileImageLoader(object):
     DEFAULT_ANIMATION_DELAY = 0.2
-    
+
     def __init__(self, fileName, tileSize, flipTilesVert=False, padding=0):
         self.tileSize = tileSize
         self.flipTilesVert = flipTilesVert
         self.padding = padding
+        assert isinstance(fileName, str)
         self._tileSheetFilename = fileName
         self._tiles = self.loadTileImages()
-        
+
     def loadTileImages(self):
         tileSheet = pyglet.image.load(self._tileSheetFilename)
-        rows = tileSheet.height  / (self.tileSize + self.padding)
+        rows = tileSheet.height / (self.tileSize + self.padding)
         columns = tileSheet.width / (self.tileSize + self.padding)
         return BorderedAnimatedTextureGrid(
-                            self.DEFAULT_ANIMATION_DELAY,
-                            BorderedImageGrid(tileSheet, rows, columns,
-                                                   row_padding=self.padding,
-                                                   column_padding=self.padding),
-                            flipTilesVert=self.flipTilesVert)
-    
+            self.DEFAULT_ANIMATION_DELAY,
+            BorderedImageGrid(tileSheet, rows, columns,
+                              row_padding=self.padding,
+                              column_padding=self.padding),
+            flipTilesVert=self.flipTilesVert)
+
     def getTileImage(self, cell):
         # low 10 bits give tile index number
         return self._tiles[(cell & LOMASK) % len(self._tiles)]
-
-
-
-
-
-
-
-
-
-
-
-

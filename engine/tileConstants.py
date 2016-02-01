@@ -6,10 +6,7 @@ Created on Sep 24, 2015
 
 @author: chris
 '''
-import engine.tiles as tiles
-from pyglet.image import TileableTexture
 from engine.tiles import Tiles
-
 
 CLEAR = -1
 DIRT = 0
@@ -47,13 +44,13 @@ ROADS10 = 75
 INTERSECTION = 76
 HROADPOWER = 77
 VROADPOWER = 78
-BRWH = 79       #horz bridge, open
+BRWH = 79  # horz bridge, open
 LTRFBASE = 80
-BRWV = 95       #vert bridge, open
+BRWV = 95  # vert bridge, open
 HTRFBASE = 144
 LASTROAD = 206
 POWERBASE = 208
-HPOWER = 208    #underwater power-line
+HPOWER = 208  # underwater power-line
 VPOWER = 209
 LHPOWER = 210
 LVPOWER = 211
@@ -70,8 +67,8 @@ RAILHPOWERV = 221
 RAILVPOWERH = 222
 LASTPOWER = 222
 RAILBASE = 224
-HRAIL = 224     #underwater rail (horz)
-VRAIL = 225     #underwater rail (vert)
+HRAIL = 224  # underwater rail (horz)
+VRAIL = 225  # underwater rail (vert)
 LHRAIL = 226
 LVRAIL = 227
 LVRAIL2 = 228
@@ -89,14 +86,14 @@ LASTRAIL = 238
 RESBASE = 244
 RESCLR = 244
 HOUSE = 249
-LHTHR = 249 # 12 house tiles
+LHTHR = 249  # 12 house tiles
 HHTHR = 260
-RZB = 265 # residential zone base
+RZB = 265  # residential zone base
 HOSPITAL = 409
 CHURCH = 418
 COMBASE = 423
 COMCLR = 427
-CZB = 436 # commercial zone base
+CZB = 436  # commercial zone base
 INDBASE = 612
 INDCLR = 616
 IZB = 625
@@ -115,14 +112,12 @@ LIGHTNINGBOLT = 827
 TINYEXP = 860
 LASTTINYEXP = 867
 
-
 LASTTILE = 956
 
-PWRBIT = 32768 # bit 15 indicates powered state
+PWRBIT = 32768  # bit 15 indicates powered state
 
 ALLBITS = 64512
-LOMASK = 1023 # mask for low ten bits
-
+LOMASK = 1023  # mask for low ten bits
 
 ROADTABLE = [
     ROADS, ROADS2, ROADS, ROADS3,
@@ -146,20 +141,24 @@ WIRETABLE = [
 def canAutoBulldozeRRW(tile):
     ''' checks whether tile can be bulldozed for
         placement of a road, rail, or wire. '''
-    return ((tile >= FIRSTRIVEDGE and tile <= LASTRUBBLE)
-        or
-        (tile >= TINYEXP and tile <= LASTTINYEXP))
+    return (FIRSTRIVEDGE <= tile <= LASTRUBBLE or
+            TINYEXP <= tile <= LASTTINYEXP)
 
+
+'''
+checks whether tile can be bulldozed for
+placement of a zone
+'''
 def canAutoBulldozeZ(tile):
-    ''' checks whether tile can be bulldozed for
-        placement of a zone '''
-    
-    if ((tile >= FIRSTRIVEDGE and tile <= LASTRUBBLE) 
-            or (tile >= POWERBASE + 2 and tile <= POWERBASE + 12)
-            or (tile >= TINYEXP and tile <= LASTTINYEXP)):
+
+
+    if ((FIRSTRIVEDGE <= tile <= LASTRUBBLE) or
+            (POWERBASE + 2 <= tile <= POWERBASE + 12) or
+            (TINYEXP <= tile <= LASTTINYEXP)):
         return True
     else:
         return False
+
 
 def getTileBehaviour(tile):
     ts = Tiles().get(tile)
@@ -170,140 +169,157 @@ def getTileBehaviour(tile):
 def getZoneSizeFor(tile):
     assert isZoneCenter(tile)
     assert tile & LOMASK == tile
-    
+
     spec = Tiles().get(tile)
     if spec is None:
         return None
     return spec.getBuildingSize()
 
 
-
 def isRoadDynamic(tile):
     ''' checks if tile is road than can change to
         connect to neighboring roads'''
     tmp = neutralizeRoad(tile)
-    return tmp >= ROADS and tmp <= INTERSECTION
+    return ROADS <= tmp <= INTERSECTION
+
 
 def roadConnectsEast(tile):
     tile = neutralizeRoad(tile)
-    return tile == VRAILROAD or\
-        tile >= ROADBASE and tile <= VROADPOWER\
-        and\
-        tile != VROADPOWER and\
-        tile != HRAILROAD and\
-        tile != VBRIDGE
+    return (tile == VRAILROAD or
+               tile >= ROADBASE and tile <= VROADPOWER
+               and
+               tile != VROADPOWER and
+               tile != HRAILROAD and
+               tile != VBRIDGE)
+
 
 def roadConnectsNorth(tile):
     tile = neutralizeRoad(tile)
-    return (tile == HRAILROAD or\
-            (tile >= ROADBASE and tile <= VROADPOWER))\
-            and\
-            tile != HROADPOWER and\
-            tile != VRAILROAD and\
-            tile != ROADBASE
+    return ((tile == HRAILROAD or
+            (tile >= ROADBASE and tile <= VROADPOWER))
+           and
+           tile != HROADPOWER and
+           tile != VRAILROAD and
+           tile != ROADBASE)
+
 
 def roadConnectsSouth(tile):
     tile = neutralizeRoad(tile)
-    return (tile == HRAILROAD) or\
-        (tile >= ROADBASE and tile <= VROADPOWER)\
-        and\
-        tile != HROADPOWER and\
-        tile != VRAILROAD and\
-        tile != ROADBASE
+    return ((tile == HRAILROAD) or
+            (ROADBASE <= tile <= VROADPOWER)
+            and
+            tile != HROADPOWER and
+            tile != VRAILROAD and
+            tile != ROADBASE)
+
 
 def roadConnectsWest(tile):
     tile = neutralizeRoad(tile)
-    return (tile == VRAILROAD) or\
-        (tile >= ROADBASE and tile <= VROADPOWER)\
-        and\
-        tile != VROADPOWER and\
-        tile != HRAILROAD and\
-        tile != VBRIDGE
-        
+    return ((tile == VRAILROAD) or
+            (ROADBASE <= tile <= VROADPOWER)
+            and
+            tile != VROADPOWER and
+            tile != HRAILROAD and
+            tile != VBRIDGE)
+
+
 def isRail(tile):
     assert tile & LOMASK == tile
-    
-    return (tile >= RAILBASE and tile < RESBASE)\
-        or tile == RAILHPOWERV\
-        or tile == RAILVPOWERH
-        
+
+    return ((RAILBASE <= tile < RESBASE)
+            or tile == RAILHPOWERV
+            or tile == RAILVPOWERH)
+
+
 def isRailDynamic(tile):
     assert tile & LOMASK == tile
-    
-    return tile >= LHRAIL and tile <= LVRAIL10
+
+    return LHRAIL <= tile <= LVRAIL10
+
 
 def railConnectsEast(tile):
     tile = neutralizeRoad(tile)
-    return (tile >= RAILHPOWERV and tile <= VRAILROAD and\
-        tile != RAILVPOWERH and\
-        tile != VRAILROAD and\
-        tile != VRAIL)
+    return (RAILHPOWERV <= tile <= VRAILROAD and
+            tile != RAILVPOWERH and
+            tile != VRAILROAD and
+            tile != VRAIL)
+
 
 def railConnectsNorth(tile):
     tile = neutralizeRoad(tile)
-    return (tile >= RAILHPOWERV and tile <= VRAILROAD and
-        tile != RAILHPOWERV and
-        tile != HRAILROAD and
-        tile != HRAIL)
+    return (RAILHPOWERV <= tile <= VRAILROAD and
+            tile != RAILHPOWERV and
+            tile != HRAILROAD and
+            tile != HRAIL)
+
 
 def railConnectsSouth(tile):
     tile = neutralizeRoad(tile)
-    
-    return (tile >= RAILHPOWERV and tile <= VRAILROAD and
-        tile != RAILHPOWERV and
-        tile != HRAILROAD and
-        tile != HRAIL)
+
+    return (RAILHPOWERV <= tile <= VRAILROAD and
+            tile != RAILHPOWERV and
+            tile != HRAILROAD and
+            tile != HRAIL)
+
 
 def railConnectsWest(tile):
     tile = neutralizeRoad(tile)
-    return (tile >= RAILHPOWERV and tile <= VRAILROAD and
-        tile != RAILVPOWERH and
-        tile != VRAILROAD and
-        tile != VRAIL)
-    
+    return (RAILHPOWERV <= tile <= VRAILROAD and
+            tile != RAILVPOWERH and
+            tile != VRAILROAD and
+            tile != VRAIL)
+
+
 def isCombustible(tile):
     assert (tile & LOMASK) == tile
     spec = Tiles().get(tile)
     return spec is not None and spec.canBurn
 
+
 def isConductive(tile):
     assert tile & LOMASK == tile
     spec = Tiles().get(tile)
     return spec is not None and spec.canConduct
-    
+
+
 def isWireDynamic(tile):
     assert tile & LOMASK == tile
-    
-    return tile >= LHPOWER and tile <= LVPOWER10
+
+    return LHPOWER <= tile <= LVPOWER10
+
 
 def wireConnectsEast(tile):
     ntile = neutralizeRoad(tile)
     return (isConductive(tile) and
-        ntile != HPOWER and
-        ntile != HROADPOWER and
-        ntile != RAILHPOWERV)
+            ntile != HPOWER and
+            ntile != HROADPOWER and
+            ntile != RAILHPOWERV)
+
 
 def wireConnectsNorth(tile):
     ntile = neutralizeRoad(tile)
     return (isConductive(tile) and
-        ntile != VPOWER and
-        ntile != VROADPOWER and
-        ntile != RAILVPOWERH)
+            ntile != VPOWER and
+            ntile != VROADPOWER and
+            ntile != RAILVPOWERH)
+
 
 def wireConnectsSouth(tile):
     ntile = neutralizeRoad(tile)
     return (isConductive(tile) and
-        ntile != VPOWER and
-        ntile != VROADPOWER and
-        ntile != RAILVPOWERH)
+            ntile != VPOWER and
+            ntile != VROADPOWER and
+            ntile != RAILVPOWERH)
+
 
 def wireConnectsWest(tile):
     ntile = neutralizeRoad(tile)
     return (isConductive(tile) and
-        ntile != HPOWER and
-        ntile != HROADPOWER and
-        ntile != RAILHPOWERV)
-    
+            ntile != HPOWER and
+            ntile != HROADPOWER and
+            ntile != RAILHPOWERV)
+
+
 def isZoneCenter(tile):
     assert (tile & LOMASK) == tile
     spec = Tiles().get(tile)
@@ -312,32 +328,29 @@ def isZoneCenter(tile):
 
 def isAnimated(tile):
     assert tile & LOMASK == tile
-    
+
     spec = Tiles().get(tile)
     return spec is not None and spec.animNext is not None
 
+
 def isIndestructible(tile):
     assert tile & LOMASK == tile
-    return tile >= FLOOD and tile < ROADBASE
+    return FLOOD <= tile < ROADBASE
+
 
 def isRubble(tile):
     assert tile & LOMASK == tile
-    return (tile >= RUBBLE and
-            tile <= LASTRUBBLE)
+    return RUBBLE <= tile <= LASTRUBBLE
+
+
+'''
+
+'''
 
 
 def neutralizeRoad(tile):
     assert (tile & LOMASK) == tile
-    
+
     if tile >= ROADBASE and tile <= LASTROAD:
         tile = ((tile - ROADBASE) & 0xf) + ROADBASE
     return tile
-
-
-
-
-
-
-
-
-

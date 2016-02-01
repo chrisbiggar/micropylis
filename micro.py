@@ -3,7 +3,7 @@ Created on Aug 29, 2015
 
 @author: chris
 '''
-'''import pyglet
+''''import pyglet
 pyglet.options['debug_gl'] = False'''
 from gui.microWindow import MicroWindow
 from gui.regulatedEventLoop import RegulatedEventLoop

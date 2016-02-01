@@ -5,6 +5,8 @@ test.py
 dist/
 etc/
 etc/*
+.idea/
+.idea/*
 
 
 # Byte-compiled / optimized / DLL files

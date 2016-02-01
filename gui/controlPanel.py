@@ -1,145 +1,152 @@
-'''
-Created on Oct 29, 2015
-
-@author: chris
-'''
-import pyglet
-from pyglet.text import Label
-from pyglet.text.layout import TextLayout
-from pyglet.text.document import FormattedDocument
-from pyglet.gl import *
 import gui
-from gui import GUI_BG_RENDER_ORDER, GUI_FG_RENDER_ORDER
-from layout import Widget,Frame,VerticalLayout,\
-                            HALIGN_RIGHT, Spacer, ButtonLabel
-from util import createRect, createHollowRect
-from util.profile import timefunc
-from gui.layout import LayoutLabel
+import pyglet
 from dialogs import CityEvalDialog, BudgetDialog
+from gui import GUI_BG_RENDER_ORDER, GUI_FG_RENDER_ORDER
 from gui.dialogs import MainMenuDialog
+from gui.layout import LayoutLabel
+from layout import Widget, Frame, VerticalLayout, \
+    HALIGN_RIGHT, Spacer, ButtonLabel
+from pyglet.gl import *
+from pyglet.text import Label
+from pyglet.text.document import FormattedDocument
+from pyglet.text.layout import TextLayout
+from util import createRect, createHollowRect
 
 bgGroup = pyglet.graphics.OrderedGroup(GUI_BG_RENDER_ORDER)
 mgGroup = pyglet.graphics.OrderedGroup(GUI_BG_RENDER_ORDER + 1)
 fgGroup = pyglet.graphics.OrderedGroup(GUI_FG_RENDER_ORDER)
-highlightGroup = pyglet.graphics.OrderedGroup(GUI_FG_RENDER_ORDER+1)
-
+highlightGroup = pyglet.graphics.OrderedGroup(GUI_FG_RENDER_ORDER + 1)
 
 fontName = gui.config.get('control_panel', 'FONT')
 fontSize = 16
 
+'''
+    Message
+
+    Represents a single messagequeue timed message.
+'''
 
 
 class Message(object):
-    SHOW_TIME = 8 # in seconds
+
+    SHOW_TIME = 8  # in seconds
+
     def __init__(self, msg, startTime, start=0, num=0):
         self.string = msg
         self.time = int(startTime)
         self.index = start
         self.num = num
-    
+
     def isExpired(self, secs):
         return int(secs) > self.time + self.SHOW_TIME * 2
-    
+
     def __len__(self):
         return len(self.string)
-    
 
 '''
-    displays messages to user. 
-'''
-class MessageQueue(Widget):
-    '''
+    MessageQueue
+
     Pane that displays messages for a set duration.
     Messages are displayed in descending vertical order.
     Most recent msg displayed bold.
     Does not allow overflow below box.
-    
+
     Uses efficient text insertion to pyglet document.
-    '''
-    MSG_DELETE_FREQ = 0.5 # in seconds
+'''
+
+
+class MessageQueue(Widget):
+    MSG_DELETE_FREQ = 0.5  # in seconds
+
     def __init__(self, padding=0):
-        super(MessageQueue,self).__init__()
-        
+        super(MessageQueue, self).__init__()
+
+        self.engine = None
+
         self.font = gui.config.get('control_panel', 'MSG_QUEUE_FONT')
         self.titleLabelText = gui.config.get('control_panel_strings', 'MSG_QUEUE_TITLE')
-        
+
         bgColorStr = gui.config.get('control_panel', 'MSG_QUEUE_BG_COLOR')
         self.bgColor = map(int, tuple(bgColorStr.split(',')))
-        
+
         self.titleLabel = None
         self.textLayout = None
-        self.msgs = list()
+
         self.dt = 0
         self.halfSecs = 0
         self.bgRect = None
         self.border = None
-        self.doc = FormattedDocument()
         self.padding = padding
 
         self.currentPos = 0
         self.numMsgs = 0
-        
-        self.engine = None
-    
+
+        self.doc = None
+        self.msgs = None
+        self.reset()
+
+    def reset(self):
+        self.doc = FormattedDocument()
+        self.msgs = list()
+
     def delete(self):
         if self.textLayout is not None:
             self.textLayout.delete()
         if self.titleLabel is not None:
             self.titleLabel.delete()
-            self.title = None
+            self.titleLabel = None
         if self.bgRect is not None:
             self.bgRect.delete()
             self.bgRect = None
         if self.border is not None:
             self.border.delete()
             self.border = None
-    
+
     def size(self, frame):
-        super(MessageQueue,self).size(frame)
-        
+        super(MessageQueue, self).size(frame)
+
         if self.textLayout is not None:
             self.textLayout.delete()
         if self.titleLabel is not None:
             self.titleLabel.delete()
             self.titleLabel = None
-        
+
         self.width = frame.width or 200
         self.height = 200
-        
+
         if self.textLayout is None:
             self.textLayout = TextLayout(self.doc,
                                          width=self.width,
-                                         batch=self.savedFrame.batch,
+                                         batch=self.parentFrame.batch,
                                          group=fgGroup,
                                          multiline=True)
-            self.savedFrame.setNeedsLayout()
+            self.parentFrame.setNeedsLayout()
         else:
             self.textLayout.width = self.width
-        
+
         if self.titleLabel is None:
             self.titleLabel = Label(self.titleLabelText,
-                                    x=self.x+10,y=self.y+10,
-                                    batch=self.savedFrame.batch,
+                                    x=self.x + 10, y=self.y + 10,
+                                    batch=self.parentFrame.batch,
                                     group=fgGroup,
-                                    color=(0,0,0,255),
+                                    color=(0, 0, 0, 255),
                                     font_name=self.font,
                                     font_size=14)
         else:
             self.titleLabel.x = self.x + 10
             self.titleLabel.y = self.y + 10
-        
-    
+
     def layout(self, x, y):
-        super(MessageQueue,self).layout(x,y)
+        super(MessageQueue, self).layout(x, y)
         self.textLayout.x = self.x + self.padding
         self.textLayout.y = self.y - self.padding
         self.textLayout.width = self.width
         self.textLayout.height = self.height
         self.titleLabel.x = self.x + 10
         self.titleLabel.y = self.y + 10
-        
+
         self.createBackground()
-        
+
     def createBackground(self):
         if self.bgRect is not None:
             self.bgRect.delete()
@@ -147,20 +154,19 @@ class MessageQueue(Widget):
         if self.border is not None:
             self.border.delete()
             self.border = None
-        
+
         self.bgRect = createRect(self.x, self.y,
-                             self.width, self.height,
-                             self.bgColor,
-                             self.savedFrame.batch,
-                             mgGroup)
-        
+                                 self.width, self.height,
+                                 self.bgColor,
+                                 self.parentFrame.batch,
+                                 mgGroup)
+
         self.border = createRect(self.x, self.y + self.height,
-                             self.width, 1,
-                             (0,0,0,255),
-                             self.savedFrame.batch,
-                             highlightGroup)
-        
-        
+                                 self.width, 1,
+                                 (0, 0, 0, 255),
+                                 self.parentFrame.batch,
+                                 highlightGroup)
+
     def deleteMsg(self, item):
         self.msgs.remove(item)
         self.doc.delete_text(item.index, item.index + len(item))
@@ -168,37 +174,36 @@ class MessageQueue(Widget):
             if msg.num > item.num:
                 msg.num -= 1
                 msg.index -= len(item)
-        
+
     def addMessage(self, message):
         if len(self.msgs) and message == self.msgs[0].string:
             return
-        
-        message = message + '\n'
+
+        message += '\n'
         item = Message(message, self.halfSecs)
-        
-        
-        self.doc.set_style(0, len(self.doc.text), {'font_name' : self.font,
-                                                   'bold' : False})
+
+        self.doc.set_style(0, len(self.doc.text), {'font_name': self.font,
+                                                   'bold': False})
         for msg in self.msgs:
             msg.num += 1
             msg.index += len(item)
-        
-        self.msgs.insert(0,item)
-        self.doc.insert_text(0, message, {'font_name' : self.font,
-                                                   'bold' : True})
-        
+
+        self.msgs.insert(0, item)
+        self.doc.insert_text(0, message, {'font_name': self.font,
+                                          'bold': True})
+
         if self.textLayout is not None:
-            while (self.textLayout.content_height >= self.height 
-                   - self.titleLabel.content_height + 14):
-                item = self.msgs[len(self.msgs)-1]
+            while (self.textLayout.content_height >= self.height
+                - self.titleLabel.content_height + 14):
+                item = self.msgs[len(self.msgs) - 1]
                 self.deleteMsg(item)
-        
+
     def update(self, dt):
         self.dt += dt
         if self.dt >= self.MSG_DELETE_FREQ:
             # expired messages are collected on 0.5 sec freq
             self.halfSecs += 1
-            self.dt = self.dt % self.MSG_DELETE_FREQ
+            self.dt %= self.MSG_DELETE_FREQ
             toRemove = []
             for item in self.msgs:
                 if item.isExpired(self.halfSecs):
@@ -208,14 +213,13 @@ class MessageQueue(Widget):
                     self.deleteMsg(item)
 
 
-
 class DemandIndicator(Widget):
     def __init__(self):
-        super(DemandIndicator,self).__init__()
-        self.bgColor = (100,140,128,160)
+        super(DemandIndicator, self).__init__()
+        self.bgColor = (100, 140, 128, 160)
         self.bgRect = None
         self.border = None
-        
+
     def delete(self):
         if self.bgRect is not None:
             self.bgRect.delete()
@@ -225,134 +229,141 @@ class DemandIndicator(Widget):
             self.border = None
 
     def size(self, frame):
-        super(DemandIndicator,self).size(frame)
-        
+        super(DemandIndicator, self).size(frame)
+
         self.width = 78
         self.height = 78
-    
-    def layout(self,x,y):
-        super(DemandIndicator,self).layout(x,570)
+
+    def layout(self, x, y):
+        super(DemandIndicator, self).layout(x, 570)
         self.createBackground()
 
-        
     def createBackground(self):
         self.delete()
-        
+
         self.bgRect = createRect(self.x, self.y,
-                             self.width, self.height,
-                             self.bgColor,
-                             self.savedFrame.batch,
-                             mgGroup)
-        
+                                 self.width, self.height,
+                                 self.bgColor,
+                                 self.parentFrame.batch,
+                                 mgGroup)
+
         self.border = createHollowRect(self.x, self.y,
-                             self.width, self.height,
-                             (0,0,0,255),
-                             self.savedFrame.batch,
-                             highlightGroup)
-        
+                                       self.width, self.height,
+                                       (0, 0, 0, 255),
+                                       self.parentFrame.batch,
+                                       highlightGroup)
+
+
 class MenuView(pyglet.event.EventDispatcher):
     def __init__(self, controlPanel, layout):
         self.layout = layout
         self.controlPanel = controlPanel
-    
+
     def getLayout(self):
         return self.layout
-        
+
+'''
+    CityMenu
+
+    Menu to monitor and change city details.
+'''
+
+
 class CityMenu(MenuView):
     def __init__(self, controlPanel, microWindow):
         self.microWindow = microWindow
-        
+
         self.months = []
-        for (name,month) in gui.config.items('month_strings'):
+        for (name, month) in gui.config.items('month_strings'):
             self.months.append(month)
-        self.populationText = gui.config.get('control_panel_strings', 
+        self.populationText = gui.config.get('control_panel_strings',
                                              'POPULATION')
         self.fundsText = gui.config.get('control_panel_strings', 'FUNDS')
         self.speedText = " Speed"
-        
-        self.lastCityTime = -4 # one month in past
-        
-        super(CityMenu,self).__init__(controlPanel, self.createLayout())
-        
+
+        self.lastCityTime = -4  # one month in past
+
+        super(CityMenu, self).__init__(controlPanel, self.createLayout())
+
     def createLayout(self):
         self.demandIndicator = DemandIndicator()
         mainMenuText = gui.config.get('control_panel_strings', 'MAIN_MENU')
         self.mainMenuButton = ButtonLabel(text=mainMenuText,
-                                         fontName=fontName,
-                                         fontSize=fontSize,
-                                         action=self.mainMenuAction)
+                                          fontName=fontName,
+                                          fontSize=fontSize,
+                                          action=self.mainMenuAction)
         self.speedButton = ButtonLabel(text="",
                                        fontName=fontName,
-                                      fontSize=fontSize,
-                                      action=self.speedAction)
+                                       fontSize=fontSize,
+                                       action=self.speedAction)
         self.dataViewButton = ButtonLabel(text="Data Menu",
-                                      fontName=fontName,
-                                      fontSize=fontSize,
-                                      action=self.dataViewAction)
+                                          fontName=fontName,
+                                          fontSize=fontSize,
+                                          action=self.dataViewAction)
         self.fundsButton = ButtonLabel(text="",
                                        fontName=fontName,
-                                      fontSize=fontSize,
-                                      action=self.fundsAction)
+                                       fontSize=fontSize,
+                                       action=self.fundsAction)
         self.dateButton = ButtonLabel(text="",
                                       fontName=fontName,
                                       fontSize=fontSize,
-                                     action=self.dateAction)
+                                      action=self.dateAction)
         self.populationButton = ButtonLabel(text="",
                                             fontName=fontName,
-                                           fontSize=fontSize, 
-                                           action=self.populationAction)
+                                            fontSize=fontSize,
+                                            action=self.populationAction)
         return VerticalLayout([self.demandIndicator,
-                                 self.mainMenuButton,
-                                 self.speedButton,
-                                 self.dataViewButton,
-                                 Spacer(height=4),
-                                 self.fundsButton,
-                                 self.dateButton,
-                                 self.populationButton],
-                                align=HALIGN_RIGHT,
-                                padding=6,
-                                fillWidth=True)
-        
+                               self.mainMenuButton,
+                               self.speedButton,
+                               self.dataViewButton,
+                               Spacer(height=4),
+                               self.fundsButton,
+                               self.dateButton,
+                               self.populationButton],
+                              align=HALIGN_RIGHT,
+                              padding=6,
+                              fillWidth=True)
+
     def reset(self, eng):
         self.on_funds_changed(eng.budget.funds)
         self.on_census_changed(0)
         self.lastCityTime = eng.cityTime - 4
         self.on_date_changed(eng.cityTime)
-        
+
     def speedAction(self):
         self.microWindow.incrementSpeed()
-        
+
     def dataViewAction(self):
         self.controlPanel.switchMenu('DataVisualsMenu')
-            
+
     def mainMenuAction(self):
         MainMenuDialog.toggle()
-        
+
     def dateAction(self):
         pass
-        
+
     def fundsAction(self):
         BudgetDialog.toggle()
-        
+
     def populationAction(self):
         CityEvalDialog.toggle()
-        
+
     def speed_changed(self, newSpeed):
         self.speedButton.set_text(newSpeed.name + self.speedText)
-                                        
+
     def on_date_changed(self, cityTime):
         if cityTime - self.lastCityTime >= 4:
             self.lastCityTime = cityTime
             d = self.formatGameDate(cityTime)
             if self.dateButton is not None:
                 self.dateButton.set_text(d)
-        
+
     def formatGameDate(self, cityTime):
         year = 1900 + cityTime / 48
         month = self.months[(cityTime % 48) / 4]
-        #d = "Week " + str((cityTime % 4) + 1)
-        return "{} {}".format(month,year)
-    
+        # d = "Week " + str((cityTime % 4) + 1)
+        return "{} {}".format(month, year)
+
     def on_census_changed(self, population):
         if self.populationButton is not None:
             self.populationButton.set_text(self.populationText + " " + str(population))
@@ -361,127 +372,132 @@ class CityMenu(MenuView):
         t = self.fundsText + str(funds)
         if self.fundsButton is not None:
             self.fundsButton.set_text(t)
-    
-    
+
+'''
+    DataVisualsMenu Class
+
+    Menu to select a visual data overlay from.
+'''
+
 
 class DataVisualsMenu(MenuView):
     def __init__(self, controlPanel, cityView):
-        super(DataVisualsMenu,self).__init__(controlPanel,
-                                             self.createLayout())
+        super(DataVisualsMenu, self).__init__(controlPanel,
+                                              self.createLayout())
         self.cityView = cityView
-        
+
     def createLayout(self):
         self.titleLabel = LayoutLabel(text="Data Views",
                                       fontName=fontName,
-                                      fontSize=fontSize+8)
+                                      fontSize=fontSize + 8)
         self.backLabel = ButtonLabel(text="Back",
-                                      fontName=fontName,
-                                      fontSize=fontSize - 2,
-                                      action=self.backAction)
+                                     fontName=fontName,
+                                     fontSize=fontSize - 2,
+                                     action=self.backAction)
         self.noneLabel = ButtonLabel(text="No View",
-                                      fontName=fontName,
-                                      fontSize=fontSize - 2,
-                                      action=self.backAction)
+                                     fontName=fontName,
+                                     fontSize=fontSize - 2,
+                                     action=self.backAction)
         self.resLabel = ButtonLabel(text="Residential",
-                                      fontName=fontName,
-                                      fontSize=fontSize - 2,
-                                         action=self.resAction)
+                                    fontName=fontName,
+                                    fontSize=fontSize - 2,
+                                    action=self.resAction)
         self.comLabel = ButtonLabel(text="Commercial",
-                                      fontName=fontName,
-                                      fontSize=fontSize - 2,
-                                         action=self.comAction)
+                                    fontName=fontName,
+                                    fontSize=fontSize - 2,
+                                    action=self.comAction)
         self.indLabel = ButtonLabel(text="Industrial",
-                                      fontName=fontName,
-                                      fontSize=fontSize - 2,
-                                         action=self.indAction)
+                                    fontName=fontName,
+                                    fontSize=fontSize - 2,
+                                    action=self.indAction)
         self.transLabel = ButtonLabel(text="Transportation",
                                       fontName=fontName,
                                       fontSize=fontSize - 2,
-                                         action=self.transAction)
+                                      action=self.transAction)
         self.rogLabel = ButtonLabel(text='rate of growth',
-                                         fontName=fontName,
-                                         fontSize=fontSize - 2,
-                                         action=self.rogAction)
+                                    fontName=fontName,
+                                    fontSize=fontSize - 2,
+                                    action=self.rogAction)
         self.landValueLabel = ButtonLabel("land value",
-                                        fontName=fontName,
-                                         fontSize=fontSize - 2,
-                                      action=self.landValueAction)
+                                          fontName=fontName,
+                                          fontSize=fontSize - 2,
+                                          action=self.landValueAction)
         self.crimeLabel = ButtonLabel("crime",
-                                         fontName=fontName,
-                                         fontSize=fontSize - 2,
-                                     action=self.crimeAction)
-        self.pollutionLabel = ButtonLabel("pollution",
-                                         fontName=fontName,
-                                         fontSize=fontSize - 2,
-                                     action=self.pollutionAction)
-        self.trafficDensityLabel = ButtonLabel("traffic density",
-                                        fontName=fontName,
-                                         fontSize=fontSize - 2, 
-                                           action=self.trafficDensityAction)
-        self.fireLabel = ButtonLabel("fire radius",
                                       fontName=fontName,
-                                         fontSize=fontSize - 2, 
-                                           action=self.fireAction)
-        self.policeLabel = ButtonLabel("police radius",
+                                      fontSize=fontSize - 2,
+                                      action=self.crimeAction)
+        self.pollutionLabel = ButtonLabel("pollution",
+                                          fontName=fontName,
+                                          fontSize=fontSize - 2,
+                                          action=self.pollutionAction)
+        self.trafficDensityLabel = ButtonLabel("traffic density",
+                                               fontName=fontName,
+                                               fontSize=fontSize - 2,
+                                               action=self.trafficDensityAction)
+        self.fireLabel = ButtonLabel("fire radius",
                                      fontName=fontName,
-                                         fontSize=fontSize - 2,
-                                           action=self.policeAction)
+                                     fontSize=fontSize - 2,
+                                     action=self.fireAction)
+        self.policeLabel = ButtonLabel("police radius",
+                                       fontName=fontName,
+                                       fontSize=fontSize - 2,
+                                       action=self.policeAction)
         return VerticalLayout([self.titleLabel,
-                                Spacer(height=2),
-                                self.backLabel,
-                                Spacer(height=2),
-                                self.noneLabel,
-                                self.resLabel,
-                                self.comLabel,
-                                self.indLabel,
-                                self.transLabel,
-                                self.rogLabel,
-                                self.landValueLabel,
-                                self.crimeLabel,
-                                self.pollutionLabel,
-                                self.trafficDensityLabel,
-                                self.fireLabel,
-                                self.policeLabel],
-                                align=HALIGN_RIGHT,
-                                padding=6,
-                                fillWidth=True)
-        
+                               Spacer(height=2),
+                               self.backLabel,
+                               Spacer(height=2),
+                               self.noneLabel,
+                               self.resLabel,
+                               self.comLabel,
+                               self.indLabel,
+                               self.transLabel,
+                               self.rogLabel,
+                               self.landValueLabel,
+                               self.crimeLabel,
+                               self.pollutionLabel,
+                               self.trafficDensityLabel,
+                               self.fireLabel,
+                               self.policeLabel],
+                              align=HALIGN_RIGHT,
+                              padding=6,
+                              fillWidth=True)
+
     def backAction(self):
         self.controlPanel.switchMenu()
-    
+
     def resAction(self):
         pass
-    
+
     def comAction(self):
         pass
-    
+
     def indAction(self):
         pass
-    
+
     def transAction(self):
-        pass    
-    
+        pass
+
     def rogAction(self):
         pass
-    
+
     def landValueAction(self):
         pass
-    
+
     def crimeAction(self):
         pass
-    
+
     def pollutionAction(self):
         pass
-    
+
     def trafficDensityAction(self):
         pass
-    
+
     def fireAction(self):
         pass
-    
+
     def policeAction(self):
         pass
-    
+
 
 '''class GraphsMenu(MenuView):
     def __init__(self):
@@ -552,44 +568,46 @@ class DataVisualsMenu(MenuView):
         pass'''
 
 
+'''
+    ControlPanel
+
+    Provides an interface to control program and city details.
+'''
 
 
 class ControlPanel(Frame, pyglet.event.EventDispatcher):
-    '''
-    Provides an interface to control program and city details.
-    
-    '''
     WIDTH = 300
     DEFAULT_MENU = 'CityMenu'
     def __init__(self, microWindow, cityView):
         self.fgGroup = fgGroup
         self.bg = None
         self.border = None
-        
+
         self.msgs = MessageQueue(padding=3)
 
         self.cityMenu = CityMenu(self, microWindow)
         self.views = {
-                      'CityMenu': self.cityMenu,
-                      'DataVisualsMenu': DataVisualsMenu(self, cityView)}
-        
+            'CityMenu': self.cityMenu,
+            'DataVisualsMenu': DataVisualsMenu(self, cityView)}
+
         self.setLayout(self.DEFAULT_MENU)
-        super(ControlPanel,self).__init__(self.content)
-        
+        super(ControlPanel, self).__init__(self.content)
+
         self.minWindowWidth = int(gui.config.get('control_panel', 'MIN_WINDOW_WIDTH'))
         bgColorStr = gui.config.get('control_panel', 'BG_COLOR')
         self.bgColor = map(int, tuple(bgColorStr.split(',')))
-    
+
     def reset(self, window, eng):
+        self.msgs.reset()
         if eng:
             self.cityMenu.reset(eng)
-            eng.push_handlers(self,self.cityMenu)
+            eng.push_handlers(self, self.cityMenu)
             window.push_handlers(self, self.cityMenu)
-            
+
     def speed_changed(self, newSpeed):
         self.addInfoMessage(newSpeed.name + " Speed")
-        
-    def size(self,frame):
+
+    def size(self, frame):
         self.delete()
         if frame.width < self.minWindowWidth:
             self.disable()
@@ -597,40 +615,47 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
         if frame.width >= self.minWindowWidth:
             self.enable()
         if self.enabled:
-            super(ControlPanel,self).size(frame)
+            super(ControlPanel, self).size(frame)
             self.width, self.height = self.WIDTH, frame.height
-            
+
     def expand(self, width, height):
         Frame.expand(self, width, height)
         self.width = self.WIDTH
-        
+
     def layout(self, x, y):
-        super(ControlPanel,self).layout(x,y)
+        super(ControlPanel, self).layout(x, y)
         if self.enabled:
-            self.createBg()
-        #print self.content.content[0].width
-        
+            self.createBg() # immutatable
+            # print self.content.content[0].width
+
+    '''
+        Will add specified menu to layout, removing the old.
+
+        :param viewName: string name of menu
+    '''
     def switchMenu(self, viewName=None):
         oldContent = self.content
         oldContent.delete()
         self.setLayout(viewName)
         self.setNeedsLayout()
-        
-        
-    def setLayout(self, viewName):
-        if not viewName:
-            viewName = 'CityMenu'
+
+    '''
+        Returns a new layout object with the specified menu inserted.
+    '''
+    def setLayout(self, menuName):
+
+        if not menuName:
+            menuName = 'CityMenu'
         try:
-            self.currentView = self.views[viewName].getLayout()
+            self.currentView = self.views[menuName].getLayout()
         except KeyError:
             print "Invalid MenuView Name"
             return
         self.content = VerticalLayout([self.currentView,
-                                  Spacer(height=10),
-                                  self.msgs],
-                                 padding=0)
-        
-        
+                                       Spacer(height=10),
+                                       self.msgs],
+                                      padding=0)
+
     def delete(self):
         if self.bg is not None:
             self.bg.delete()
@@ -638,44 +663,29 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
         if self.border is not None:
             self.border.delete()
             self.border = None
-        super(ControlPanel,self).delete()
-
-        
+        super(ControlPanel, self).delete()
 
     def createBg(self):
         self.bg = createRect(self.x, self.y,
                              self.width, self.height,
                              self.bgColor,
-                             self.savedFrame.batch,
+                             self.parentFrame.batch,
                              bgGroup)
-        self.border = createRect(self.x, self.y, 
-                                 1, self.height, 
+        self.border = createRect(self.x, self.y,
+                                 1, self.height,
                                  (0, 0, 0, 255),
-                                 self.savedFrame.batch, 
+                                 self.parentFrame.batch,
                                  highlightGroup)
-        
+
+    '''
+        Adds a message to the message queue.
+    '''
     def addInfoMessage(self, msg):
+
         self.msgs.addMessage(msg)
 
     def city_message(self, msg):
         self.msgs.addMessage(msg)
-        
+
     def update(self, dt):
         self.msgs.update(dt)
-            
-
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-    

@@ -1,20 +1,8 @@
-
 # micropylis
 
+Micropolis Fully Implemented In Python
+GPL License
 
-Simcity Clone In Python
-
-
-2013, Chris Biggar - chrisbggr@gmail.com, BSD 3-Clause License
-Homepage: https://github.com/chrisbiggar/micropyliss
-version: 0.1
-
-## Requirements
-
-* tested on python 2.7
-Included:
-* pyglet 1.2.4
-* kytten (a pyglet gui lib)
-Separate:
-* pillow image library 3.0.0 (to gen graphics sheets)
+Includes modified pyglet and kytten.
+Needs pillow image library 3.0.0 to gen graphic sheets.
 
