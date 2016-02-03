@@ -346,11 +346,15 @@ def isRubble(tile):
 '''
 
 '''
-
-
 def neutralizeRoad(tile):
     assert (tile & LOMASK) == tile
 
     if tile >= ROADBASE and tile <= LASTROAD:
         tile = ((tile - ROADBASE) & 0xf) + ROADBASE
     return tile
+
+def residentialZonePop(tile):
+    assert tile & LOMASK == tile
+
+    ts = Tiles().get(tile)
+    return ts.getPopulation()

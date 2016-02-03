@@ -1,15 +1,17 @@
-import gui
 import pyglet
+from pyglet.gl import *
+from pyglet.text import Label
+from pyglet.text.document import FormattedDocument
+from pyglet.text.layout import TextLayout
+
+import gui
 from dialogs import CityEvalDialog, BudgetDialog
 from gui import GUI_BG_RENDER_ORDER, GUI_FG_RENDER_ORDER
 from gui.dialogs import MainMenuDialog
 from gui.layout import LayoutLabel
 from layout import Widget, Frame, VerticalLayout, \
     HALIGN_RIGHT, Spacer, ButtonLabel
-from pyglet.gl import *
-from pyglet.text import Label
-from pyglet.text.document import FormattedDocument
-from pyglet.text.layout import TextLayout
+
 from util import createRect, createHollowRect
 
 bgGroup = pyglet.graphics.OrderedGroup(GUI_BG_RENDER_ORDER)

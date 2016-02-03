@@ -248,6 +248,13 @@ class TileSpec(object):
     def getImages(self):
         return self._images
 
+    def getPopulation(self):
+        v = self.getAttribute("population")
+        if v is not None:
+            return int(v)
+        else:
+            return 0
+
     def getBooleanAttribute(self, key):
         if key in self._attributes:
             return True

@@ -7,14 +7,16 @@ import pyglet
 # pyglet.options['debug_gl'] = False
 from pyglet.gl import *
 from pyglet.window import mouse
-from engine import Engine, micropolistool, tiles
-from gui.speed import speeds
+
+from engine.toolResult import ToolResult
 from engine.micropolistool import MicropylisTool
 from engine.cityRect import CityRect
-from gui.cityView import CityView
-from engine.toolResult import ToolResult
-from gui.controlPanel import ControlPanel
+from engine import Engine, micropolistool, tiles
+
 import gui
+from gui.speed import speeds
+from gui.cityView import CityView
+from gui.controlPanel import ControlPanel
 from layout import LayoutWindow, HorizontalLayout
 import dialogs
 
@@ -64,7 +66,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         pyglet.window.Window.__init__(self, width=self.DEFAULT_WIDTH,
                                       height=self.DEFAULT_HEIGHT,
                                       resizable=True,
-                                      vsync=False)
+                                      vsync=True)
 
         # load in tile specs
         tiles.Tiles().readTilesSpec(gui.config.get('misc', 'TILES_SPEC_FILE'))
@@ -116,8 +118,12 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             pyglet.window.key._5: speeds['Super Fast']}
         self.speed = None
 
-        # self.newCity()
-        self.loadCity('cities/kyoto.cty')
+        self.newCity()
+        #self.loadCity('cities/kyoto.cty')
+
+
+        #music = pyglet.media.load('res/music.mp3')
+        #music.play()
 
     def newCity(self):
         self.cityLoaded = True

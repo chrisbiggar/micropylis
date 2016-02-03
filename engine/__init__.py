@@ -4,8 +4,10 @@
 '''
 import ConfigParser
 from array import *
+from random import randint
 
-import pyglet
+from pyglet.event import EventDispatcher
+
 from cityLocation import CityLocation
 from engine.terrainBehaviour import TerrainBehaviour
 from engine.tileConstants import *
@@ -84,7 +86,7 @@ cityMessages.read('res/citymessages.cfg')
 '''
 
 
-class Engine(pyglet.event.EventDispatcher):
+class Engine(EventDispatcher):
     DEFAULT_WIDTH = 120
     DEFAULT_HEIGHT = 100
 
@@ -103,9 +105,32 @@ class Engine(pyglet.event.EventDispatcher):
         ''' mapdata is stored as [column][row] '''
         self.map = create2dArray(height, width)
         self.updatedTiles = list()
-
         self.powerMap = create2dArray(self.getHeight(), self.getWidth(), False)
         self.noPowerIndicators = create2dArray(width, height, False)
+
+        halfWidth = (width + 1) / 2
+        halfHeight = (height + 1) / 2
+        self.landValueMem = create2dArray(halfHeight, halfWidth, 0)
+        self.pollutionMem = create2dArray(halfHeight, halfWidth, 0)
+        self.crimeMem = create2dArray(halfHeight, halfWidth, 0)
+        self.popDensity = create2dArray(halfHeight, halfWidth, 0)
+        self.trfDensity = create2dArray(halfHeight, halfWidth, 0)
+
+        quarterWidth = (width + 3) / 4
+        quarterHeight = (height + 3) / 4
+        self.terrainMem = create2dArray(quarterHeight, quarterWidth, 0)
+
+        smWidth = (width + 7) / 8
+        smHeight = (height + 7) / 8
+        self.rateOGMem = create2dArray(smWidth, smHeight, 0)
+        self.fireStMap = create2dArray(smWidth, smHeight, 0)
+        self.policeMap = create2dArray(smWidth, smHeight, 0)
+        self.policeMapEffect = create2dArray(smWidth, smHeight, 0)
+        self.fireRate = create2dArray(smWidth, smHeight, 0)
+        self.comRate = create2dArray(smWidth, smHeight, 0)
+
+        self.centerMassX = halfWidth
+        self.centerMassY = halfHeight
 
         ''' misc engine vars '''
         self.history = History()
@@ -117,6 +142,8 @@ class Engine(pyglet.event.EventDispatcher):
         self.aCycle = 0  # animation cycle (mod 960)
 
         self.cityTime = 0  # 1 week game time per "cityTime"
+
+        self.resValve = 0  # ranges between -2000 and 2000, updated by setValves
 
         self.clearCensus()
 
@@ -153,6 +180,12 @@ class Engine(pyglet.event.EventDispatcher):
         self.unpoweredZoneCount = 0
         self.roadTotal = 0
         self.roadEffect = 0
+        self.resPop = 0
+        self.comPop = 0
+        self.indPop = 0
+        self.resZoneCount = 0
+        self.comZoneCount = 0
+        self.indZoneCount = 0
         self.firePop = 0
         self.coalCount = 0
         self.nuclearCount = 0
@@ -314,7 +347,9 @@ class Engine(pyglet.event.EventDispatcher):
         # print "MAP: " + str(self.map[y][x])
 
     def setValves(self):
-        pass
+
+        self.resValve = 2000
+
 
     def animate(self, dt):
         self.step()
@@ -459,6 +494,22 @@ class Engine(pyglet.event.EventDispatcher):
                 if conNum == 0:
                     break
 
+    def addTraffic(self, mapX, mapY, traffic):
+        z = self.trfDensity[mapY/2][mapX/2]
+        z += traffic
+
+        # why is this randomly capped to 240? why not rest of time?
+        if z > 240 and randint(0,6) == 0:
+            z = 240
+            self.trafficMaxLocationX = mapX
+            self.trafficMaxLocationY = mapY
+
+            # set helicopter desination here
+
+        self.trfDensity[mapY/2][mapX/2] = z
+
+
+
     '''
         pollution, terrain and land-value
     '''
@@ -571,6 +622,21 @@ class Engine(pyglet.event.EventDispatcher):
         return self.noPowerIndicators[x][y]
 
     '''
+        Counts the population in a certain type of residential zone
+    '''
+    def doFreePop(self, xPos, yPos):
+        count = 0
+        for x in xrange(xPos - 1, xPos + 2):
+            for y in xrange(yPos - 1, yPos + 2):
+                if self.testBounds(x, y):
+                    loc = self.getTile(x, y)
+                    if LHTHR <= loc <= HHTHR:
+                        count += 1
+        return count
+
+
+
+    '''
         sets all tiles for a zone to a powered state
     '''
 
@@ -609,3 +675,9 @@ class Engine(pyglet.event.EventDispatcher):
 
     def takeCensus(self):
         pass
+
+    def getLandValue(self, xPos, yPos):
+        if self.testBounds(xPos, yPos):
+            return self.landValueMem[yPos/2][xPos/2]
+        else:
+            return 0

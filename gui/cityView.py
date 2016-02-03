@@ -1,18 +1,21 @@
-import gui
-import layout
-import microWindow
-from engine import tileConstants
-from engine.cityLocation import CityLocation
-from engine.tileConstants import CLEAR
-from gui import BG_RENDER_ORDER, MG_RENDER_ORDER, FG_RENDER_ORDER
-from gui.speed import speeds
-from gui.tileImageLoader import TileImageLoader
 from pyglet.gl import (glMatrixMode, GL_PROJECTION, GL_MODELVIEW,
                        glPushMatrix, glPopMatrix, glLoadIdentity,
                        glOrtho, glColorMask, GL_FALSE, GL_TRUE)
 from pyglet.graphics import OrderedGroup
 from pyglet.sprite import Sprite
 from pyglet.window import key
+
+import layout
+import microWindow
+import gui
+from gui import BG_RENDER_ORDER, MG_RENDER_ORDER, FG_RENDER_ORDER
+from gui.speed import speeds
+from gui.tileImageLoader import TileImageLoader
+
+from engine import tileConstants
+from engine.cityLocation import CityLocation
+from engine.tileConstants import CLEAR
+
 from util import create2dArray, createRect, createHollowRect
 
 TILESIZE = 16

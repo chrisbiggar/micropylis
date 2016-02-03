@@ -1,9 +1,11 @@
 import pyglet
-from gui import GUI_FG_RENDER_ORDER
 from pyglet.gl import *
 from pyglet.graphics import OrderedGroup
 from pyglet.text import Label
+
 from util import createHollowRect
+
+from gui import GUI_FG_RENDER_ORDER
 
 (HALIGN_LEFT, HALIGN_CENTER, HALIGN_RIGHT,
  VALIGN_TOP, VALIGN_CENTER, VALIGN_BOTTOM) = range(6)

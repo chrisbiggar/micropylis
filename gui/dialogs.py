@@ -8,10 +8,10 @@ All kytten dialog classes are in this module.
 '''
 import os
 
-import gui
-import kytten
 import pyglet
-import widgets
+
+
+import kytten
 from kytten import FileLoadDialog, FileSaveDialog
 from kytten.dialog import Dialog
 from kytten.frame import Frame
@@ -19,6 +19,8 @@ from kytten.layout import VerticalLayout
 from kytten.widgets import Label, Spacer
 from pyglet.graphics import Batch
 
+import widgets
+import gui
 
 def on_escape(dialog):
     '''

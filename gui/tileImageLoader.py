@@ -4,10 +4,11 @@ Created on Aug 30, 2015
 @author: chris
 '''
 import pyglet
-from engine.tileConstants import LOMASK
-from engine.tiles import Tiles
 from pyglet.image import TextureGrid, AbstractImage, \
     AbstractImageSequence, TextureRegion, UniformTextureSequence, Animation
+
+from engine.tileConstants import LOMASK
+from engine.tiles import Tiles
 
 
 '''
