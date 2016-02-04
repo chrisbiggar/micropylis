@@ -11,9 +11,10 @@ from pyglet.event import EventDispatcher
 from cityLocation import CityLocation
 from engine.terrainBehaviour import TerrainBehaviour
 from engine.tileConstants import *
+from micropylisMessage import MicropylisMessage
 from mapScanner import MapScanner
 from util import readShort, readInt, create2dArray
-
+import gameLevel
 
 class CityBudget(object):
     def __init__(self):
@@ -35,12 +36,12 @@ class History(object):
 
     def __init__(self):
         self.cityTime = 0
-        self.res = array('H')
-        self.com = array('H')
-        self.ind = array('H')
-        self.money = array('H')
-        self.pollution = array('H')
-        self.crime = array('H')
+        self.res = [0 for x in xrange(0,240)]
+        self.com = [0 for x in xrange(0,240)]
+        self.ind = [0 for x in xrange(0,240)]
+        self.money = [0 for x in xrange(0,240)]
+        self.pollution = [0 for x in xrange(0,240)]
+        self.crime = [0 for x in xrange(0,240)]
         self.resMax = 0
         self.comMax = 0
         self.indMax = 0
@@ -92,11 +93,13 @@ class Engine(EventDispatcher):
 
     def __init__(self, width=None, height=None):
         self.register_event_type("on_map_changed")
+        self.register_event_type("on_evaluation_changed")
         self.register_event_type("on_date_changed")
         self.register_event_type("on_funds_changed")
         self.register_event_type("on_census_changed")
         self.register_event_type("on_power_indicator_changed")
         self.register_event_type("on_city_message")
+        self.register_event_type("on_options_changed")
 
         if (width == None):
             width = self.DEFAULT_WIDTH
@@ -120,36 +123,73 @@ class Engine(EventDispatcher):
         quarterHeight = (height + 3) / 4
         self.terrainMem = create2dArray(quarterHeight, quarterWidth, 0)
 
-        smWidth = (width + 7) / 8
-        smHeight = (height + 7) / 8
-        self.rateOGMem = create2dArray(smWidth, smHeight, 0)
-        self.fireStMap = create2dArray(smWidth, smHeight, 0)
-        self.policeMap = create2dArray(smWidth, smHeight, 0)
-        self.policeMapEffect = create2dArray(smWidth, smHeight, 0)
-        self.fireRate = create2dArray(smWidth, smHeight, 0)
-        self.comRate = create2dArray(smWidth, smHeight, 0)
+        self.smWidth = (width + 7) / 8
+        self.smHeight = (height + 7) / 8
+        self.rateOGMem = create2dArray(self.smWidth, self.smHeight, 0)
+        self.fireStMap = create2dArray(self.smWidth, self.smHeight, 0)
+        self.policeMap = create2dArray(self.smWidth, self.smHeight, 0)
+        self.policeMapEffect = create2dArray(self.smWidth, self.smHeight, 0)
+        self.fireRate = create2dArray(self.smWidth, self.smHeight, 0)
+        self.comRate = create2dArray(self.smWidth, self.smHeight, 0)
 
         self.centerMassX = halfWidth
         self.centerMassY = halfHeight
 
         ''' misc engine vars '''
         self.history = History()
+
         self.budget = CityBudget()
         self.budget.funds = 20000
+        self.autoBulldoze = True
+        self.autoBudget = False
+        self.noDisasters = True
 
         self.fCycle = 0  # counts simulation steps (mod 1024)
         self.sCycle = 0  # same as cityTime, except mod 1024
         self.aCycle = 0  # animation cycle (mod 960)
 
         self.cityTime = 0  # 1 week game time per "cityTime"
+        self.totalPop = 0
+
+        self.crimeAverage = 0
+        self.pollutionAverage = 0
+        self.landValueAverage = 0
+        self.trafficAverage = 0
 
         self.resValve = 0  # ranges between -2000 and 2000, updated by setValves
+        self.comValve = 0  # ranges between -1500 and 1500
+        self.indValve = 0  # same as comvalve
+        self.resCap = False
+        self.comCap = False
+        self.indCap = False
+        self.crimeRamp = 0
+        self.polluteRamp = 0
+
+        self.TAX_TABLE = [200,150,120,100,80,50,30,0,-10,-40,-100,
+                          -150,-200,-250,-300,-350,-400,-450,-500,-550]
+
+        self.cityTax = 7
+        self.roadPercent = 1.0
+        self.policePercent = 1.0
+        self.firePrecent = 1.0
+
+        self.taxEffect = 7
+        self.roadEffect = 32
+        self.policeEffect = 1000
+        self.fireEffect = 1000
+
+        self.cashFlow = 0
+
+
+        self.VALVERATE = 2
+        self.CENSUSRATE = 4
+        self.TAXFREQ = 48
+
+        self.gameLevel = 0
 
         self.clearCensus()
-
         self.initTileBehaviours()
 
-        self.canAutoBulldoze = True
 
     def cityMessage(self, category, stringOption):
         self.dispatch_event("city_message",
@@ -179,17 +219,27 @@ class Engine(EventDispatcher):
         self.poweredZoneCount = 0
         self.unpoweredZoneCount = 0
         self.roadTotal = 0
-        self.roadEffect = 0
+        self.railTotal = 0
         self.resPop = 0
         self.comPop = 0
         self.indPop = 0
         self.resZoneCount = 0
         self.comZoneCount = 0
         self.indZoneCount = 0
+        self.hospitalCount = 0
+        self.churchCount = 0
+        self.policeCount = 0
+        self.fireStationCount = 0
+        self.stadiumCount = 0
         self.firePop = 0
         self.coalCount = 0
         self.nuclearCount = 0
+        self.seaportCount = 0
+        self.airportCount = 0
         self.powerPlants = []
+
+        self.fireStMap = create2dArray(self.smWidth, self.smHeight, 0)
+        self.policeMap = create2dArray(self.smWidth, self.smHeight, 0)
 
     def saveCity(self, outFile):
         ''' saves the current city state to file '''
@@ -288,19 +338,34 @@ class Engine(EventDispatcher):
 
         self.budget.funds = readInt(saveFile)  # budget.totalFunds
 
-        readShort(saveFile)  # autoBulldoze
-        readShort(saveFile)  # autoBudget
-        readShort(saveFile)  # autoGo
+        self.autoBulldoze = readShort(saveFile) != 0  # autoBulldoze
+        self.autoBudget = readShort(saveFile)  # autoBudget
+        self.autoGo = readShort(saveFile)  # autoGo
         readShort(saveFile)  # userSoundOn
-        readShort(saveFile)  # cityTax
+        self.cityTax = readShort(saveFile)  # cityTax
+        self.taxEffect = self.cityTax
         readShort(saveFile)  # simSpeedAsInt
         ''' budget numbers '''
-        readInt(saveFile)  # police
-        readInt(saveFile)  # fire
-        readInt(saveFile)  # road
+        n = readInt(saveFile)  # police
+        self.policePercent = n / 65536.0
+        n = readInt(saveFile)  # fire
+        self.firePercent = n / 65536.0
+        n = readInt(saveFile)  # road
+        self.roadPercent = n / 65536.0
 
         for i in xrange(64, 120):
             readShort(saveFile)
+
+        if self.cityTime < 0: self.cityTime = 0
+        if self.cityTax < 0 or self.cityTax > 20:
+            self.cityTax = 7
+        if self.gameLevel < 0 or self.gameLevel > 2:
+            self.gameLevel = 0
+
+        self.resCap = False
+        self.comCap = False
+        self.indCap = False
+
 
     '''
         loads the tile values
@@ -347,8 +412,108 @@ class Engine(EventDispatcher):
         # print "MAP: " + str(self.map[y][x])
 
     def setValves(self):
+        normResPop = self.resPop / 8.0
+        self.totalPop = normResPop + self.comPop + self.indPop
 
-        self.resValve = 2000
+        employment = 0
+        if normResPop != 0.0:
+            employment = 0
+        else:
+            employment = 1
+
+        migration = normResPop * (employment - 1)
+        BIRTH_RATE = 0.02
+        births = normResPop * BIRTH_RATE
+        projectedResPop = normResPop + migration + births
+
+        temp = self.history.com[1] + self.history.ind[1]
+        if temp != 0.0:
+            laborBase = self.history.res[1] / temp
+        else:
+            laborBase = 1
+
+        # clamp laborBase between -0.0 and 1.3
+        laborBase = max(0.0, min(1.3, laborBase))
+
+        internalMarket = normResPop + self.comPop + self.indPop
+        projectedComPop = internalMarket * laborBase
+
+        z = self.gameLevel
+        if z == 0:
+            temp = 1.2
+        elif z == 1:
+            temp = 1.1
+        elif z == 2:
+            temp = 0.98
+
+        projectedIndPop = self.indPop * laborBase * temp
+        if projectedIndPop < 5.0:
+            projectedIndPop = 5.0
+
+        if normResPop != 0:
+            resRatio = projectedResPop / normResPop
+        else:
+            resRatio = 1.3
+
+        if self.comPop != 0:
+            comRatio = projectedComPop / self.comPop
+        else:
+            comRatio = projectedComPop
+
+        if self.indPop != 0:
+            indRatio = projectedIndPop / self.indPop
+        else:
+            indRatio = projectedIndPop
+
+        if resRatio > 2.0:
+            resRatio = 2.0
+        if comRatio > 2.0:
+            comRatio = 2.0
+        if indRatio > 2.0:
+            indRatio = 2.0
+
+        z2 = self.taxEffect + self.gameLevel
+        if z2 > 20:
+            z2 = 20
+
+        resRatio = (resRatio - 1) * 600 + self.TAX_TABLE[z2]
+        comRatio = (comRatio - 1) * 600 + self.TAX_TABLE[z2]
+        indRatio = (indRatio - 1) * 600 + self.TAX_TABLE[z2]
+
+        self.resValve += int(resRatio)
+        self.comValve += int(comRatio)
+        self.indValve += int(indRatio)
+
+        if self.resValve > 2000:
+            self.resValve = 2000
+        elif self.resValve < -2000:
+            self.resValve = -2000
+
+        if self.comValve > 1500:
+            self.comValve = 1500
+        elif self.comValve < -1500:
+            self.comValve = -1500
+
+        if self.indValve > 1500:
+            self.indValve = 1500
+        elif self.indValve < -1500:
+            self.indValve = -1500
+
+        if self.resCap and self.resValve > 0:
+            # residents demand stadium
+            self.resValve = 0
+
+        if self.comCap and self.comValve > 0:
+            # comidents demand stadium
+            self.comValve = 0
+
+        if self.indCap and self.indValve > 0:
+            # indidents demand stadium
+            self.indValve = 0
+
+        #print self.resValve,self.comValve,self.indValve
+
+        #self.resValve = 2000
 
 
     def animate(self, dt):
@@ -385,9 +550,27 @@ class Engine(EventDispatcher):
         elif mod16 == 8:
             self.mapScan(7 * band, self.getWidth())
         elif mod16 == 9:
-            pass
+            if self.cityTime % self.CENSUSRATE == 0:
+                self.takeCensus()
+
+                if self.cityTime % (self.CENSUSRATE * 12) == 0:
+                    self.takeCensus2()
+
+                self.dispatch_event("on_census_changed", self.totalPop)
+
+            self.collectTaxPartial()
+
+            if self.cityTime % self.TAXFREQ == 0:
+                self.collectTax()
+                #self.evaluation.cityEvaluation()
+
         elif mod16 == 10:
-            pass
+            if self.sCycle % 5 == 0:
+                self.decROGMem()
+            self.decTrafficMem()
+            # fire overlay changed events here
+            self.doMessages()
+
         elif mod16 == 11:
             self.powerScan()
             self.newPower = True
@@ -398,10 +581,17 @@ class Engine(EventDispatcher):
         elif mod16 == 14:
             self.popDenScan()
         elif mod16 == 15:
-            pass
+            self.fireAnalysis()
+            self.doDisasters()
 
         # should this be once a cycle?
         self.tileUpdateCheck()
+
+    def doDisasters(self):
+        pass
+
+    def fireAnalysis(self):
+        pass
 
     def testForConductive(self, loc, dir):
         ''' returns power condition of a location in a paticular direction'''
@@ -499,7 +689,7 @@ class Engine(EventDispatcher):
         z += traffic
 
         # why is this randomly capped to 240? why not rest of time?
-        if z > 240 and randint(0,6) == 0:
+        if z > 240 and randint(0,5) == 0:
             z = 240
             self.trafficMaxLocationX = mapX
             self.trafficMaxLocationY = mapY
@@ -508,6 +698,20 @@ class Engine(EventDispatcher):
 
         self.trfDensity[mapY/2][mapX/2] = z
 
+    def decROGMem(self):
+        pass
+
+    def decTrafficMem(self):
+        for y in xrange(0, len(self.trfDensity)):
+            for x in xrange(0, len(self.trfDensity[y])):
+                z = self.trfDensity[y][x]
+                if z != 0:
+                    if z > 200:
+                        self.trfDensity[y][x] = z - 34
+                    elif z > 24:
+                        self.trfDensity[y][x] = z - 24
+                    else:
+                        self.trfDensity[y][x] = 0
 
 
     '''
@@ -521,6 +725,7 @@ class Engine(EventDispatcher):
     '''
 
     '''
+
 
     def crimeScan(self):
         pass
@@ -541,6 +746,9 @@ class Engine(EventDispatcher):
         for x in xrange((width + 1) / 2):
             pass
 
+    def smoothFirePoliceMap(self, oMap):
+        pass
+
     '''
         checks powerbit of tile value ()
     '''
@@ -551,6 +759,7 @@ class Engine(EventDispatcher):
 
     '''
         checks powermap
+
     '''
 
     def hasPower(self, x, y):
@@ -634,7 +843,21 @@ class Engine(EventDispatcher):
                         count += 1
         return count
 
+    def toggleAutoBudget(self):
+        self.autoBudget = not self.autoBudget
+        self.dispatch_event("on_options_changed")
 
+    def toggleAutoBulldoze(self):
+        self.autoBulldoze = not self.autoBulldoze
+        self.dispatch_event("on_options_changed")
+
+    def toggleDisasters(self):
+        self.noDisasters = not self.noDisasters
+        self.dispatch_event("on_options_changed")
+
+
+    def killZone(self, xPos, yPos, zoneTile):
+        pass
 
     '''
         sets all tiles for a zone to a powered state
@@ -674,6 +897,83 @@ class Engine(EventDispatcher):
                                  ts.onShutdown.tileNum or tile & ALLBITS)
 
     def takeCensus(self):
+        resMax = 0
+        comMax = 0
+        indMax = 0
+
+        for i in xrange(0, 118):
+            if self.history.res[i] > resMax:
+                resMax = self.history.res[i]
+            if self.history.com[i] > comMax:
+                comMax = self.history.com[i]
+            if self.history.ind[i] > indMax:
+                indMax = self.history.ind[i]
+
+            self.history.res[i + 1] = self.history.res[i]
+            self.history.com[i + 1] = self.history.com[i]
+            self.history.ind[i + 1] = self.history.ind[i]
+            self.history.crime[i + 1] = self.history.crime[i]
+            self.history.pollution[i + 1] = self.history.pollution[i]
+            self.history.money[i + 1] = self.history.money[i]
+
+        self.history.resMax = resMax
+        self.history.comMax = comMax
+        self.history.indMax = indMax
+
+        self.history.res[0] = self.resPop / 8
+        self.history.com[0] = self.comPop
+        self.history.indPop = self.indPop
+
+        self.crimeRamp += (self.crimeAverage - self.crimeRamp) / 4
+        self.history.crime[0] = min(255, self.crimeRamp)
+
+        # more to do here
+
+
+
+    def takeCensus2(self):
+        pass
+
+    def collectTaxPartial(self):
+        pass
+
+    def collectTax(self):
+        pass
+
+    def generateBudget(self):
+        pass
+
+    def doMessages(self):
+
+        # self.checkGrowth()
+
+        totalZoneCount = self.resZoneCount + self.comZoneCount + self.indZoneCount
+        powerCount = self.nuclearCount + self.coalCount
+
+        z = self.cityTime % 64
+        if z == 0 and totalZoneCount / 4 >= self.resZoneCount:
+            self.dispatch_event("on_city_message", MicropylisMessage.NEED_RES)
+        elif z == 5 and totalZoneCount / 8 >= self.comZoneCount:
+            self.dispatch_event("on_city_message", MicropylisMessage.NEED_COM)
+        elif z == 10 and totalZoneCount / 8 >= self.indZoneCount:
+            self.dispatch_event("on_city_message", MicropylisMessage.NEED_IND)
+        elif z == 14 and 10 < totalZoneCount and totalZoneCount * 2 > self.roadTotal:
+            self.dispatch_event("on_city_message", MicropylisMessage.NEED_ROADS)
+        #elif z == 18 and
+        elif z == 26:
+            self.resCap = self.resPop > 500 and self.stadiumCount == 0
+            if self.resCap:
+                self.dispatch_event("on_city_message", MicropylisMessage.NEED_STADIUM)
+        elif z == 28:
+            self.indCap = self.indPop > 500 and self.seaportCount == 0
+            if self.indCap:
+                self.dispatch_event("on_city_message", MicropylisMessage.NEED_SEAPORT)
+        elif z == 30:
+            self.comCap = self.comPop > 500 and self.airportCount == 0
+            if self.comCap:
+                self.dispatch_event("on_city_message", MicropylisMessage.NEED_AIRPORT)
+
+    def queryZoneStatus(self, xPos, yPos):
         pass
 
     def getLandValue(self, xPos, yPos):
@@ -681,3 +981,18 @@ class Engine(EventDispatcher):
             return self.landValueMem[yPos/2][xPos/2]
         else:
             return 0
+
+    def getTrafficDensity(self, xPos, yPos):
+        if self.testBounds(xPos, yPos):
+            print str(xPos) + " " + str(yPos) + " " + str(self.trfDensity[yPos/2][xPos/2])
+            return self.trfDensity[yPos/2][xPos/2]
+        else:
+            return 0
+
+    def setGameLevel(self, newLevel):
+        assert gameLevel.isValid(newLevel)
+
+        self.gameLevel = newLevel
+
+    def setFunds(self, totalFunds):
+        self.budget.funds = totalFunds

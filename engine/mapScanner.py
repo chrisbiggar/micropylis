@@ -109,9 +109,11 @@ class MapScanner(TileBehaviour):
         else:
             tPop = residentialZonePop(self.tile)
 
+        tPop = 16
+
         self.city.resPop += tPop
 
-        if tPop > randint(0, 36): # does work same as java nextInt?
+        if tPop > randint(0, 35):
             trafficGood = self.makeTraffic(ZoneType.RESIDENTIAL)
         else:
             trafficGood = 1
@@ -123,7 +125,7 @@ class MapScanner(TileBehaviour):
             self.doResidentialOut(tPop, value)
             return
 
-        if self.tile == RESCLR or randint(0, 8) == 0:
+        if self.tile == RESCLR or randint(0, 7) == 0:
             locValve = self.evalResidential(trafficGood)
             zScore = self.city.resValve + locValve
 
@@ -132,10 +134,10 @@ class MapScanner(TileBehaviour):
             '''if not powerOn:
                 zScore = -500'''
 
-            whatisthis = randint(0, 0x10000) - 0x8000
+            whatisthis = randint(0, 0x10000 - 1) - 0x8000
             print "what is this " + str(whatisthis)
             if zScore > -350 and zScore - 26380 > whatisthis:
-                if tPop == 0 and randint(0,4) == 0:
+                if tPop == 0 and randint(0,3) == 0:
                     self.makeHospital()
                     return
 
@@ -175,10 +177,13 @@ class MapScanner(TileBehaviour):
     def doResidentialOut(self, pop, value):
         assert 0 <= value < 4
 
+
+        
+
     '''
         Evaluates the zone value of the current res zone location
-        Returns a int between -3000 and 3000.
-        Higher = more likely to grow, lower = more likely to shrink.
+        Returns a int between -3000 and 300
+         = more likely to shrink.
     '''
     def evalResidential(self, traf):
         if traf < 0:

@@ -302,7 +302,7 @@ class LineTool(ToolStroke):
             eff.setTile(0, 0, VRAILROAD)
         else:
             if tile != DIRT:
-                if canAutoBulldozeRRW(tile) and self.engine.canAutoBulldoze:
+                if canAutoBulldozeRRW(tile) and self.engine.autoBulldoze:
                     cost += 1
                 else:
                     return False

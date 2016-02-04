@@ -8,6 +8,7 @@ import pyglet
 from pyglet.gl import *
 from pyglet.window import mouse
 
+import engine.gameLevel as gameLevel
 from engine.toolResult import ToolResult
 from engine.micropolistool import MicropylisTool
 from engine.cityRect import CityRect
@@ -118,16 +119,18 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             pyglet.window.key._5: speeds['Super Fast']}
         self.speed = None
 
-        self.newCity()
+        self.newCity(gameLevel.MIN_LEVEL)
         #self.loadCity('cities/kyoto.cty')
 
 
         #music = pyglet.media.load('res/music.mp3')
         #music.play()
 
-    def newCity(self):
+    def newCity(self, gLvl):
         self.cityLoaded = True
         self.engine = Engine()
+        self.engine.setGameLevel(gLvl)
+        self.engine.setFunds(gameLevel.getStartingFunds(gLvl))
         self.cityView.reset(self.engine)
         self.controlPanel.reset(self, self.engine)
         self.engine.newCity()

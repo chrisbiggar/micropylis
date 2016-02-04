@@ -342,6 +342,12 @@ def isRubble(tile):
     assert tile & LOMASK == tile
     return RUBBLE <= tile <= LASTRUBBLE
 
+def isOverWater(tile):
+    assert tile & LOMASK == tile
+
+    spec = Tiles().get(tile)
+    return spec != None and spec.overWater
+
 
 '''
 
