@@ -262,7 +262,6 @@ class ViewportGroup(OrderedGroup):
     '''
         returns city relative location from gui coords
     '''
-
     def screenCoordsToCityLocation(self, x, y):
         y = self.renderHeight - y
         mouse_x = x / float(self.renderWidth)
@@ -277,7 +276,6 @@ class ViewportGroup(OrderedGroup):
     '''
         sets the viewport
     '''
-
     def set_state(self):
         glMatrixMode(GL_PROJECTION)
         glPushMatrix()

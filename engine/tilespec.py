@@ -248,6 +248,15 @@ class TileSpec(object):
     def getImages(self):
         return self._images
 
+    def getPollutionValue(self):
+        v = self.getAttribute("pollution")
+        if v is not None:
+            return int(v)
+        elif self.owner is not None:
+            return self.owner.getPollutionValue()
+        else:
+            return 0
+
     def getPopulation(self):
         v = self.getAttribute("population")
         if v is not None:

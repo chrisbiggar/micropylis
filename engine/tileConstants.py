@@ -83,7 +83,7 @@ LVRAIL10 = 236
 HRAILROAD = 237
 VRAILROAD = 238
 LASTRAIL = 238
-RESBASE = 244
+RESBASE = 240
 RESCLR = 244
 HOUSE = 249
 LHTHR = 249  # 12 house tiles
@@ -174,6 +174,27 @@ def getZoneSizeFor(tile):
     if spec is None:
         return None
     return spec.getBuildingSize()
+
+
+def isConstructed(tile):
+    assert tile & LOMASK == tile
+
+    return 0 <= tile <= ROADBASE
+
+
+def isDozeable(tile):
+    assert tile & LOMASK == tile
+
+    spec = Tiles().get(tile)
+    return spec is not None and spec.canBulldoze
+
+
+def isRoad(tile):
+    assert tile & LOMASK == tile
+
+    return (ROADBASE <= tile < POWERBASE or
+            tile == HRAILROAD or
+            tile == VRAILROAD)
 
 
 def isRoadDynamic(tile):
@@ -326,6 +347,16 @@ def isZoneCenter(tile):
     return spec is not None and spec.zone
 
 
+def getPollutionValue(tile):
+    assert tile & LOMASK == tile
+
+    spec = Tiles().get(tile)
+    if spec is not None:
+        return spec.getPollutionValue()
+    else:
+        return 0
+
+
 def isAnimated(tile):
     assert tile & LOMASK == tile
 
@@ -359,8 +390,45 @@ def neutralizeRoad(tile):
         tile = ((tile - ROADBASE) & 0xf) + ROADBASE
     return tile
 
+def isResidentialClear(tile):
+    assert tile & LOMASK == tile
+    print RESBASE,tile,RESBASE+8
+    return RESBASE <= tile <= RESBASE + 8
+
+def isResidentialZone(tile):
+    assert tile & LOMASK == tile
+
+    return RESBASE <= tile <= HOSPITAL
+
+'''
+    Population Level of A Residential Zone
+    Input must be full-size res zone, not empty.
+    Returns multiple of 8 between 16 and 40
+'''
 def residentialZonePop(tile):
     assert tile & LOMASK == tile
 
     ts = Tiles().get(tile)
     return ts.getPopulation()
+
+'''
+    Population Level of A Commercial Zone
+    Input tile may be empty zone.
+    Returns int between 0 and 5
+'''
+def commercialZonePop(tile):
+    assert tile & LOMASK == tile
+
+    ts = Tiles().get(tile)
+    return ts.getPopulation() / 8
+
+'''
+    Population Level of An Industrial Zone
+    Input tile may be empty zone.
+    Returns int between 0 and 4
+'''
+def industrialZonePop(tile):
+    assert tile & LOMASK == tile
+
+    ts = Tiles().get(tile)
+    return ts.getPopulation() / 8

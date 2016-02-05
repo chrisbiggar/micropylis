@@ -125,12 +125,12 @@ class Engine(EventDispatcher):
 
         self.smWidth = (width + 7) / 8
         self.smHeight = (height + 7) / 8
-        self.rateOGMem = create2dArray(self.smWidth, self.smHeight, 0)
-        self.fireStMap = create2dArray(self.smWidth, self.smHeight, 0)
-        self.policeMap = create2dArray(self.smWidth, self.smHeight, 0)
-        self.policeMapEffect = create2dArray(self.smWidth, self.smHeight, 0)
-        self.fireRate = create2dArray(self.smWidth, self.smHeight, 0)
-        self.comRate = create2dArray(self.smWidth, self.smHeight, 0)
+        self.rateOGMem = create2dArray(self.smHeight, self.smWidth, 0)
+        self.fireStMap = create2dArray(self.smHeight, self.smWidth, 0)
+        self.policeMap = create2dArray(self.smHeight, self.smWidth, 0)
+        self.policeMapEffect = create2dArray(self.smHeight, self.smWidth, 0)
+        self.fireRate = create2dArray(self.smHeight, self.smWidth, 0)
+        self.comRate = create2dArray(self.smHeight, self.smWidth, 0)
 
         self.centerMassX = halfWidth
         self.centerMassY = halfHeight
@@ -144,12 +144,20 @@ class Engine(EventDispatcher):
         self.autoBudget = False
         self.noDisasters = True
 
+        self.newPower = False
+
         self.fCycle = 0  # counts simulation steps (mod 1024)
         self.sCycle = 0  # same as cityTime, except mod 1024
         self.aCycle = 0  # animation cycle (mod 960)
 
         self.cityTime = 0  # 1 week game time per "cityTime"
         self.totalPop = 0
+
+        self.pollutionMaxLocationX = 0
+        self.pollutionMaxLocationY = 0
+
+        self.needHospital = 0  # -1 too many already, 0 just right, 1 not enough
+        self.needChurch = 0  # -1 too many already, 0 just right, 1 not enough
 
         self.crimeAverage = 0
         self.pollutionAverage = 0
@@ -192,7 +200,7 @@ class Engine(EventDispatcher):
 
 
     def cityMessage(self, category, stringOption):
-        self.dispatch_event("city_message",
+        self.dispatch_event("on_city_message",
                             cityMessages.get(category,
                                              stringOption))
 
@@ -415,9 +423,8 @@ class Engine(EventDispatcher):
         normResPop = self.resPop / 8.0
         self.totalPop = normResPop + self.comPop + self.indPop
 
-        employment = 0
         if normResPop != 0.0:
-            employment = 0
+            employment = (self.history.com[1] + self.history.ind[1]) / normResPop
         else:
             employment = 1
 
@@ -515,6 +522,27 @@ class Engine(EventDispatcher):
 
         #self.resValve = 2000
 
+    @staticmethod
+    def smoothTerrain(qTem):
+        QWX = len(qTem[0])
+        QWY = len(qTem)
+
+        mem = create2dArray(QWY, QWX, 0)
+        for y in xrange(QWY):
+            for x in xrange(QWX):
+                z = 0
+                if x > 0:
+                    z += qTem[y][x-1]
+                if x + 1 < QWX:
+                    z += qTem[y][x+1]
+                if y > 0:
+                    z += qTem[y-1][x]
+                if y + 1 < QWY:
+                    z += qTem[y+1][x]
+                mem[y][x] = z / 4 + qTem[y][x] / 2
+
+        return mem
+
 
     def animate(self, dt):
         self.step()
@@ -564,6 +592,9 @@ class Engine(EventDispatcher):
                 self.collectTax()
                 #self.evaluation.cityEvaluation()
 
+            print (self.history.res[0],self.history.res[1],self.history.res[2],
+                   self.history.res[3],self.history.res[4],self.history.res[5])
+
         elif mod16 == 10:
             if self.sCycle % 5 == 0:
                 self.decROGMem()
@@ -586,6 +617,41 @@ class Engine(EventDispatcher):
 
         # should this be once a cycle?
         self.tileUpdateCheck()
+
+    def computePopDen(self, x, y, tile):
+        if tile == RESCLR:
+            return self.doFreePop(x, y)
+        if tile < COMBASE:
+            return residentialZonePop(tile)
+        if tile < INDBASE:
+            return commercialZonePop(tile)
+        if tile < PORTBASE:
+            return industrialZonePop(tile)
+        return 0
+
+    @staticmethod
+    def doSmooth(tem):
+        h = len(tem)
+        w = len(tem[0])
+        tem2 = create2dArray(h, w, 0)
+
+        for y in xrange(h):
+            for x in xrange(w):
+                z = tem[y][x]
+                if x > 0:
+                    z += tem[y][x-1]
+                if x + 1 < w:
+                    z += tem[y][x+1]
+                if y > 0:
+                    z += tem[y-1][x]
+                if y + 1 < h:
+                    z += tem[y+1][x]
+                z /= 4
+                if z > 255:
+                    z = 255
+                tem2[y][x] = z
+        return tem2
+
 
     def doDisasters(self):
         pass
@@ -713,27 +779,128 @@ class Engine(EventDispatcher):
                     else:
                         self.trfDensity[y][x] = 0
 
+    '''
+        calculate manhatten distance (in 2-units) from center of city
+        capped at 32
+    '''
+    def getDisCC(self, x, y):
+        assert 0 <= x <= self.getWidth() / 2
+        assert 0 <= y <= self.getHeight() / 2
+
+        xDis = abs(x - self.centerMassX / 2)
+        yDis = abs(y - self.centerMassY / 2)
+
+        z = xDis + yDis
+        if z > 32:
+            return 32
+        else:
+            return z
+
 
     '''
         pollution, terrain and land-value
     '''
-
     def ptlScan(self):
+        qX = (self.getWidth() + 3) / 4
+        qY = (self.getHeight() + 3) / 4
+        qTem = create2dArray(qY, qX, 0)
 
-        pass
+        landValueTotal = 0
+        landValueCount = 0
+
+        HWLDX = (self.getWidth() +1 ) / 2
+        HWLDY = (self.getHeight() + 1) / 2
+        tem = create2dArray(HWLDY, HWLDX, 0)
+        for x in xrange(HWLDX):
+            for y in xrange(HWLDY):
+                pLevel = 0
+                lvFlag = 0
+                zx = 2 * x
+                zy = 2 * y
+
+                for mx in xrange(zx, zx + 2):
+                    for my in xrange(zy, zy + 2):
+                        tile = self.getTile(mx, my)
+                        if tile != DIRT:
+                            if tile < RUBBLE:  # natural land
+                                qTem[y/2][x/2] += 15
+                                continue
+                            pLevel += getPollutionValue(tile)
+                            if isConstructed(tile):
+                                lvFlag += 1
+
+                if pLevel < 0:
+                    pLevel = 250
+
+                if pLevel > 255:
+                    pLevel = 255
+
+                tem[y][x] = pLevel
+
+                if lvFlag != 0:
+                    # land value equation
+
+                    dis = 34 - self.getDisCC(x, y)
+                    dis *= 4
+                    dis += self.terrainMem[y/2][x/2]
+                    dis -= self.pollutionMem[y][x]
+                    if self.crimeMem[y][x] > 190:
+                        dis -= 20
+                    if dis > 250:
+                        dis = 250
+                    if dis < 1:
+                        dis = 1
+                    self.landValueMem[y][x] = dis
+                    landValueTotal += dis
+                    landValueCount += 1
+                else:
+                    self.landValueMem[y][x] = 0
+
+        if landValueCount != 0:
+            self.landValueAverage = landValueTotal / landValueCount
+        else:
+            self.landValueAverage = 0
+
+        tem = self.doSmooth(tem)
+        tem = self.doSmooth(tem)
+
+        pCount = 0
+        pTotal = 0
+        pMax = 0
+
+        for x in xrange(HWLDX):
+            for y in xrange(HWLDY):
+                z = tem[y][x]
+                self.pollutionMem[y][x] = z
+
+                if z != 0:
+                    pCount += 1
+                    pTotal += z
+
+                    if z > pMax or (z == pMax and randint(0,3) == 0):
+                        pMax = z
+                        self.pollutionMaxLocationX = 2 * x
+                        self.pollutionMaxLocationY = 2 * y
+
+        if pCount != 0:
+            self.pollutionAverage = pTotal / pCount
+        else:
+            self.pollutionAverage = 0
+
+        self.terrainMem = self.smoothTerrain(qTem)
+
+        # fire map overlay changed events
+
 
     '''
 
     '''
-
-
     def crimeScan(self):
         pass
 
     '''
 
     '''
-
     def popDenScan(self):
 
         xTot = 0
@@ -743,8 +910,47 @@ class Engine(EventDispatcher):
         height = self.getHeight()
         tem = create2dArray((height + 1) / 2, (width + 1) / 2)
 
+        for x in xrange(width):
+            for y in xrange(height):
+                tile = self.getTile(x, y)
+                if isZoneCenter(tile):
+                    den = self.computePopDen(x, y, tile)
+                    if den > 254:
+                        den = 254
+                    tem[y/2][x/2] = den
+                    xTot += x
+                    yTot += y
+                    zoneCount += 1
+
+        tem = self.doSmooth(tem)
+        tem = self.doSmooth(tem)
+        tem = self.doSmooth(tem)
+
         for x in xrange((width + 1) / 2):
-            pass
+            for y in xrange((height + 1) / 2):
+                self.popDensity[y][x] = 2 * tem[y][x]
+
+        self.distIntMarket()
+
+        if zoneCount != 0:
+            self.centerMassX = xTot / zoneCount
+            self.centerMassY = yTot / zoneCount
+        else:
+            self.centerMassX = (width + 1) / 2
+            self.centerMassY = (height + 1) / 2
+
+        # fire appropriate map overlay events
+        pass
+
+
+    def distIntMarket(self):
+        for y in xrange(len(self.comRate)):
+            for x in xrange(len(self.comRate[y])):
+                z = self.getDisCC(x * 4, y * 4)
+                z /= 4
+                z = 64 - z
+                self.comRate[y][x] = z
+
 
     def smoothFirePoliceMap(self, oMap):
         pass
@@ -901,7 +1107,7 @@ class Engine(EventDispatcher):
         comMax = 0
         indMax = 0
 
-        for i in xrange(0, 118):
+        for i in xrange(118, -1, -1):
             if self.history.res[i] > resMax:
                 resMax = self.history.res[i]
             if self.history.com[i] > comMax:
@@ -920,19 +1126,66 @@ class Engine(EventDispatcher):
         self.history.comMax = comMax
         self.history.indMax = indMax
 
+        print "RESPOP: " + str(self.resPop)
         self.history.res[0] = self.resPop / 8
         self.history.com[0] = self.comPop
-        self.history.indPop = self.indPop
+        self.history.ind[0] = self.indPop
 
         self.crimeRamp += (self.crimeAverage - self.crimeRamp) / 4
         self.history.crime[0] = min(255, self.crimeRamp)
 
-        # more to do here
+        self.polluteRamp += (self.pollutionAverage - self.polluteRamp) / 4
+        self.history.pollution[0] = min(255, self.polluteRamp)
 
+        moneyScaled = self.cashFlow / 20 + 128
+        if moneyScaled < 0:
+            moneyScaled = 0
+        if moneyScaled > 255:
+            moneyScaled = 255
+        self.history.money[0] = moneyScaled
 
+        self.history.cityTime = self.cityTime
+
+        if self.hospitalCount < self.resPop / 256.:
+            self.needHospital = 1
+        elif self.hospitalCount > self.resPop / 256.:
+            self.needHospital = -1
+        else:
+            self.needHospital = 0
+
+        if self.churchCount < self.resPop / 256.:
+            self.needChurch = 1
+        elif self.churchCount > self.resPop / 256.:
+            self.needChurch = -1
+        else:
+            self.needChurch = 0
 
     def takeCensus2(self):
-        pass
+        resMax = 0
+        comMax = 0
+        indMax = 0
+
+        for i in xrange(238, 119, -1):
+            if self.history.res[i] > resMax:
+                resMax = self.history.res[i]
+            if self.history.com[i] > comMax:
+                comMax = self.history.com[i]
+            if self.history.ind[i] > indMax:
+                indMax = self.history.ind[i]
+
+            self.history.res[i + 1] = self.history.res[i]
+            self.history.com[i + 1] = self.history.com[i]
+            self.history.ind[i + 1] = self.history.ind[i]
+            self.history.crime[i + 1] = self.history.crime[i]
+            self.history.pollution[i + 1] = self.history.pollution[i]
+            self.history.money[i + 1] = self.history.money[i]
+
+        self.history.res[120] = self.resPop / 8.
+        self.history.com[120] = self.comPop
+        self.history.ind[120] = self.indPop
+        self.history.crime[120] = self.history.crime[0]
+        self.history.pollution[120] = self.history.pollution[0]
+        self.history.money[120] = self.history.money[0]
 
     def collectTaxPartial(self):
         pass
@@ -942,6 +1195,9 @@ class Engine(EventDispatcher):
 
     def generateBudget(self):
         pass
+
+    def getPopulationDensity(self, xPos, yPos):
+        return self.popDensity[yPos / 2][xPos / 2]
 
     def doMessages(self):
 
@@ -984,7 +1240,7 @@ class Engine(EventDispatcher):
 
     def getTrafficDensity(self, xPos, yPos):
         if self.testBounds(xPos, yPos):
-            print str(xPos) + " " + str(yPos) + " " + str(self.trfDensity[yPos/2][xPos/2])
+            #print str(xPos) + " " + str(yPos) + " " + str(self.trfDensity[yPos/2][xPos/2])
             return self.trfDensity[yPos/2][xPos/2]
         else:
             return 0

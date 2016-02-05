@@ -580,6 +580,7 @@ class DataVisualsMenu(MenuView):
 class ControlPanel(Frame, pyglet.event.EventDispatcher):
     WIDTH = 300
     DEFAULT_MENU = 'CityMenu'
+
     def __init__(self, microWindow, cityView):
         self.fgGroup = fgGroup
         self.bg = None
