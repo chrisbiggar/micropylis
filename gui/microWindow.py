@@ -119,8 +119,8 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             pyglet.window.key._5: speeds['Super Fast']}
         self.speed = None
 
-        self.newCity(gameLevel.MIN_LEVEL)
-        #self.loadCity('cities/kyoto.cty')
+        #self.newCity(gameLevel.MIN_LEVEL)
+        self.loadCity('cities/test.cty')
 
 
         #music = pyglet.media.load('res/music.mp3')

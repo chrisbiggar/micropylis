@@ -203,7 +203,7 @@ class MapScanner(TileBehaviour):
                 #print "build house"
                 return
 
-            print "popden " + str(self.city.getPopulationDensity(self.x, self.y))
+            #print "popden " + str(self.city.getPopulationDensity(self.x, self.y))
             if self.city.getPopulationDensity(self.x, self.y) > 64:
                 self.residentialPlop(0, value)
                 self.adjustROG(8)
@@ -234,7 +234,7 @@ class MapScanner(TileBehaviour):
             self.adjustROG(8)
 
     def residentialPlop(self, density, value):
-        base = (value * 5 + density) * 9 + tileConstants.CZB
+        base = (value * 4 + density) * 9 + tileConstants.RZB
         self.zonePlop(base)
 
     def comPlop(self, density, value):

@@ -48,10 +48,10 @@ class TrafficGen(object):
             self.mapX = pos.x
             self.mapY = pos.y
             assert self.city.testBounds(self.mapX, self.mapY)
-            print "set traffic"
+            #print "set traffic"
             tile = self.city.getTile(self.mapX, self.mapY)
             if ROADBASE <= tile < POWERBASE:
-                print "add traffic"
+                #print "add traffic"
                 self.city.addTraffic(self.mapX, self.mapY, 50)
 
     def findParameterRoad(self):

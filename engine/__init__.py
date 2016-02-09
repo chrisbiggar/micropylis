@@ -95,6 +95,7 @@ class Engine(EventDispatcher):
         self.register_event_type("on_map_changed")
         self.register_event_type("on_evaluation_changed")
         self.register_event_type("on_date_changed")
+        self.register_event_type("on_demand_changed")
         self.register_event_type("on_funds_changed")
         self.register_event_type("on_census_changed")
         self.register_event_type("on_power_indicator_changed")
@@ -400,6 +401,18 @@ class Engine(EventDispatcher):
     def getTileRaw(self, x, y):
         return self.map[y][x]
 
+    def isTileDozeable(self, eff):
+        myTile = eff.getTile(0, 0)
+        ts = Tiles().get(myTile)
+        if ts.canBulldoze:
+            return True
+
+        if ts.owner is not None:
+            baseTile = eff.getTile(-ts.ownerOffsetX, -ts.ownerOffsetY)
+            return not ts.owner.tileNum == baseTile
+
+        return False
+
     '''
         this method clears PWRBIT of given tile
     '''
@@ -420,7 +433,7 @@ class Engine(EventDispatcher):
         # print "MAP: " + str(self.map[y][x])
 
     def setValves(self):
-        normResPop = self.resPop / 8.0
+        normResPop = self.resPop / 8
         self.totalPop = normResPop + self.comPop + self.indPop
 
         if normResPop != 0.0:
@@ -511,16 +524,16 @@ class Engine(EventDispatcher):
             self.resValve = 0
 
         if self.comCap and self.comValve > 0:
-            # comidents demand stadium
+            # commerce deamds airport
             self.comValve = 0
 
         if self.indCap and self.indValve > 0:
-            # indidents demand stadium
+            # industry demands seaport
             self.indValve = 0
 
         #print self.resValve,self.comValve,self.indValve
 
-        #self.resValve = 2000
+        self.dispatch_event('on_demand_changed')
 
     @staticmethod
     def smoothTerrain(qTem):
@@ -592,8 +605,8 @@ class Engine(EventDispatcher):
                 self.collectTax()
                 #self.evaluation.cityEvaluation()
 
-            print (self.history.res[0],self.history.res[1],self.history.res[2],
-                   self.history.res[3],self.history.res[4],self.history.res[5])
+            '''print (self.history.res[0],self.history.res[1],self.history.res[2],
+                   self.history.res[3],self.history.res[4],self.history.res[5])'''
 
         elif mod16 == 10:
             if self.sCycle % 5 == 0:
@@ -787,8 +800,8 @@ class Engine(EventDispatcher):
         assert 0 <= x <= self.getWidth() / 2
         assert 0 <= y <= self.getHeight() / 2
 
-        xDis = abs(x - self.centerMassX / 2)
         yDis = abs(y - self.centerMassY / 2)
+        xDis = abs(x - self.centerMassX / 2)
 
         z = xDis + yDis
         if z > 32:
@@ -808,7 +821,7 @@ class Engine(EventDispatcher):
         landValueTotal = 0
         landValueCount = 0
 
-        HWLDX = (self.getWidth() +1 ) / 2
+        HWLDX = (self.getWidth() + 1) / 2
         HWLDY = (self.getHeight() + 1) / 2
         tem = create2dArray(HWLDY, HWLDX, 0)
         for x in xrange(HWLDX):
@@ -822,7 +835,7 @@ class Engine(EventDispatcher):
                     for my in xrange(zy, zy + 2):
                         tile = self.getTile(mx, my)
                         if tile != DIRT:
-                            if tile < RUBBLE:  # natural land
+                            if tile < RUBBLE:  # natural land features
                                 qTem[y/2][x/2] += 15
                                 continue
                             pLevel += getPollutionValue(tile)
@@ -877,7 +890,7 @@ class Engine(EventDispatcher):
                     pCount += 1
                     pTotal += z
 
-                    if z > pMax or (z == pMax and randint(0,3) == 0):
+                    if z > pMax or (z == pMax and randint(0, 3) == 0):
                         pMax = z
                         self.pollutionMaxLocationX = 2 * x
                         self.pollutionMaxLocationY = 2 * y
@@ -914,7 +927,8 @@ class Engine(EventDispatcher):
             for y in xrange(height):
                 tile = self.getTile(x, y)
                 if isZoneCenter(tile):
-                    den = self.computePopDen(x, y, tile)
+                    den = self.computePopDen(x, y, tile) * 8
+                    #print "density: " + str(den)
                     if den > 254:
                         den = 254
                     tem[y/2][x/2] = den
@@ -922,13 +936,23 @@ class Engine(EventDispatcher):
                     yTot += y
                     zoneCount += 1
 
+        '''print "--------------------------------"
+        print "before"
+        print tem'''
+
         tem = self.doSmooth(tem)
         tem = self.doSmooth(tem)
         tem = self.doSmooth(tem)
 
+        '''print "--------------------------------"
+        print "after"
+        print tem'''
+
         for x in xrange((width + 1) / 2):
             for y in xrange((height + 1) / 2):
+                print x,y,2*tem[y][x]
                 self.popDensity[y][x] = 2 * tem[y][x]
+                #print self.popDensity[y][x]
 
         self.distIntMarket()
 
@@ -940,7 +964,7 @@ class Engine(EventDispatcher):
             self.centerMassY = (height + 1) / 2
 
         # fire appropriate map overlay events
-        pass
+
 
 
     def distIntMarket(self):
@@ -1041,12 +1065,15 @@ class Engine(EventDispatcher):
     '''
     def doFreePop(self, xPos, yPos):
         count = 0
+        #print "do free pop"
         for x in xrange(xPos - 1, xPos + 2):
             for y in xrange(yPos - 1, yPos + 2):
                 if self.testBounds(x, y):
                     loc = self.getTile(x, y)
                     if LHTHR <= loc <= HHTHR:
+                        #print count
                         count += 1
+        #print "final: " + str(count)
         return count
 
     def toggleAutoBudget(self):
@@ -1126,7 +1153,7 @@ class Engine(EventDispatcher):
         self.history.comMax = comMax
         self.history.indMax = indMax
 
-        print "RESPOP: " + str(self.resPop)
+        #print "RESPOP: " + str(self.resPop)
         self.history.res[0] = self.resPop / 8
         self.history.com[0] = self.comPop
         self.history.ind[0] = self.indPop
@@ -1188,7 +1215,25 @@ class Engine(EventDispatcher):
         self.history.money[120] = self.history.money[0]
 
     def collectTaxPartial(self):
-        pass
+        return
+
+        self.lastRoadTotal = self.roadTotal
+        self.lastRailTotal = self.railTotal
+        self.lastTotalPop = self.totalPop
+        self.lastFireStationCount = self.fireStationCount
+        self.lastPoliceCount = self.policeCount
+
+        b = self.generateBudget()
+
+        self.budget.taxFund += b.taxIncome
+        self.budget.roadFundEscrow -= b.roadFunded
+        self.budget.fireFundEscrow -= b.fireFunded
+        self.budget.policeFundEscrow -= b.policeFund
+
+        self.taxEffect = b.taxRate
+        #self.roadEffect = b.roadRequest != 0
+
+
 
     def collectTax(self):
         pass

@@ -908,7 +908,7 @@
 864   misc_animation@0,592                      (bulldozable)(noburn)(description=#3)(becomes=865) (behavior=EXPLOSION)
 865   misc_animation@0,608                      (bulldozable)(noburn)(description=#3)(becomes=866) (behavior=EXPLOSION)
 866   misc_animation@0,624                      (bulldozable)(noburn)(description=#3)(becomes=867) (behavior=EXPLOSION)
-867   misc_animation@0,640                      (bulldozable)(noburn)(description=#3)              (behavior=EXPLOSION)
+867   misc_animation@0,640                      (bulldozable)(noburn)(description=#3)(becomes=860) (behavior=EXPLOSION)
 # not used
 868   misc_animation@0,656
 869   misc_animation@0,672

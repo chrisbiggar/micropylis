@@ -392,7 +392,6 @@ def neutralizeRoad(tile):
 
 def isResidentialClear(tile):
     assert tile & LOMASK == tile
-    print RESBASE,tile,RESBASE+8
     return RESBASE <= tile <= RESBASE + 8
 
 def isResidentialZone(tile):

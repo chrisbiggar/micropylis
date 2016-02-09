@@ -3,6 +3,7 @@ from pyglet.gl import *
 from pyglet.text import Label
 from pyglet.text.document import FormattedDocument
 from pyglet.text.layout import TextLayout
+from pyglet.sprite import Sprite
 
 import gui
 from dialogs import CityEvalDialog, BudgetDialog
@@ -218,17 +219,45 @@ class MessageQueue(Widget):
 class DemandIndicator(Widget):
     def __init__(self):
         super(DemandIndicator, self).__init__()
-        self.bgColor = (100, 140, 128, 160)
-        self.bgRect = None
-        self.border = None
+        self.engine = None
+        self.bgImg = None
+        self.resRect = None
+        self.comRect = None
+        self.indRect = None
+
+        self.MAX_LENGTH = 24
+        self.UPPER_EDGE = 34
+        self.LOWER_EDGE = 44
+        self.RES_LEFT = 14
+        self.COM_LEFT = 35
+        self.IND_LEFT = 56
+        self.BAR_WIDTH = 10
+        self.RES_COLOR = (0, 255, 0, 255)
+        self.COM_COLOR = (0, 0, 255, 255)
+        self.IND_COLOR = (255, 255, 0, 255)
+
+    def reset(self, newEngine):
+        if self.engine is not None:
+            self.engine.remove_handlers(self)
+
+        self.engine = newEngine
+
+        if self.engine is not None:
+            self.engine.push_handlers(self)
 
     def delete(self):
-        if self.bgRect is not None:
-            self.bgRect.delete()
-            self.bgRect = None
-        if self.border is not None:
-            self.border.delete()
-            self.border = None
+        if self.bgImg is not None:
+            self.bgImg.delete()
+            self.bgImg = None
+        if self.resRect is not None:
+            self.resRect.delete()
+            self.resRect = None
+        if self.comRect is not None:
+            self.comRect.delete()
+            self.comRect = None
+        if self.indRect is not None:
+            self.indRect.delete()
+            self.indRect = None
 
     def size(self, frame):
         super(DemandIndicator, self).size(frame)
@@ -236,24 +265,75 @@ class DemandIndicator(Widget):
         self.width = 78
         self.height = 78
 
+        bgImg = pyglet.image.load('res/demandind.png')
+        self.bgImg = Sprite(bgImg,
+                            batch=self.parentFrame.batch,
+                            group=mgGroup)
+
     def layout(self, x, y):
-        super(DemandIndicator, self).layout(x, 570)
-        self.createBackground()
+        super(DemandIndicator, self).layout(x, y)
+        self.bgImg.x = x
+        self.bgImg.y = y
+        self.doBars()
 
-    def createBackground(self):
-        self.delete()
+    def doBars(self):
+        if self.resRect is not None:
+            self.resRect.delete()
+            self.resRect = None
+        if self.comRect is not None:
+            self.comRect.delete()
+            self.comRect = None
+        if self.indRect is not None:
+            self.indRect.delete()
+            self.indRect = None
 
-        self.bgRect = createRect(self.x, self.y,
-                                 self.width, self.height,
-                                 self.bgColor,
-                                 self.parentFrame.batch,
-                                 mgGroup)
+        if self.engine is None:
+            return
 
-        self.border = createHollowRect(self.x, self.y,
-                                       self.width, self.height,
-                                       (0, 0, 0, 255),
-                                       self.parentFrame.batch,
-                                       highlightGroup)
+        resValve = -self.engine.resValve
+        ry0 = self.LOWER_EDGE if resValve <= 0 else self.UPPER_EDGE
+        ry1 = ry0 - resValve / 100
+
+        comValve = -self.engine.comValve
+        cy0 = self.LOWER_EDGE if comValve <= 0 else self.UPPER_EDGE
+        cy1 = cy0 - comValve / 100
+
+        indValve = -self.engine.indValve
+        iy0 = self.LOWER_EDGE if indValve <= 0 else self.UPPER_EDGE
+        iy1 = iy0 - indValve / 100
+
+        if ry1 - ry0 > self.MAX_LENGTH:
+            ry1 = ry0 + self.MAX_LENGTH
+        if ry1 - ry0 < -self.MAX_LENGTH:
+            ry1 = ry0 - self.MAX_LENGTH
+
+        if ry0 != ry1:
+            self.resRect = self.createRect(self.RES_LEFT, min(ry0,ry1),
+                                           self.BAR_WIDTH, abs(ry1-ry0),
+                                           self.RES_COLOR,
+                                           self.parentFrame.batch,
+                                           fgGroup)
+
+        if cy0 != cy1:
+            self.comRect = self.createRect(self.COM_LEFT, min(cy0,cy1),
+                                           self.BAR_WIDTH, abs(cy1-cy0),
+                                           self.COM_COLOR,
+                                           self.parentFrame.batch,
+                                           fgGroup)
+
+        if iy0 != iy1:
+            self.indRect = self.createRect(self.IND_LEFT, min(iy0,iy1),
+                                           self.BAR_WIDTH, abs(iy1-iy0),
+                                           self.IND_COLOR,
+                                           self.parentFrame.batch,
+                                           fgGroup)
+
+
+
+
+    def on_demand_changed(self):
+        self.parentFrame.setNeedsLayout()
+
 
 
 class MenuView(pyglet.event.EventDispatcher):
@@ -331,6 +411,7 @@ class CityMenu(MenuView):
         self.on_census_changed(0)
         self.lastCityTime = eng.cityTime - 4
         self.on_date_changed(eng.cityTime)
+        self.demandIndicator.reset(eng)
 
     def speedAction(self):
         self.microWindow.incrementSpeed()

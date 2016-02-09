@@ -4,7 +4,7 @@ Created on Oct 20, 2015
 @author: chris
 '''
 from bulldozer import Bulldozer
-from engine.BuildingTool import BuildingTool
+from engine.buildingTool import BuildingTool
 from engine.lineTool import LineTool
 from engine.toolStroke import ToolStroke
 

@@ -3,7 +3,7 @@ from pyglet.gl import *
 from pyglet.graphics import OrderedGroup
 from pyglet.text import Label
 
-from util import createHollowRect
+from util import createHollowRect,createRect
 
 from gui import GUI_FG_RENDER_ORDER
 
@@ -88,19 +88,25 @@ class Widget(object):
     '''
     def hitTest(self, x, y):
         # print str(x) + " : " + str(self.x) + " : " + str(self.width)
-        return x >= self.x and x < self.x + self.width and \
-               y >= self.y and y < self.y + self.height
+        return (self.x <= x < self.x + self.width and
+                self.y <= y < self.y + self.height)
 
     """
         Returns true if the widget can expand to fill available space.
         Should implement the expand() method if this is True.
     """
     def isExpandable(self):
-
         return False
 
     def isClickable(self):
         return False
+
+    def createRect(self, x, y, width, height, color, batch=None, group=None):
+        if batch is None:
+            batch = self.parentFrame.batch
+        return createRect(self.x + x, self.y + y, width, height, color, batch, group)
+
+
 
 """
     A Spacer is an empty widget that expands to fill space in layouts.
