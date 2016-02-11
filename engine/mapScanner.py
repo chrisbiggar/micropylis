@@ -89,17 +89,17 @@ class MapScanner(TileBehaviour):
                     self.city.hasPower(self.x, self.y))
 
         if not newPower:
-            self.city.setTileIndicator(self.x, self.y, True)
+            self.city.setTilePowerIndicator(self.x, self.y, True)
 
         if newPower and not oldPower:
             self.city.setTilePower(self.x, self.y, True)
             self.city.powerZone(self.x, self.y,
                                 getZoneSizeFor(self.tile))
-            self.city.setTileIndicator(self.x, self.y, False)
+            self.city.setTilePowerIndicator(self.x, self.y, False)
         if not newPower and oldPower:
             self.city.setTilePower(self.x, self.y, False)
             self.city.shutdownZone(self.x, self.y, getZoneSizeFor(self.tile))
-            self.city.setTileIndicator(self.x, self.y, True)
+            self.city.setTilePowerIndicator(self.x, self.y, True)
 
         return newPower
 

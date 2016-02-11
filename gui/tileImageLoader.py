@@ -7,7 +7,7 @@ import pyglet
 from pyglet.image import TextureGrid, AbstractImage, \
     AbstractImageSequence, TextureRegion, UniformTextureSequence, Animation
 
-from engine.tileConstants import LOMASK
+from engine.tileConstants import LOMASK, isAnimated, getTileBehaviour
 from engine.tiles import Tiles
 
 
@@ -168,17 +168,21 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
                     while True:
                         frames.append(textureItems[curFrame])
                         if spec.animNext is None:
+                            print "stop " + str(tileNum) + " " + str(spec.tileNum) + " " + str(curFrame)
                             curFrame += 1
                             stopFrame = curFrame
                         else:
                             curFrame = spec.animNext.tileNum
-                            if curFrame == stopFrame:
-                                break
+                        if curFrame == stopFrame:
+                            break
                         spec = tiles.get(curFrame)
+
+                    loop = True if tileNum == stopFrame else False
+
                     anim = Animation.from_image_sequence(
                         frames,
                         animationDelay,
-                        True)
+                        loop=loop)
                     finalItems[tileNum] = anim
                 tileNum += 1
 

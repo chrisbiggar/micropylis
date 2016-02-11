@@ -219,8 +219,9 @@ class MessageQueue(Widget):
 class DemandIndicator(Widget):
     def __init__(self):
         super(DemandIndicator, self).__init__()
+        self.bgImg = pyglet.image.load('res/demandind.png')
         self.engine = None
-        self.bgImg = None
+        self.bgSprite = None
         self.resRect = None
         self.comRect = None
         self.indRect = None
@@ -246,9 +247,9 @@ class DemandIndicator(Widget):
             self.engine.push_handlers(self)
 
     def delete(self):
-        if self.bgImg is not None:
-            self.bgImg.delete()
-            self.bgImg = None
+        if self.bgSprite is not None:
+            self.bgSprite.delete()
+            self.bgSprite = None
         if self.resRect is not None:
             self.resRect.delete()
             self.resRect = None
@@ -265,15 +266,14 @@ class DemandIndicator(Widget):
         self.width = 78
         self.height = 78
 
-        bgImg = pyglet.image.load('res/demandind.png')
-        self.bgImg = Sprite(bgImg,
-                            batch=self.parentFrame.batch,
-                            group=mgGroup)
+        self.bgSprite = Sprite(self.bgImg,
+                               batch=self.parentFrame.batch,
+                               group=mgGroup)
 
     def layout(self, x, y):
         super(DemandIndicator, self).layout(x, y)
-        self.bgImg.x = x
-        self.bgImg.y = y
+        self.bgSprite.x = x
+        self.bgSprite.y = y
         self.doBars()
 
     def doBars(self):
@@ -591,6 +591,7 @@ class DataVisualsMenu(MenuView):
                                       fontName=fontName,
                                       fontSize=fontSize)
         self.rogLabel = ButtonLabel(text='Back',
+
                                          fontName=fontName,
                                          fontSize=fontSize,
                                          action=self.rogAction)

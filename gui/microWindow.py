@@ -100,11 +100,11 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.fpsDisplay = pyglet.clock.ClockDisplay(color=(.2, .2, .2, 0.6))
 
         # setup kytten and main dialog:
-        dialogs.window = self
+        '''dialogs.window = self
         self.register_event_type('on_update')  # called in our update method
         self.mainDialog = dialogs.ToolDialog(self)
         self.push_handlers(self.mainDialog)
-        self.cityLoaded = False
+        self.cityLoaded = False'''
         # MainMenuDialog.toggle()
 
         for (name, font) in gui.config.items('font_files'):
@@ -287,10 +287,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.lastX = loc.x
         self.lastY = loc.y
         self.drag = False
-        if button == mouse.RIGHT:
-            self.set_mouse_cursor(self.CURSOR_CROSSHAIR)
-            return
-        if self.currentTool == None:
+        if button == mouse.RIGHT or self.currentTool is None:
             self.set_mouse_cursor(self.CURSOR_CROSSHAIR)
             return
         if button != mouse.LEFT:

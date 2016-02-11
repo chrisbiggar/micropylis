@@ -22,7 +22,7 @@ class Speed(object):
 
 
 speeds = OrderedDict((('Paused',Speed(0, 999)),
-                       ('Slow',Speed(0.34, 0.6)),
+                       ('Slow',Speed(0.9, 0.6)),
                        ('Normal',Speed(1.5, 0.3)),
                        ('Fast',Speed(5, 0.1)),
                        ('Super Fast',Speed(6, 0.02))))

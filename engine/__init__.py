@@ -1049,7 +1049,7 @@ class Engine(EventDispatcher):
                 else:
                     assert False
 
-    def setTileIndicator(self, x, y, value):
+    def setTilePowerIndicator(self, x, y, value):
         if not self.noPowerIndicators[x][y] and value:
             self.noPowerIndicators[x][y] = True
             self.dispatch_event("on_power_indicator_changed", (x, y))
