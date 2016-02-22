@@ -313,9 +313,9 @@ class Sprite(event.EventDispatcher):
             return
 
         self.tilesGroup = SpriteGroup(self._texture,
-                                  self.tilesGroup.blend_src,
-                                  self.tilesGroup.blend_dest,
-                                  group)
+                                      self.tilesGroup.blend_src,
+                                      self.tilesGroup.blend_dest,
+                                      group)
 
         if self._batch is not None:
             self._batch.migrate(self._vertex_list, GL_QUADS, self.tilesGroup,
@@ -436,6 +436,7 @@ class Sprite(event.EventDispatcher):
             vertices = [x1, y1, x2, y1, x2, y2, x1, y2]
         if not self._subpixel:
             vertices = [int(v) for v in vertices]
+        #print self._vertex_list.vertices[:], vertices
         self._vertex_list.vertices[:] = vertices
 
     def _update_color(self):

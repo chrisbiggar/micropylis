@@ -10,7 +10,7 @@ from engine.cityLocation import CityLocation
 from engine.tileBehaviour import TileBehaviour
 from engine.trafficGen import TrafficGen, ZoneType
 from tileConstants import *
-from tiles import Tiles
+import tiles
 
 RESIDENTIAL, HOSPITAL_CHURCH, COMMERCIAL, INDUSTRIAL, COAL, NUCLEAR, \
 FIRESTATION, POLICESTATION, STADIUM_EMPTY, \
@@ -106,7 +106,7 @@ class MapScanner(TileBehaviour):
     def zonePlop(self, base):
         assert isZoneCenter(base)
 
-        bi = Tiles().get(base).getBuildingInfo()
+        bi = tiles.get(base).getBuildingInfo()
         assert bi is not None
 
         xOrg = self.x - 1
@@ -603,7 +603,7 @@ class MapScanner(TileBehaviour):
 
         powerOn = self.city.isTilePowered(self.x, self.y)
 
-        bi = Tiles().get(base).getBuildingInfo()
+        bi = tiles.get(base).getBuildingInfo()
         assert bi is not None
         assert len(bi.members) == bi.width * bi.height
 
@@ -615,7 +615,7 @@ class MapScanner(TileBehaviour):
                 x2 = xOrg + x
                 y2 = yOrg + y
 
-                ts = Tiles().get(bi.members[i])
+                ts = tiles.get(bi.members[i])
                 if powerOn and ts.onPower is not None:
                     ts = ts.onPower
 

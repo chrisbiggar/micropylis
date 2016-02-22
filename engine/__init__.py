@@ -7,7 +7,7 @@ from array import *
 from random import randint
 
 from pyglet.event import EventDispatcher
-
+import tiles
 from cityLocation import CityLocation
 from engine.terrainBehaviour import TerrainBehaviour
 from engine.tileConstants import *
@@ -85,7 +85,6 @@ cityMessages.read('res/citymessages.cfg')
     census data
     history data
 '''
-
 
 class Engine(EventDispatcher):
     DEFAULT_WIDTH = 120
@@ -285,6 +284,7 @@ class Engine(EventDispatcher):
         finally:
             saveFile.close()
         # self.checkPowerMap()
+        self.tileUpdateCheck()
         self.dispatch_event("on_funds_changed", self.budget.funds)
         self.dispatch_event('on_date_changed', self.cityTime)
         self.dispatch_event('on_census_changed', 0)
@@ -403,7 +403,7 @@ class Engine(EventDispatcher):
 
     def isTileDozeable(self, eff):
         myTile = eff.getTile(0, 0)
-        ts = Tiles().get(myTile)
+        ts = tiles.get(myTile)
         if ts.canBulldoze:
             return True
 
@@ -418,10 +418,10 @@ class Engine(EventDispatcher):
     '''
 
     def setTile(self, x, y, newTile):
-        if ((newTile & LOMASK) == newTile and
-                    self.map[y][x] != newTile):
+        if (newTile & LOMASK) == newTile:
             self.map[y][x] = newTile
-            self.updatedTiles.append((x, y))
+            if (x, y) not in self.updatedTiles:
+                self.updatedTiles.append((x, y))
 
     def setTilePower(self, x, y, power):
         # print "MAP: " + str(self.map[y][x])
@@ -556,16 +556,10 @@ class Engine(EventDispatcher):
 
         return mem
 
-
-    def animate(self, dt):
-        self.step()
-        # self.moveObjects()
-
-    def step(self):
+    def simulate(self, dt):
         self.fCycle = (self.fCycle + 1) % 1024
-        self.simulate(self.fCycle % 16)
+        mod16 = self.fCycle % 16
 
-    def simulate(self, mod16):
         band = self.getWidth() / 8
         if mod16 == 0:
             self.sCycle = (self.sCycle + 1) % 1024
@@ -631,6 +625,8 @@ class Engine(EventDispatcher):
         # should this be once a cycle?
         self.tileUpdateCheck()
 
+        #TODO move objects here
+
     def computePopDen(self, x, y, tile):
         if tile == RESCLR:
             return self.doFreePop(x, y)
@@ -671,25 +667,6 @@ class Engine(EventDispatcher):
 
     def fireAnalysis(self):
         pass
-
-    def testForConductive(self, loc, dir):
-        ''' returns power condition of a location in a paticular direction'''
-        xSave = loc.x
-        ySave = loc.y
-
-        rv = False
-
-        r, loc = self.movePowerLocation(loc, dir)
-        if r:
-            t = self.getTile(loc.x, loc.y)
-            rv = (
-                isConductive(t) and
-                t != NUCLEAR and
-                t != POWERPLANT and
-                not self.hasPower(loc.x, loc.y))
-        loc.x = xSave
-        loc.y = ySave
-        return rv, loc
 
     '''
         will move the given location a direction.
@@ -738,7 +715,7 @@ class Engine(EventDispatcher):
         maxPower = self.coalCount * 700 + self.nuclearCount * 2000
         numPower = 0
 
-        while (len(self.powerPlants) != 0):
+        while len(self.powerPlants) != 0:
             loc = self.powerPlants.pop()
             aDir = 4
             conNum = 0
@@ -753,11 +730,29 @@ class Engine(EventDispatcher):
                 conNum = 0
                 theDir = 0
                 while theDir < 4 and conNum < 2:
-                    r, loc = self.testForConductive(loc, theDir)
+                    ''' test for conductive tiles in direction(theDir) '''
+                    xSave = loc.x
+                    ySave = loc.y
+                    rv = False
+                    r, loc = self.movePowerLocation(loc, theDir)
+                    if r:
+                        t = self.getTile(loc.x, loc.y)
+                        spec = tiles.get(t)
+                        conducts =  spec is not None and spec.canConduct
+                        rv = (
+                            conducts and
+                            t != NUCLEAR and
+                            t != POWERPLANT and
+                            not self.hasPower(loc.x, loc.y))
+                    loc.x = xSave
+                    loc.y = ySave
+                    r = rv
+
                     if r:
                         conNum += 1
                         aDir = theDir
                     theDir += 1
+
                 if conNum > 1:
                     self.powerPlants.append(CityLocation(loc.x, loc.y))
                 if conNum == 0:
@@ -950,7 +945,7 @@ class Engine(EventDispatcher):
 
         for x in xrange((width + 1) / 2):
             for y in xrange((height + 1) / 2):
-                print x,y,2*tem[y][x]
+                #print x,y,2*tem[y][x]
                 self.popDensity[y][x] = 2 * tem[y][x]
                 #print self.popDensity[y][x]
 
@@ -1035,12 +1030,11 @@ class Engine(EventDispatcher):
     '''
         iterates over a section of map, invoking their process fcn
     '''
-
     def mapScan(self, x0, x1):
         for x in xrange(x0, x1):
             for y in xrange(0, self.getHeight()):
-                tile = self.getTile(x, y)
-                behaviourString = getTileBehaviour(tile)
+                tile = self.map[y][x] & LOMASK
+                behaviourString = tiles.get(tile).getAttribute("behavior")
                 if behaviourString is None:
                     continue
                 b = self.tileBehaviours[behaviourString]
@@ -1105,7 +1099,7 @@ class Engine(EventDispatcher):
                 x = xPos - 1 + dx
                 y = yPos - 1 + dy
                 tile = self.getTileRaw(x, y)
-                ts = Tiles().get(tile & LOMASK)
+                ts = tiles.get(tile & LOMASK)
                 if ts is not None and ts.onPower is not None:
                     # print "onPower: " + str((x,y,ts.onPower.tileNum))
                     self.setTile(x, y,
@@ -1124,7 +1118,7 @@ class Engine(EventDispatcher):
                 x = xPos - 1 + dx
                 y = yPos - 1 + dy
                 tile = self.getTileRaw(x, y)
-                ts = Tiles().get(tile & LOMASK)
+                ts = tiles.get(tile & LOMASK)
                 if ts is not None and ts.onShutdown is not None:
                     self.setTile(x, y,
                                  ts.onShutdown.tileNum or tile & ALLBITS)

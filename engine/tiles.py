@@ -9,54 +9,53 @@ from util.properties import Properties
     Uses Borg pattern for singleton behaviour.
 '''
 
+class LocalScope(object):
+    tiles = None
+    tilesByName = None
+loc = LocalScope()
 
-class Tiles(object):
+def getByName(name):
+    return loc.tilesByName[name]
 
-    __shared_state = {}
 
-    def __init__(self):
-        self.__dict__ = self.__shared_state
+def get(num):
+    if (num >= 0 and num < len(loc.tiles)):
+        return loc.tiles[num]
+    else:
+        return None
 
-    def getByName(self, name):
-        return self._tilesByName[name]
 
-    def get(self, num):
-        if (num >= 0 and num < len(self._tiles)):
-            return self._tiles[num]
-        else:
-            return None
+def readTilesSpec(tilesSpecFile):
+    tilesRc = Properties()
+    tilesRc.load(open(tilesSpecFile))
+    tileNames = generateTilenames(tilesRc)
 
-    def readTilesSpec(self, tilesSpecFile):
-        tilesRc = Properties()
-        tilesRc.load(open(tilesSpecFile))
-        tileNames = generateTilenames(tilesRc)
+    tiles = [0 for i in xrange(len(tileNames))]
+    tilesByName = dict()
 
-        tiles = [0 for i in xrange(len(tileNames))]
-        tilesByName = dict()
+    for i in xrange(len(tileNames)):
+        tileName = tileNames[i]
+        rawSpec = tilesRc.getProperty(tileName)
+        if rawSpec is None:
+            break
 
-        for i in xrange(len(tileNames)):
-            tileName = tileNames[i]
-            rawSpec = tilesRc.getProperty(tileName)
-            if rawSpec is None:
-                break
+        ts = parseTileSpec(i, tileName, rawSpec, tilesRc)
+        tilesByName[tileName] = ts
+        tiles[i] = ts
 
-            ts = parseTileSpec(i, tileName, rawSpec, tilesRc)
-            tilesByName[tileName] = ts
-            tiles[i] = ts
+    for i in xrange(len(tiles)):
+        tiles[i].resolveReferences(tilesByName)
+        bi = tiles[i].getBuildingInfo()
+        if bi is not None:
+            for j in xrange(len(bi.members)):
+                tId = bi.members[j]
+                offX = (-1 if (bi.width >= 3) else 0) + j % bi.width
+                offY = (-1 if bi.height >= 3 else 0) + j / bi.width
 
-        for i in xrange(len(tiles)):
-            tiles[i].resolveReferences(tilesByName)
-            bi = tiles[i].getBuildingInfo()
-            if bi is not None:
-                for j in xrange(len(bi.members)):
-                    tId = bi.members[j]
-                    offX = (-1 if (bi.width >= 3) else 0) + j % bi.width
-                    offY = (-1 if bi.height >= 3 else 0) + j / bi.width
-
-                    if (tiles[tId].owner is None
-                        and (offX != 0 or offY != 0)):
-                        tiles[tId].owner = tiles[i]
-                        tiles[tId].ownerOffsetX = offX
-                        tiles[tId].ownerOffsetY = offY
-        self._tiles = tiles
-        self._tilesByName = tilesByName
+                if (tiles[tId].owner is None
+                    and (offX != 0 or offY != 0)):
+                    tiles[tId].owner = tiles[i]
+                    tiles[tId].ownerOffsetX = offX
+                    tiles[tId].ownerOffsetY = offY
+    loc.tiles = tiles
+    loc.tilesByName = tilesByName

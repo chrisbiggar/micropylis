@@ -67,10 +67,10 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         pyglet.window.Window.__init__(self, width=self.DEFAULT_WIDTH,
                                       height=self.DEFAULT_HEIGHT,
                                       resizable=True,
-                                      vsync=True)
+                                      vsync=False)
 
         # load in tile specs
-        tiles.Tiles().readTilesSpec(gui.config.get('misc', 'TILES_SPEC_FILE'))
+        tiles.readTilesSpec(gui.config.get('misc', 'TILES_SPEC_FILE'))
 
         self.animLoop = animLoop
         self.engine = None
@@ -91,20 +91,21 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.toolStroke = None
         self.lastX = 0
         self.lastY = 0
+        self.drag = False
 
         # window stuff
         self.icon = pyglet.image.load(gui.config.get('window', 'ICON_FILE'))  # icon is set at resize
         self.set_location(40, 40)
         self.set_minimum_size(640, 480)
         self.set_caption(gui.config.get('window', 'CAPTION'))
-        self.fpsDisplay = pyglet.clock.ClockDisplay(color=(.2, .2, .2, 0.6))
+        self.fpsDisplay = pyglet.clock.ClockDisplay(color=(1., 1., 1., 1))
 
         # setup kytten and main dialog:
-        '''dialogs.window = self
+        dialogs.window = self
         self.register_event_type('on_update')  # called in our update method
         self.mainDialog = dialogs.ToolDialog(self)
         self.push_handlers(self.mainDialog)
-        self.cityLoaded = False'''
+        self.cityLoaded = False
         # MainMenuDialog.toggle()
 
         for (name, font) in gui.config.items('font_files'):
@@ -119,9 +120,9 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             pyglet.window.key._5: speeds['Super Fast']}
         self.speed = None
 
-        #self.newCity(gameLevel.MIN_LEVEL)
-        self.loadCity('cities/test.cty')
+        self.newCity(gameLevel.MIN_LEVEL)
 
+        #self.loadCity('cities/hawkins.cty')
 
         #music = pyglet.media.load('res/music.mp3')
         #music.play()
@@ -151,7 +152,8 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             self.set_fullscreen(False)
 
     def initGL(self, width, height):
-        glClearColor(0.8, 0.49, 0.4, 1)
+        #glClearColor(0.8, 0.49, 0.4, 1)
+        glClearColor(0., 0., 0., 1)
 
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -180,6 +182,8 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         if (symbol == pyglet.window.key.X):
             # self.engine.testChange()
             self.loadCity('cities/hawkins.cty')
+        if (symbol == pyglet.window.key.C):
+            self.newCity(gameLevel.MIN_LEVEL)
         elif (symbol == pyglet.window.key.S):
             self.newCity()
         if (modifiers & pyglet.window.key.MOD_ALT and
@@ -242,11 +246,11 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         if newSpeed == self.speed:
             return
         self.dispatch_event('speed_changed', newSpeed)
-        pyglet.clock.unschedule(self.engine.animate)
+        pyglet.clock.unschedule(self.engine.simulate)
         self.animLoop.setSpeed(self.speed, newSpeed)
         self.speed = newSpeed
         if self.speed != speeds['Paused']:
-            pyglet.clock.schedule_interval(self.engine.animate, newSpeed.delay)
+            pyglet.clock.schedule_interval(self.engine.simulate, newSpeed.delay)
 
     def update(self, dt):
         self.dispatch_event('on_update', dt)  # kytten needs this
@@ -256,8 +260,9 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
 
     def on_draw(self):
         self.clear()
-        LayoutWindow.draw(self)
-        dialogs.batch.draw()
+        self.cityView.draw()
+        #LayoutWindow.draw(self)
+        #dialogs.batch.draw()
         self.fpsDisplay.draw()
 
     ''' Tools Functions '''

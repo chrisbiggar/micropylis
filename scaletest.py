@@ -95,6 +95,7 @@ class ScaleTestApp(pyglet.tilesView.Window):
         self.bg = pyglet.sprite.Sprite(bg,x=0,y=0,group=self.group)
         
         pyglet.clock.schedule_interval(self.update, 1/60.)
+        self.fpsDisplay = pyglet.clock.ClockDisplay(color=(.2, .2, .2, 0.6))
         
     def on_resize(self, width, height):
         
@@ -180,7 +181,7 @@ class ScaleTestApp(pyglet.tilesView.Window):
     
     def _checkScrollKeys(self, dt):
         # move 12 tiles per second
-        delta = 12
+        delta = 5
         if (self.keys[key.LEFT]):
             self.setScroll(-delta+self.scrollX, self.scrollY)
         elif (self.keys[key.RIGHT]):
@@ -197,6 +198,7 @@ class ScaleTestApp(pyglet.tilesView.Window):
     def on_draw(self):
         self.clear()
         self.bg.draw()
+        self.fpsDisplay.draw()
 
 if __name__ == '__main__':
     app = ScaleTestApp()

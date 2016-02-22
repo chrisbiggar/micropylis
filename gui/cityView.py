@@ -1,6 +1,6 @@
-from pyglet.gl import (glMatrixMode, GL_PROJECTION, GL_MODELVIEW,
-                       glPushMatrix, glPopMatrix, glLoadIdentity,
-                       glOrtho, glColorMask, GL_FALSE, GL_TRUE)
+from random import randint
+
+from pyglet.gl import *
 from pyglet.graphics import OrderedGroup
 from pyglet.sprite import Sprite
 from pyglet.window import key
@@ -11,6 +11,7 @@ import gui
 from gui import BG_RENDER_ORDER, MG_RENDER_ORDER, FG_RENDER_ORDER
 from gui.speed import speeds
 from gui.tileImageLoader import TileImageLoader
+from tileMap import TileMapRenderer, TILESIZE
 
 from engine import tileConstants
 from engine.cityLocation import CityLocation
@@ -18,7 +19,7 @@ from engine.tileConstants import CLEAR
 
 from util import create2dArray, createRect, createHollowRect
 
-TILESIZE = 16
+
 
 '''
     ViewportGroup
@@ -79,7 +80,6 @@ class ViewportGroup(OrderedGroup):
         Allows the render and widget sizes to be defined,
         recalculating the viewport accordingly.
     '''
-
     def setViewportSize(self, xxx_todo_changeme, xxx_todo_changeme1):
         (width, height) = xxx_todo_changeme
         (windowWidth, windowHeight) = xxx_todo_changeme1
@@ -106,7 +106,6 @@ class ViewportGroup(OrderedGroup):
         Pans the view by the amount given in arguments,
         restricting the view within limits of map
     '''
-
     def setFocus(self, x, y):
         left = x
         bottom = y
@@ -129,6 +128,32 @@ class ViewportGroup(OrderedGroup):
         self.right = right
         self.bottom = bottom
         self.top = top
+
+    '''
+        returns viewport with target_zoom factored in.
+    '''
+    def getViewport(self):
+        newZoomLevel = self.targetZoom
+        if not self.zoomX or not self.zoomY:
+            self.zoomX = self.left + (self.widgetWidth/2)
+            self.zoomY = self.bottom + (self.widgetHeight/2)
+
+        mouseX = self.zoomX / float(self.renderWidth)
+        mouseY = self.zoomY / float(self.renderHeight)
+
+        mouseXInWorld = self.left + mouseX * self.zoomedWidth
+        mouseYInWorld = self.bottom + mouseY * self.zoomedHeight
+
+        zoomedWidth = self.renderWidth * newZoomLevel
+        zoomedHeight = self.renderHeight * newZoomLevel
+
+        left = int(mouseXInWorld - mouseX * zoomedWidth)
+        right = int(mouseXInWorld + (1 - mouseX) * zoomedWidth)
+        bottom = int(mouseYInWorld - mouseY * zoomedHeight)
+        top = int(mouseYInWorld + (1 - mouseY) * zoomedHeight)
+
+        return (int(left), int(bottom),
+                int(right - left), int(top - bottom))
 
     '''
         sets an absolute zoom level,
@@ -384,26 +409,10 @@ class ToolCursor(object):
         self.borderVL = None
 
 
-'''
-    Sprite object that can be changed to any tile in given tileImageLoader
-
-    static buffer object usage hint because only texture will change.
-'''
 
 
-class TileSprite(Sprite):
-    def __init__(self, tileNum, x, y, batch, group, tileImageLoader, clock):
-        self.tileImageLoader = tileImageLoader
-        super(TileSprite, self).__init__(
-            self.tileImageLoader.getTileImage(tileNum),
-            x=x, y=y,
-            batch=batch,
-            group=group,
-            usage='static',
-            custom_clock=clock)
 
-    def setTile(self, tileNum):
-        self.image = self.tileImageLoader.getTileImage(tileNum)
+
 
 
 '''
@@ -421,11 +430,14 @@ class CityView(layout.Spacer):
         self.tileImageLoader = TileImageLoader(
             gui.config.get('misc', 'TILES_FILE'),
             TILESIZE, flipTilesVert=True, padding=2)
+        self.tbatch = pyglet.graphics.Batch()
 
         self.viewportGroup = ViewportGroup(BG_RENDER_ORDER)
         self.blinkingGroup = BlinkingGroup(MG_RENDER_ORDER, self.viewportGroup)
         self.toolCursorGroup = ToolCursorGroup(
             FG_RENDER_ORDER, self.viewportGroup)
+
+        self.tileMapRenderer = TileMapRenderer(self.tileImageLoader, self.viewportGroup)
 
         self.tileSprites = None
         self.toolCursor = None
@@ -436,15 +448,11 @@ class CityView(layout.Spacer):
         self.keys = microWindow.Keys(self)
         self.scrollSpeed = int(gui.config.get('misc', 'KEYBOARD_SCROLL_SPEED'))
 
-    def setEngine(self, eng):
-        self.engine = eng
-        if eng is None:
-            return
-        eng.push_handlers(self)
-
     def setRenderSize(self, width, height):
         self.renderWidth = width
         self.renderHeight = height
+        '''self.tileMapRenderer.setVisibleRegion(self.viewportGroup.left,self.viewportGroup.bottom,
+                                              self.renderWidth, self.renderHeight)'''
 
     def size(self, frame):
         super(CityView, self).size(frame)
@@ -453,8 +461,6 @@ class CityView(layout.Spacer):
         super(CityView, self).layout(x, y)
         self.viewportGroup.setViewportSize(
             (self.width, self.height), (self.renderWidth, self.renderHeight))
-        if self.tileSprites is None:
-            self._generateTileSprites()
 
     '''
         To be called when city engine has changed, to update
@@ -467,25 +473,20 @@ class CityView(layout.Spacer):
         self.toolPreview = None
         self.deletePowerIndicators()
         self.deleteToolCursor()
-        self._deleteTileSprites()
 
-        self.setEngine(eng)
+        self.engine = eng
+        self.tileMapRenderer.reset(eng)
+
         if self.engine is not None:
+            eng.push_handlers(self)
+            self.mapWidth = eng.getWidth()
+            self.mapHeight = eng.getHeight()
             self.viewportGroup.setMapSize(eng.getWidth() * TILESIZE,
                                           eng.getHeight() * TILESIZE)
             self.noPowerIndicators = create2dArray(
                 self.engine.getWidth(),
                 self.engine.getHeight(),
                 None)
-
-    def _deleteTileSprites(self):
-        if self.tileSprites is not None:
-            for y in xrange(self.mapHeight):
-                for x in xrange(self.mapWidth):
-                    if self.tileSprites[x][y] is not None:
-                        self.tileSprites[x][y].delete()
-                        self.tileSprites[x][y] = None
-            self.tileSprites = None
 
     def deletePowerIndicators(self):
         if not self.noPowerIndicators:
@@ -498,43 +499,19 @@ class CityView(layout.Spacer):
         self.noPowerIndicators = None
 
     '''
-        creates pyglet sprite objects for everytile
-        at its static position. Stores in 2d list as member var
-    '''
-
-    def _generateTileSprites(self):
-        if self.engine is None:
-            return
-        self.mapWidth = self.engine.getWidth()
-        self.mapHeight = self.engine.getHeight()
-        if self.tileSprites is not None:
-            self._deleteTileSprites()
-        self.tileSprites = create2dArray(self.mapWidth, self.mapHeight, None)
-        for y in xrange(self.mapHeight):
-            for x in xrange(self.mapWidth):
-                cell = self.engine.getTile(x, y)
-                x2 = (x * TILESIZE)
-                y2 = (y * TILESIZE + TILESIZE)
-                self.tileSprites[x][y] = TileSprite(cell,
-                                                    x2,
-                                                    y2,
-                                                    self.parentFrame.batch,
-                                                    self.viewportGroup,
-                                                    self.tileImageLoader,
-                                                    self.animClock)
-
-    '''
         modifies tile batch with tilesList
     '''
 
     def on_map_changed(self, tilesList):
-        if self.tileSprites is None:
-            return
+        #if self.tileSprites is None:
+            #return
         for tile in tilesList:
             x = tile[0]
             y = tile[1]
             cell = self.engine.getTile(x, y)
-            self.tileSprites[x][y].setTile(cell)
+            #self.tileSprites[x][y].setTile(cell)
+            self.tileMapRenderer.setTile(x, y, cell)
+
 
     def on_power_indicator_changed(self, pos):
         x = pos[0]
@@ -619,6 +596,7 @@ class CityView(layout.Spacer):
     '''
 
     def setToolPreview(self, newPreview):
+        return
         if self.toolPreview is not None:
             # reset old preview tile sprites
             b = self.toolPreview.getBounds()
@@ -670,6 +648,22 @@ class CityView(layout.Spacer):
             self.changeZoom(newValue=1.0)
         if symbol == key.A:
             self.viewportGroup.gotoSpot(500, 400, 0.86)
+        if symbol == key.I:
+            self.tileMapRenderer.setTile(3, 3, 56)
+        if symbol == key.O:
+            self.engine.setTile(2, 2, 860)
+            self.engine.tileUpdateCheck()
+        if symbol == key.P:
+            self.engine.setTile(2, 4, 860)
+            self.engine.tileUpdateCheck()
+        if symbol == key.L:
+            self.engine.setTile(2, 6, 860)
+            self.engine.tileUpdateCheck()
+        if symbol == key.K:
+            for x in xrange(60):
+                for y in xrange(50):
+                    self.engine.setTile(x, y, 56)
+            self.engine.tileUpdateCheck()
 
     '''
         pass one value but not both. changeZoom increments
@@ -684,11 +678,18 @@ class CityView(layout.Spacer):
             self.viewportGroup.setZoom(self.width / 2, self.height / 2,
                                        newValue)
 
+        self.tileMapRenderer.setVisibleRegion(*self.viewportGroup.getViewport())
+
+
+
     def zoomToPoint(self, x, y, change):
         self.viewportGroup.changeZoom(x, y, -change)
+        self.tileMapRenderer.setVisibleRegion(*self.viewportGroup.getViewport())
 
     def moveView(self, mx, my):
         self.viewportGroup.changeFocus(mx, my)
+        #print self.viewportGroup.getViewport()
+        self.tileMapRenderer.setVisibleRegion(*self.viewportGroup.getViewport())
 
     def setSpeed(self, speed):
         if speed == speeds['Paused']:
@@ -712,3 +713,13 @@ class CityView(layout.Spacer):
         self._checkScrollKeys(dt)
         self.blinkingGroup.update(dt)
         self.viewportGroup.update(dt)
+        self.tileMapRenderer.update(dt)
+        '''t = randint(0,960)
+        for x in xrange(74):
+            for y in xrange(40):
+                self.tileMapRenderer.setTile(x, y, t)'''
+
+    def draw(self):
+        #self.tbatch.draw()
+        #return
+        self.tileMapRenderer.draw()

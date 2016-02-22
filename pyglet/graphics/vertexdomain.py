@@ -130,6 +130,7 @@ def create_domain(*attribute_usage_formats):
 
     :rtype: `VertexDomain`
     '''
+    #print attribute_usage_formats
     attribute_usages = [create_attribute_usage(f) \
                         for f in attribute_usage_formats]
     return VertexDomain(attribute_usages)
@@ -274,6 +275,7 @@ class VertexDomain(object):
         :rtype: `VertexList`
         '''
         start = self._safe_alloc(count)
+        #print start,count
         return VertexList(self, start, count)
 
     def draw(self, mode, vertex_list=None):
@@ -316,6 +318,7 @@ class VertexDomain(object):
                 sizes = (GLsizei * primcount)(*sizes)
                 glMultiDrawArrays(mode, starts, sizes, primcount)
             else:
+                print "else"
                 for start, size in zip(starts, sizes):
                     glDrawArrays(mode, start, size)
 
@@ -628,6 +631,7 @@ class VertexList(object):
         return region.array
 
     def _set_vertices(self, data):
+        #print self._get_vertices(), data
         self._get_vertices()[:] = data
 
     vertices = property(_get_vertices, _set_vertices,

@@ -20,6 +20,11 @@ class Speed(object):
         self.lastTs = 0
         self.name = None # set by key string in speeds
 
+'''speeds = OrderedDict((('Paused',Speed(0, 999)),
+                       ('Slow',Speed(0.9, 0.6)),
+                       ('Normal',Speed(1.5, 0.3)),
+                       ('Fast',Speed(5, 0.1)),
+                       ('Super Fast',Speed(6, 0.02))))'''
 
 speeds = OrderedDict((('Paused',Speed(0, 999)),
                        ('Slow',Speed(0.9, 0.6)),

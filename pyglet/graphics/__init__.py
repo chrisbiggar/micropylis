@@ -361,6 +361,7 @@ class Batch(object):
         :rtype: `VertexList`
         '''
         formats, initial_arrays = _parse_data(data)
+        #print formats,initial_arrays
         domain = self._get_domain(False, mode, group, formats)
             
         # Create vertex list and initialize

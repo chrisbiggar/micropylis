@@ -2245,7 +2245,7 @@ class ImageGrid(AbstractImage, AbstractImageSequence):
         return self.rows * self.columns
 
     def _update_items(self):
-        print ''
+        #print ''
         if not self._items:
             self._items = []
             y = 0

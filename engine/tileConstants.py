@@ -6,7 +6,7 @@ Created on Sep 24, 2015
 
 @author: chris
 '''
-from engine.tiles import Tiles
+import tiles
 
 CLEAR = -1
 DIRT = 0
@@ -161,7 +161,7 @@ def canAutoBulldozeZ(tile):
 
 
 def getTileBehaviour(tile):
-    ts = Tiles().get(tile)
+    ts = tiles.get(tile)
     b = ts.getAttribute("behavior")
     return b
 
@@ -170,7 +170,7 @@ def getZoneSizeFor(tile):
     assert isZoneCenter(tile)
     assert tile & LOMASK == tile
 
-    spec = Tiles().get(tile)
+    spec = tiles.get(tile)
     if spec is None:
         return None
     return spec.getBuildingSize()
@@ -185,7 +185,7 @@ def isConstructed(tile):
 def isDozeable(tile):
     assert tile & LOMASK == tile
 
-    spec = Tiles().get(tile)
+    spec = tiles.get(tile)
     return spec is not None and spec.canBulldoze
 
 
@@ -293,13 +293,13 @@ def railConnectsWest(tile):
 
 def isCombustible(tile):
     assert (tile & LOMASK) == tile
-    spec = Tiles().get(tile)
+    spec = tiles.get(tile)
     return spec is not None and spec.canBurn
 
 
 def isConductive(tile):
     assert tile & LOMASK == tile
-    spec = Tiles().get(tile)
+    spec = tiles.get(tile)
     return spec is not None and spec.canConduct
 
 
@@ -343,14 +343,14 @@ def wireConnectsWest(tile):
 
 def isZoneCenter(tile):
     assert (tile & LOMASK) == tile
-    spec = Tiles().get(tile)
+    spec = tiles.get(tile)
     return spec is not None and spec.zone
 
 
 def getPollutionValue(tile):
     assert tile & LOMASK == tile
 
-    spec = Tiles().get(tile)
+    spec = tiles.get(tile)
     if spec is not None:
         return spec.getPollutionValue()
     else:
@@ -360,7 +360,7 @@ def getPollutionValue(tile):
 def isAnimated(tile):
     assert tile & LOMASK == tile
 
-    spec = Tiles().get(tile)
+    spec = tiles.get(tile)
     return spec is not None and spec.animNext is not None
 
 
@@ -376,7 +376,7 @@ def isRubble(tile):
 def isOverWater(tile):
     assert tile & LOMASK == tile
 
-    spec = Tiles().get(tile)
+    spec = tiles.get(tile)
     return spec != None and spec.overWater
 
 
@@ -407,7 +407,7 @@ def isResidentialZone(tile):
 def residentialZonePop(tile):
     assert tile & LOMASK == tile
 
-    ts = Tiles().get(tile)
+    ts = tiles.get(tile)
     return ts.getPopulation()
 
 '''
@@ -418,7 +418,7 @@ def residentialZonePop(tile):
 def commercialZonePop(tile):
     assert tile & LOMASK == tile
 
-    ts = Tiles().get(tile)
+    ts = tiles.get(tile)
     return ts.getPopulation() / 8
 
 '''
@@ -429,5 +429,5 @@ def commercialZonePop(tile):
 def industrialZonePop(tile):
     assert tile & LOMASK == tile
 
-    ts = Tiles().get(tile)
+    ts = tiles.get(tile)
     return ts.getPopulation() / 8

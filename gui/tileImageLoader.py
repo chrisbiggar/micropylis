@@ -4,12 +4,13 @@ Created on Aug 30, 2015
 @author: chris
 '''
 import pyglet
-from pyglet.image import TextureGrid, AbstractImage, \
-    AbstractImageSequence, TextureRegion, UniformTextureSequence, Animation
+from pyglet.image import (TextureGrid, AbstractImage,
+    AbstractImageSequence, TextureRegion, UniformTextureSequence,
+                          Animation, AnimationFrame)
 
 from engine.tileConstants import LOMASK, isAnimated, getTileBehaviour
-from engine.tiles import Tiles
-
+import engine.tiles as tiles
+from util.orderedSet import OrderedSet
 
 '''
 BorderedImageGrid
@@ -93,7 +94,7 @@ class BorderedImageGrid(AbstractImage, AbstractImageSequence):
                 x = self.exterior_border
                 for col in xrange(self.columns):
                     self._items.append(self.image.get_region(
-                        x, y, self.item_width, self.item_height))
+                        int(x), int(y), self.item_width, self.item_height))
                     x += self.item_width + self.column_padding
                 y += self.item_height + self.row_padding
 
@@ -110,6 +111,30 @@ class BorderedImageGrid(AbstractImage, AbstractImageSequence):
     def __iter__(self):
         self._update_items()
         return iter(self._items)
+
+
+class TileAnimation(Animation):
+    def __init__(self, sequence, loop):
+        frames = [AnimationFrame(image, 1) for image in sequence]
+        if not loop:
+            frames[-1].duration = None
+        super(TileAnimation,self).__init__(frames)
+        self.curFrameNum = 0
+        self.loop = loop
+
+    def reset(self):
+        self.curFrameNum = 0
+
+    def getCurrentFrameDuration(self):
+        return self.frames[self.curFrameNum].duration
+
+    def getCurrentFrameImg(self):
+        return self.frames[self.curFrameNum].image
+
+    def update(self):
+        self.curFrameNum += 1
+        if self.curFrameNum >= len(self.frames):
+            self.curFrameNum = 0
 
 
 '''
@@ -154,7 +179,6 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
 
         # process animations
         tileNum = 0
-        tiles = Tiles()
         finalItems = [0 for tNum in xrange(len(textureItems))]
         for row in xrange(grid.rows):
             for col in xrange(grid.columns):
@@ -163,12 +187,17 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
                     finalItems[tileNum] = textureItems[tileNum]
                 else:
                     frames = []
+                    frameNums = []
                     stopFrame = tileNum
                     curFrame = tileNum
+                    firstFrame = None
                     while True:
+                        if firstFrame is None:
+                            firstFrame = curFrame
                         frames.append(textureItems[curFrame])
+                        frameNums.append(curFrame)
                         if spec.animNext is None:
-                            print "stop " + str(tileNum) + " " + str(spec.tileNum) + " " + str(curFrame)
+                            #print "stop " + str(tileNum) + " " + str(spec.tileNum) + " " + str(curFrame)
                             curFrame += 1
                             stopFrame = curFrame
                         else:
@@ -177,13 +206,13 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
                             break
                         spec = tiles.get(curFrame)
 
-                    loop = True if tileNum == stopFrame else False
-
-                    anim = Animation.from_image_sequence(
-                        frames,
-                        animationDelay,
-                        loop=loop)
-                    finalItems[tileNum] = anim
+                    f = min(frameNums)
+                    if f != tileNum:
+                        finalItems[tileNum] = finalItems[f]
+                    else:
+                        loop = True if tileNum == stopFrame else False
+                        finalItems[tileNum] = TileAnimation(frames, loop)
+                    #print tileNum,finalItems[tileNum]
                 tileNum += 1
 
         self.items = finalItems
@@ -211,16 +240,16 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
                 elif type(index.start) is int:
                     row1 = index.start // self.columns
                     col1 = index.start % self.columns
-                assert row1 >= 0 and col1 >= 0 and \
-                       row1 < self.rows and col1 < self.columns
+                assert (0 <= row1 < self.rows and
+                        0 <= col1 < self.columns)
 
                 if type(index.stop) is tuple:
                     row2, col2 = index.stop
                 elif type(index.stop) is int:
                     row2 = index.stop // self.columns
                     col2 = index.stop % self.columns
-                assert row2 >= 0 and col2 >= 0 and \
-                       row2 <= self.rows and col2 <= self.columns
+                assert (0 <= row2 < self.rows and
+                        0 <= col2 < self.columns)
 
                 result = []
                 i = row1 * self.columns
@@ -231,8 +260,8 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
         else:
             if type(index) is tuple:
                 row, column = index
-                assert row >= 0 and column >= 0 and \
-                       row < self.rows and column < self.columns
+                assert (0 <= row < self.rows and
+                        0 <= column < self.columns)
                 return self.items[row * self.columns + column]
             elif type(index) is int:
                 return self.items[index]
@@ -264,6 +293,17 @@ class TileImageLoader(object):
         assert isinstance(fileName, str)
         self._tileSheetFilename = fileName
         self._tiles = self.loadTileImages()
+        animations = []
+        for t in self._tiles.items:
+            if isinstance(t,TileAnimation):
+                animations.append(t)
+        self.animations = OrderedSet(animations)
+
+    def getAnimations(self):
+        return self.animations
+
+    def getTexture(self):
+        return self._tiles.texture
 
     def loadTileImages(self):
         tileSheet = pyglet.image.load(self._tileSheetFilename)

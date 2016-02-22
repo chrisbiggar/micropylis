@@ -10,6 +10,7 @@ from engine.toolResult import ToolResult
 from engine.translatedToolEffect import TranslatedToolEffect
 from tileConstants import *
 from toolEffect import ToolEffect
+import tiles
 
 '''
     ToolStroke
@@ -106,7 +107,7 @@ class ToolStroke(object):
     def applyZone(self, eff, base):
         assert isZoneCenter(base)
 
-        bi = Tiles().get(base).getBuildingInfo()
+        bi = tiles.get(base).getBuildingInfo()
         if bi is None:
             # TODO throw error
             print "error. cannot applyzone to #" + str(base)
