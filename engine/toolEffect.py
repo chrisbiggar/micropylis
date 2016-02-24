@@ -48,15 +48,13 @@ class ToolEffect(object):
         ''' actually apply the effect to the map
             
         '''
-        if (self.originX - self.preview.offsetX < 0 or \
-                                self.originX - self.preview.offsetX + \
-                                self.preview.getWidth() > self.engine.getWidth()) or \
-                                self.originY - self.preview.offsetY < 0 or \
-                                        self.originY - self.preview.offsetY + \
-                                self.preview.getHeight() > self.engine.getHeight():
+        if ((self.originX - self.preview.offsetX < 0 or
+                self.originX - self.preview.offsetX + self.preview.getWidth() > self.engine.getWidth()) or
+                self.originY - self.preview.offsetY < 0 or
+                self.originY - self.preview.offsetY + self.preview.getHeight() > self.engine.getHeight()):
             return ToolResult(ToolResult.UH_OH, self.preview.cost)
 
-        if (self.engine.budget.funds < self.preview.cost):
+        if self.engine.budget.funds < self.preview.cost:
             return ToolResult(ToolResult.INSUFFICIENT_FUNDS, self.preview.cost)
 
         anyFound = False

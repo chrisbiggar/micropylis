@@ -604,7 +604,7 @@ class CarbonWindow(BaseWindow):
             target = carbon.GetWindowEventTarget(self._window)
 
         for event_class, event_kind in func._platform_event_data:
-            # TODO: could just gengraphics up array of class/kind
+            # TODO: could just build up array of class/kind
             proc = EventHandlerProcPtr(func)
             self._carbon_event_handlers.append(proc)
             upp = carbon.NewEventHandlerUPP(proc)

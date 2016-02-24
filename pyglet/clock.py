@@ -226,16 +226,16 @@ class Clock(_ClockBase):
 
     def __init__(self, fps_limit=None, time_function=_default_time_function):
         '''Initialise a Clock, with optional framerate limit and custom
-        startTime function.
+        time function.
 
         :Parameters:
             `fps_limit` : float
                 If not None, the maximum allowable framerate.  Defaults
                 to None.  Deprecated in pyglet 1.2.
             `time_function` : function
-                Function to return the elapsed startTime of the application, 
-                in seconds.  Defaults to startTime.startTime, but can be replaced
-                to allow for easy startTime dilation effects or game pausing.
+                Function to return the elapsed time of the application, 
+                in seconds.  Defaults to time.time, but can be replaced
+                to allow for easy time dilation effects or game pausing.
 
         '''
 
@@ -275,15 +275,6 @@ class Clock(_ClockBase):
         self.last_ts = ts
 
         return delta_t
-    
-    def restore_time(self, time):
-        self.last_ts = None
-        self.next_ts = time
-        for item in list(self._schedule_interval_items):
-            item.next_ts = time + item.interval
-            item.last_ts = time
-        
-        
 
     def call_scheduled_functions(self, dt):
         '''Call scheduled functions that elapsed on the last `update_time`.
@@ -304,7 +295,6 @@ class Clock(_ClockBase):
 
         # Call functions scheduled for every frame  
         # Dupe list just in case one of the items unchedules itself
-        
         for item in list(self._schedule_items):
             result = True
             item.func(dt, *item.args, **item.kwargs)
@@ -910,7 +900,7 @@ class ClockDisplay(object):
             `color` : 4-tuple of float
                 The color, including alpha, passed to ``glColor4f``.
             `clock` : `Clock`
-                The clock which determines the startTime.  If None, the default
+                The clock which determines the time.  If None, the default
                 clock is used.
 
         '''

@@ -66,7 +66,7 @@ class AttributedTextDecoder(pyglet.text.DocumentDecoder):
         self.doc = pyglet.text.document.FormattedDocument()
 
         self.length = 0
-        self._attributes = {}
+        self.attributes = {}
         next_trailing_space = True
         trailing_newline = True
 
@@ -100,12 +100,12 @@ class AttributedTextDecoder(pyglet.text.DocumentDecoder):
                 name = m.group('attr_name')
                 if name[0] == '.':
                     if trailing_newline:
-                        self._attributes[name[1:]] = val
+                        self.attributes[name[1:]] = val
                     else:
                         self.doc.set_paragraph_style(self.length, self.length, 
                                                      {name[1:]: val})
                 else:
-                    self._attributes[name] = val
+                    self.attributes[name] = val
             elif group == 'escape_dec':
                 self.append(unichr(int(m.group('escape_dec_val'))))
             elif group == 'escape_hex':
@@ -119,9 +119,9 @@ class AttributedTextDecoder(pyglet.text.DocumentDecoder):
         return self.doc
 
     def append(self, text):
-        self.doc.insert_text(self.length, text, self._attributes)
+        self.doc.insert_text(self.length, text, self.attributes)
         self.length += len(text)
-        self._attributes.clear()
+        self.attributes.clear()
 
     _safe_names = ('True', 'False', 'None')
 

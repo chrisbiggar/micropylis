@@ -290,10 +290,10 @@ class OpenALAudioPlayer(AbstractAudioPlayer):
         # Has source group EOS been seen (and hence, event added to queue)?
         self._eos = False
 
-        # OpenAL 1.0 timestamp interpolation: system startTime of current buffer
+        # OpenAL 1.0 timestamp interpolation: system time of current buffer
         # playback (best guess)
         if not context.have_1_1:
-            self._buffer_system_time = startTime.time()
+            self._buffer_system_time = time.time()
 
         self.refill(self._ideal_buffer_size)
 

@@ -188,7 +188,7 @@ class ToolTip(object):
             i2 = i % numVertices
             colorData.append(c[i2])
         self.bgRect = self.batch.add(4, GL_QUADS, self.group,
-                                     ('v2f', [x, y, x2, y, x2, y2, x, y2]),
+                                     ('v2i', [x, y, x2, y, x2, y2, x, y2]),
                                      ('c4B', colorData))
 
     def hide(self):
@@ -253,8 +253,8 @@ class LayoutLabel(Widget):
         Widget.layout(self, x, y)
         if self.label is not None:
             font = self.label.document.get_font()
-            self.label.x = x
-            self.label.y = y - font.descent
+            self.label.x = int(x)
+            self.label.y = int(y - font.descent)
 
     def set_text(self, text):
         # print text

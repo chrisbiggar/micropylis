@@ -81,21 +81,21 @@ def dump_pyglet():
         print "pyglet.options['%s'] = %r" % (key, value)
 
 def dump_window():
-    '''Dump display, tilesView, screen and default config info.'''
+    '''Dump display, window, screen and default config info.'''
     import pyglet.window
-    platform = pyglet.tilesView.get_platform()
+    platform = pyglet.window.get_platform()
     print 'platform:', repr(platform)
     display = platform.get_default_display()
     print 'display:', repr(display)
     screens = display.get_screens()
     for i, screen in enumerate(screens):
         print 'screens[%d]: %r' % (i, screen)
-    window = pyglet.tilesView.Window(visible=False)
-    for key, value in tilesView.config.get_gl_attributes():
+    window = pyglet.window.Window(visible=False)
+    for key, value in window.config.get_gl_attributes():
         print "config['%s'] = %r" % (key, value)
     print 'context:', repr(window.context)
 
-    _heading('tilesView.context._info')
+    _heading('window.context._info')
     dump_gl(window.context)
     window.close()
 
@@ -132,8 +132,8 @@ def dump_glx():
         print 'GLX not available.'
         return
     import pyglet
-    window = pyglet.tilesView.Window(visible=False)
-    print 'context.is_direct():', tilesView.context.is_direct()
+    window = pyglet.window.Window(visible=False)
+    print 'context.is_direct():', window.context.is_direct()
     window.close()
 
     if not glx_info.have_version(1, 1):
@@ -212,7 +212,7 @@ def dump():
     '''Dump all information to stdout.'''
     _try_dump('Python', dump_python)
     _try_dump('pyglet', dump_pyglet)
-    _try_dump('pyglet.tilesView', dump_window)
+    _try_dump('pyglet.window', dump_window)
     _try_dump('pyglet.gl.glu_info', dump_glu)
     _try_dump('pyglet.gl.glx_info', dump_glx)
     _try_dump('pyglet.media', dump_media)

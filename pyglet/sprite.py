@@ -188,8 +188,7 @@ class Sprite(event.EventDispatcher):
                  batch=None,
                  group=None,
                  usage='dynamic',
-                 subpixel=False,
-                 custom_clock=None):
+                 subpixel=False):
         '''Create a sprite.
 
         :Parameters:
@@ -220,8 +219,6 @@ class Sprite(event.EventDispatcher):
         '''
         if batch is not None:
             self._batch = batch
-        
-        self._clock = custom_clock or clock
 
         self._x = x
         self._y = y
@@ -232,11 +229,11 @@ class Sprite(event.EventDispatcher):
             self._texture = img.frames[0].image.get_texture()
             self._next_dt = img.frames[0].duration
             if self._next_dt:
-                self._clock.schedule_once(self._animate, self._next_dt)
+                clock.schedule_once(self._animate, self._next_dt)
         else:
             self._texture = img.get_texture()
 
-        self.tilesGroup = SpriteGroup(self._texture, blend_src, blend_dest, group)
+        self._group = SpriteGroup(self._texture, blend_src, blend_dest, group)
         self._usage = usage
         self._subpixel = subpixel
         self._create_vertex_list()
@@ -256,13 +253,13 @@ class Sprite(event.EventDispatcher):
         sprite is garbage.
         '''
         if self._animation:
-            self._clock.unschedule(self._animate)
+            clock.unschedule(self._animate)
         self._vertex_list.delete()
         self._vertex_list = None
         self._texture = None
 
         # Easy way to break circular reference, speeds up GC
-        self.tilesGroup = None
+        self._group = None
 
     def _animate(self, dt):
         self._frame_index += 1
@@ -278,7 +275,7 @@ class Sprite(event.EventDispatcher):
         if frame.duration is not None:
             duration = frame.duration - (self._next_dt - dt)
             duration = min(max(0, duration), frame.duration)
-            self._clock.schedule_once(self._animate, duration)
+            clock.schedule_once(self._animate, duration)
             self._next_dt = duration
         else:
             self.dispatch_event('on_animation_end')
@@ -288,7 +285,7 @@ class Sprite(event.EventDispatcher):
             return
 
         if batch is not None and self._batch is not None:
-            self._batch.migrate(self._vertex_list, GL_QUADS, self.tilesGroup, batch)
+            self._batch.migrate(self._vertex_list, GL_QUADS, self._group, batch)
             self._batch = batch
         else:
             self._vertex_list.delete()
@@ -309,20 +306,20 @@ class Sprite(event.EventDispatcher):
     ''')
 
     def _set_group(self, group):
-        if self.tilesGroup.parent == group:
+        if self._group.parent == group:
             return
 
-        self.tilesGroup = SpriteGroup(self._texture,
-                                      self.tilesGroup.blend_src,
-                                      self.tilesGroup.blend_dest,
-                                      group)
+        self._group = SpriteGroup(self._texture,
+                                  self._group.blend_src,
+                                  self._group.blend_dest,
+                                  group)
 
         if self._batch is not None:
-            self._batch.migrate(self._vertex_list, GL_QUADS, self.tilesGroup,
+            self._batch.migrate(self._vertex_list, GL_QUADS, self._group,
                                 self._batch)
 
     def _get_group(self):
-        return self.tilesGroup.parent
+        return self._group.parent
 
     group = property(_get_group, _set_group,
                      doc='''Parent graphics group.
@@ -332,12 +329,6 @@ class Sprite(event.EventDispatcher):
 
     :type: `Group`
     ''')
-    
-    def isAnimation(self):
-        if self._animation:
-            return True
-        else:
-            return False
 
     def _get_image(self):
         if self._animation:
@@ -346,7 +337,7 @@ class Sprite(event.EventDispatcher):
 
     def _set_image(self, img):
         if self._animation is not None:
-            self._clock.unschedule(self._animate)
+            clock.unschedule(self._animate)
             self._animation = None
 
         if isinstance(img, image.Animation):
@@ -355,7 +346,7 @@ class Sprite(event.EventDispatcher):
             self._set_texture(img.frames[0].image.get_texture())
             self._next_dt = img.frames[0].duration
             if self._next_dt:
-                self._clock.schedule_once(self._animate, self._next_dt)
+                clock.schedule_once(self._animate, self._next_dt)
         else:
             self._set_texture(img.get_texture())
         self._update_position()
@@ -368,10 +359,10 @@ class Sprite(event.EventDispatcher):
 
     def _set_texture(self, texture):
         if texture.id is not self._texture.id:
-            self.tilesGroup = SpriteGroup(texture,
-                                      self.tilesGroup.blend_src,
-                                      self.tilesGroup.blend_dest,
-                                      self.tilesGroup.parent)
+            self._group = SpriteGroup(texture,
+                                      self._group.blend_src,
+                                      self._group.blend_dest,
+                                      self._group.parent)
             if self._batch is None:
                 self._vertex_list.tex_coords[:] = texture.tex_coords
             else:
@@ -392,7 +383,7 @@ class Sprite(event.EventDispatcher):
                 vertex_format, 
                 'c4B', ('t3f', self._texture.tex_coords))
         else:
-            self._vertex_list = self._batch.add(4, GL_QUADS, self.tilesGroup,
+            self._vertex_list = self._batch.add(4, GL_QUADS, self._group,
                 vertex_format, 
                 'c4B', ('t3f', self._texture.tex_coords))
         self._update_position()
@@ -436,7 +427,6 @@ class Sprite(event.EventDispatcher):
             vertices = [x1, y1, x2, y1, x2, y2, x1, y2]
         if not self._subpixel:
             vertices = [int(v) for v in vertices]
-        #print self._vertex_list.vertices[:], vertices
         self._vertex_list.vertices[:] = vertices
 
     def _update_color(self):
@@ -589,9 +579,9 @@ class Sprite(event.EventDispatcher):
         See the module documentation for hints on drawing multiple sprites
         efficiently.
         '''
-        self.tilesGroup.set_state_recursive()
+        self._group.set_state_recursive()
         self._vertex_list.draw(GL_QUADS)
-        self.tilesGroup.unset_state_recursive()
+        self._group.unset_state_recursive()
 
     if _is_epydoc:
         def on_animation_end(self):

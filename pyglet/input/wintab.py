@@ -115,8 +115,8 @@ class WintabTabletCanvas(TabletCanvas):
         lib.WTClose(self._context)
         self._context = None
 
-        del self.tilesView._event_handlers[self.msg_base + wintab.WT_PACKET]
-        del self.tilesView._event_handlers[self.msg_base + wintab.WT_PROXIMITY]
+        del self.window._event_handlers[self.msg_base + wintab.WT_PACKET]
+        del self.window._event_handlers[self.msg_base + wintab.WT_PROXIMITY]
 
     def _set_current_cursor(self, cursor_type):
         if self._current_cursor:
@@ -139,8 +139,8 @@ class WintabTabletCanvas(TabletCanvas):
         if not packet.pkChanged:
             return
 
-        window_x, window_y = self.tilesView.get_location() # TODO cache on tilesView
-        window_y = self.tilesView.screen.height - window_y - self.tilesView.height
+        window_x, window_y = self.window.get_location() # TODO cache on window
+        window_y = self.window.screen.height - window_y - self.window.height
         x = packet.pkX - window_x
         y = packet.pkY - window_y
         pressure = (packet.pkNormalPressure + self._pressure_bias) * \

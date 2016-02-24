@@ -120,7 +120,7 @@ class ToolStroke(object):
                 tileValue = tileValue & LOMASK
 
                 if tileValue != DIRT:
-                    if canAutoBulldozeZ(tileValue) and self.engine.canAutoBulldoze:
+                    if canAutoBulldozeZ(tileValue) and self.engine.autoBulldoze:
                         cost += 1
                     else:
                         # TODO if tile water set tool result to NONE

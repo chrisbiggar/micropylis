@@ -152,7 +152,7 @@ class GdkPixBufLoader(object):
         assert self._file is not None
         self._file.seek(0)
         gif_stream = gif.read(self._file)
-        return [image.delay for image in gif_stream._images]
+        return [image.delay for image in gif_stream.images]
 
 
 class GdkPixBuf(object):

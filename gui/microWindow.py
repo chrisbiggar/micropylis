@@ -4,7 +4,6 @@ Created on Dec 31, 2015
 @author: chris
 '''
 import pyglet
-# pyglet.options['debug_gl'] = False
 from pyglet.gl import *
 from pyglet.window import mouse
 
@@ -59,7 +58,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
     sized and positioned within this window.
     '''
 
-    def __init__(self, animLoop):
+    def __init__(self):
         self.register_event_type('speed_changed')
 
         self.DEFAULT_WIDTH = int(gui.config.get('window', 'DEFAULT_WIDTH'))
@@ -72,10 +71,9 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         # load in tile specs
         tiles.readTilesSpec(gui.config.get('misc', 'TILES_SPEC_FILE'))
 
-        self.animLoop = animLoop
         self.engine = None
 
-        self.cityView = CityView(self.animLoop.getClock())
+        self.cityView = CityView()
         self.controlPanel = ControlPanel(self, self.cityView)
         self.push_handlers(self.cityView,
                            self.controlPanel,
@@ -120,9 +118,9 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             pyglet.window.key._5: speeds['Super Fast']}
         self.speed = None
 
-        self.newCity(gameLevel.MIN_LEVEL)
+        #self.newCity(gameLevel.MIN_LEVEL)
 
-        #self.loadCity('cities/hawkins.cty')
+        self.loadCity('cities/kyoto.cty')
 
         #music = pyglet.media.load('res/music.mp3')
         #music.play()
@@ -152,8 +150,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             self.set_fullscreen(False)
 
     def initGL(self, width, height):
-        #glClearColor(0.8, 0.49, 0.4, 1)
-        glClearColor(0., 0., 0., 1)
+        glClearColor(0.8, 0.49, 0.4, 1)
 
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -173,10 +170,6 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.initGL(width, height)
         self.cityView.setRenderSize(width, height)
         LayoutWindow.doLayout(self, self.width, self.height)
-
-    def on_close(self):
-        self.animLoop.exit()
-        return pyglet.window.Window.on_close(self)
 
     def on_key_release(self, symbol, modifiers):
         if (symbol == pyglet.window.key.X):
@@ -245,10 +238,12 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
     def setSpeed(self, newSpeed):
         if newSpeed == self.speed:
             return
+        self.speed = newSpeed
         self.dispatch_event('speed_changed', newSpeed)
         pyglet.clock.unschedule(self.engine.simulate)
-        self.animLoop.setSpeed(self.speed, newSpeed)
-        self.speed = newSpeed
+        self.cityView.setSpeed(self.speed)
+        #print self.speed.animCoefficient
+        #return
         if self.speed != speeds['Paused']:
             pyglet.clock.schedule_interval(self.engine.simulate, newSpeed.delay)
 
@@ -261,8 +256,8 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
     def on_draw(self):
         self.clear()
         self.cityView.draw()
-        #LayoutWindow.draw(self)
-        #dialogs.batch.draw()
+        LayoutWindow.draw(self)
+        dialogs.batch.draw()
         self.fpsDisplay.draw()
 
     ''' Tools Functions '''

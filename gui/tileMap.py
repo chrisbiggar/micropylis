@@ -17,22 +17,22 @@ TILESIZE = 16
 
 
 class TileMapRenderer(object):
-
     def __init__(self, tileImagesLoader, group):
         self.engine = None
         self.tileImagesLoader = tileImagesLoader
+        self.texture = self.tileImagesLoader.getTexture()
         self.animations = self.tileImagesLoader.getAnimations()
+
+        self.animated = dict()
+        self.visibleAnimated = dict()
+
         self.domain = None
         self.nullDomain = None
-        self.dt = 0
         self.group = group
-        self.texture = self.tileImagesLoader.getTexture()
+
         self.regionSize = 6
         self.regions = None
         self.regionsVisible = None
-        self.lastChangeX = self.lastChangeY = self.lastChangeWidth = self.lastChangeHeight = 0
-        self.changeThreshold = TILESIZE * 6
-        self.animatedTiles = dict()
 
     def _add(self, count, vertices, texCoords):
         # Create vertex list and initialize
@@ -44,7 +44,8 @@ class TileMapRenderer(object):
     def reset(self, eng):
         self.engine = eng
 
-        self.animatedTiles = dict()
+        self.animated = dict()
+        self.visibleAnimated = dict()
 
         if eng is None:
             return
@@ -79,8 +80,6 @@ class TileMapRenderer(object):
                         else:
                             texCoords.extend([0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.])
                 self.regions[row][column] = self._add(len(vertices) / 2, vertices, texCoords)
-        # self._updateRegions()
-
 
     def setVisibleRegion(self, screenX, screenY, width, height):
         screenX = int(screenX)
@@ -105,7 +104,6 @@ class TileMapRenderer(object):
     def _updateRegions(self, changes=None):
         if changes is None:
             changes = []
-            num = 0
             for x in xrange(len(self.regions)):
                 for y in xrange(len(self.regions[0])):
                     changes.append((x,y))
@@ -123,56 +121,66 @@ class TileMapRenderer(object):
                         if self.engine.testBounds(iX,iY):
                             self.setTile(iX, iY, self.engine.getTile(iX, iY))
                             # print iX,iY,self.engine.getTile(iX, iY)
+                            if (iX, iY) in self.animated:
+                                self.visibleAnimated[(iX, iY)] = self.animated.pop((iX, iY))
                 self.regions[x][y].migrate(self.domain)
             else:
-
+                sX = x * self.regionSize
+                sY = y * self.regionSize
+                for iX in xrange(sX, sX + self.regionSize):
+                    for iY in xrange(sY, sY + self.regionSize):
+                        if (iX, iY) in self.visibleAnimated:
+                            self.animated[(iX, iY)] = self.visibleAnimated.pop((iX, iY))
                 self.regions[x][y].migrate(self.nullDomain)
 
     def setTile(self, x, y, tileNum):
         rX = x / self.regionSize
         rY = y / self.regionSize
-        if not self.regionsVisible[rX][rY]:
-            return
         tImg = self.tileImagesLoader.getTileImage(tileNum)
-        if isinstance(tImg, TileAnimation): # just for now. get rid of later for efficiency
-            self.animatedTiles[(x, y)] = tImg
+        try:
+            curFrameImg = tImg.getCurrentFrameImg()
+            if not self.regionsVisible[rX][rY]:
+                self.animated[(x, y)] = tImg
+                return
+            self.visibleAnimated[(x, y)] = tImg
             if not tImg.loop:
                 tImg.reset()
-            tImg = tImg.getCurrentFrameImg()
-        else:
-            try:
-                del self.animatedTiles[(x, y)]
-            except KeyError:
-                pass
-        self._setTile(x, y, tImg)
+            self._setTile((x, y), curFrameImg)
+        except AttributeError:
+            if self.regionsVisible[rX][rY]:
+                try:
+                    del self.visibleAnimated[(x, y)]
+                except KeyError:
+                    pass
+                self._setTile((x, y), tImg)
+            else:
+                try:
+                    del self.animated[(x, y)]
+                except KeyError:
+                    pass
 
-    def _setTile(self, x, y, texRegion):
+    def _setTile(self, (x, y), texRegion):
         rX = x / self.regionSize
         rY = y / self.regionSize
         i = ((x % self.regionSize) * self.regionSize + (y % self.regionSize)) * 12
         self.regions[rX][rY].tex_coords[i:i+12] = texRegion.tex_coords
 
     def update(self, dt):
-        if self.dt >= 0.08:
-            self.dt = 0
-            for anim in self.animations:
-                anim.update()
-            finished = []
-            num = 0
-            for key, anim in self.animatedTiles.iteritems():
-                x = key[0]
-                y = key[1]
-                if self.regionsVisible[x / self.regionSize][y / self.regionSize] is False:
-                    continue
-                if not anim.loop and anim.getCurrentFrameDuration() is None:
-                    finished.append((x, y))
-                    continue
-                num += 1
-                self._setTile(x, y, anim.getCurrentFrameImg())
-            #print num
-            for key in finished:
-                del self.animatedTiles[key]
-        self.dt += dt
+        for anim in self.animations:
+            anim.update()
+        finished = []
+        for key, anim in self.visibleAnimated.iteritems():
+            if not anim.loop and anim.getCurrentFrameDuration() is None:
+                finished.append(key)
+                continue
+            # same code as in _setTile - make sure these are identical.
+            rX = key[0] / self.regionSize
+            rY = key[1] / self.regionSize
+            i = ((key[0] % self.regionSize) * self.regionSize + (key[1] % self.regionSize)) * 12
+            self.regions[rX][rY].tex_coords[i:i+12] = anim.getCurrentFrameImg().tex_coords
+        for key in finished:
+            del self.visibleAnimated[key]
+        #print len(self.visibleAnimated)
 
     def draw(self):
         self.group.set_state()

@@ -33,7 +33,7 @@
 # ----------------------------------------------------------------------------
 # $Id:$
 
-'''Manage related vertex _attributes within a single vertex domain.
+'''Manage related vertex attributes within a single vertex domain.
 
 A vertex "domain" consists of a set of attribute descriptions that together
 describe the layout of one or more vertex buffers which are used together to
@@ -130,7 +130,6 @@ def create_domain(*attribute_usage_formats):
 
     :rtype: `VertexDomain`
     '''
-    #print attribute_usage_formats
     attribute_usages = [create_attribute_usage(f) \
                         for f in attribute_usage_formats]
     return VertexDomain(attribute_usages)
@@ -159,7 +158,7 @@ class VertexDomain(object):
     def __init__(self, attribute_usages):
         self.allocator = allocation.Allocator(self._initial_count)
 
-        # If there are any MultiTexCoord _attributes, then a TexCoord attribute
+        # If there are any MultiTexCoord attributes, then a TexCoord attribute
         # must be converted.
         have_multi_texcoord = False
         for attribute, _, _ in attribute_usages:
@@ -169,14 +168,14 @@ class VertexDomain(object):
 
         static_attributes = []
         attributes = []
-        self.buffer_attributes = []   # list of (buffer, _attributes)
+        self.buffer_attributes = []   # list of (buffer, attributes)
         for attribute, usage, vbo in attribute_usages:
             if (have_multi_texcoord and
                 isinstance(attribute, vertexattribute.TexCoordAttribute)):
                 attribute.convert_to_multi_tex_coord_attribute()
 
             if usage == GL_STATIC_DRAW:
-                # Group _attributes for interleaved buffer
+                # Group attributes for interleaved buffer
                 static_attributes.append(attribute)
                 attributes.append(attribute)
             else:
@@ -186,7 +185,7 @@ class VertexDomain(object):
                     attribute.stride * self.allocator.capacity,
                     usage=usage, vbo=vbo)
                 attribute.buffer.element_size = attribute.stride
-                attribute.buffer._attributes = (attribute,)
+                attribute.buffer.attributes = (attribute,)
                 self.buffer_attributes.append(
                     (attribute.buffer, (attribute,)))
 
@@ -204,8 +203,8 @@ class VertexDomain(object):
             for attribute in static_attributes:
                 attribute.buffer = buffer
 
-        # Create named _attributes for each attribute
-        self._attributes = attributes
+        # Create named attributes for each attribute
+        self.attributes = attributes
         self.attribute_names = {}
         for attribute in attributes:
             if isinstance(attribute, vertexattribute.GenericAttribute):
@@ -228,14 +227,14 @@ class VertexDomain(object):
                 self.attribute_names['multi_tex_coords'].insert(texture,attribute)
             else:
                 name = attribute.plural
-                assert name not in self._attributes, \
+                assert name not in self.attributes, \
                     'More than one "%s" attribute given' % name
                 self.attribute_names[name] = attribute
 
     def __del__(self):
         # Break circular refs that Python GC seems to miss even when forced
         # collection.
-        for attribute in self._attributes:
+        for attribute in self.attributes:
             try:
                 del attribute.buffer
             except AttributeError:
@@ -275,7 +274,6 @@ class VertexDomain(object):
         :rtype: `VertexList`
         '''
         start = self._safe_alloc(count)
-        #print start,count
         return VertexList(self, start, count)
 
     def draw(self, mode, vertex_list=None):
@@ -318,7 +316,6 @@ class VertexDomain(object):
                 sizes = (GLsizei * primcount)(*sizes)
                 glMultiDrawArrays(mode, starts, sizes, primcount)
             else:
-                print "else"
                 for start, size in zip(starts, sizes):
                     glDrawArrays(mode, start, size)
 
@@ -379,7 +376,7 @@ class VertexList(object):
         new_start = self.domain._safe_realloc(self.start, self.count, count)
         if new_start != self.start:
             # Copy contents to new location
-            for attribute in self.domain._attributes:
+            for attribute in self.domain.attributes:
                 old = attribute.get_region(attribute.buffer,
                                            self.start, self.count)
                 new = attribute.get_region(attribute.buffer,
@@ -412,7 +409,7 @@ class VertexList(object):
 
         '''
         assert domain.attribute_names.keys() == \
-            self.domain.attribute_names.keys(), 'Domain _attributes must match.'
+            self.domain.attribute_names.keys(), 'Domain attributes must match.'
 
         new_start = domain._safe_alloc(self.count)
         for key, old_attribute in self.domain.attribute_names.items():
@@ -437,7 +434,7 @@ class VertexList(object):
         self._vertices_cache_version = None
 
     def _set_attribute_data(self, i, data):
-        attribute = self.domain._attributes[i]
+        attribute = self.domain.attributes[i]
         # TODO without region
         region = attribute.get_region(attribute.buffer, self.start, self.count)
         region.array[:] = data
@@ -631,7 +628,6 @@ class VertexList(object):
         return region.array
 
     def _set_vertices(self, data):
-        #print self._get_vertices(), data
         self._get_vertices()[:] = data
 
     vertices = property(_get_vertices, _set_vertices,

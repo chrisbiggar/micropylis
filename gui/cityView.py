@@ -424,9 +424,8 @@ Provides panning and zoom through a ViewportGroup object.
 
 
 class CityView(layout.Spacer):
-    def __init__(self, animClock):
+    def __init__(self):
         super(CityView, self).__init__()
-        self.animClock = animClock
         self.tileImageLoader = TileImageLoader(
             gui.config.get('misc', 'TILES_FILE'),
             TILESIZE, flipTilesVert=True, padding=2)
@@ -438,8 +437,6 @@ class CityView(layout.Spacer):
             FG_RENDER_ORDER, self.viewportGroup)
 
         self.tileMapRenderer = TileMapRenderer(self.tileImageLoader, self.viewportGroup)
-
-        self.tileSprites = None
         self.toolCursor = None
         self.toolPreview = None
         self.noPowerIndicators = None
@@ -503,13 +500,10 @@ class CityView(layout.Spacer):
     '''
 
     def on_map_changed(self, tilesList):
-        #if self.tileSprites is None:
-            #return
         for tile in tilesList:
             x = tile[0]
             y = tile[1]
             cell = self.engine.getTile(x, y)
-            #self.tileSprites[x][y].setTile(cell)
             self.tileMapRenderer.setTile(x, y, cell)
 
 
@@ -550,8 +544,8 @@ class CityView(layout.Spacer):
         '''
 
         '''
-        if self.toolCursor is None \
-                and self.toolCursor == newCursor:
+        if (self.toolCursor is None and
+                self.toolCursor == newCursor):
             return
 
         self.deleteToolCursor()
@@ -596,7 +590,6 @@ class CityView(layout.Spacer):
     '''
 
     def setToolPreview(self, newPreview):
-        return
         if self.toolPreview is not None:
             # reset old preview tile sprites
             b = self.toolPreview.getBounds()
@@ -617,7 +610,7 @@ class CityView(layout.Spacer):
                     y2 = y - newPreview.offsetY
                     tNum = newPreview.getTile(x2, y2)
                     if tNum != CLEAR:
-                        self.tileSprites[x2][y2].setTile(tNum)
+                        self.tileMapRenderer.setTile(x2, y2, tNum)
         self.toolPreview = newPreview
 
     '''
@@ -692,10 +685,13 @@ class CityView(layout.Spacer):
         self.tileMapRenderer.setVisibleRegion(*self.viewportGroup.getViewport())
 
     def setSpeed(self, speed):
+        pyglet.clock.unschedule(self.tileMapRenderer.update)
+
         if speed == speeds['Paused']:
             self.blinkingGroup.stop()
         else:
             self.blinkingGroup.start()
+            pyglet.clock.schedule_interval(self.tileMapRenderer.update, speed.animCoefficient)
 
     def _checkScrollKeys(self, dt):
         # move 12 tiles per second
@@ -713,13 +709,6 @@ class CityView(layout.Spacer):
         self._checkScrollKeys(dt)
         self.blinkingGroup.update(dt)
         self.viewportGroup.update(dt)
-        self.tileMapRenderer.update(dt)
-        '''t = randint(0,960)
-        for x in xrange(74):
-            for y in xrange(40):
-                self.tileMapRenderer.setTile(x, y, t)'''
 
     def draw(self):
-        #self.tbatch.draw()
-        #return
         self.tileMapRenderer.draw()

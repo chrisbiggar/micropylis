@@ -38,7 +38,7 @@ This module allows applications to create and display windows with an
 OpenGL context.  Windows can be created with a variety of border styles 
 or set fullscreen.
 
-You can register event handlers for keyboard, mouse and tilesView events.
+You can register event handlers for keyboard, mouse and window events.
 For games and kiosks you can also restrict the input to your windows,
 for example disabling users from switching away from the application
 with certain key combinations or capturing and hiding the mouse.
@@ -46,9 +46,9 @@ with certain key combinations or capturing and hiding the mouse.
 Getting started
 ---------------
 
-Call the Window constructor to create a new tilesView::
+Call the Window constructor to create a new window::
 
-    from pyglet.tilesView import Window
+    from pyglet.window import Window
     win = Window(width=640, height=480)
 
 Attach your own event handlers::
@@ -57,7 +57,7 @@ Attach your own event handlers::
     def on_key_press(symbol, modifiers):
         # ... handle this event ...
 
-Place drawing code for the tilesView within the `Window.on_draw` event handler::
+Place drawing code for the window within the `Window.on_draw` event handler::
 
     @win.event
     def on_draw():
@@ -69,13 +69,13 @@ returns when all open windows are closed)::
     from pyglet import app
     app.run()
 
-Creating a game tilesView
+Creating a game window
 ----------------------
 
 Use `Window.set_exclusive_mouse` to hide the mouse cursor and receive relative
 mouse movement events.  Specify ``fullscreen=True`` as a keyword argument to
 the `Window` constructor to render to the entire screen rather than opening a
-tilesView::
+window::
 
     win = Window(fullscreen=True)
     win.set_exclusive_mouse()
@@ -86,20 +86,20 @@ Working with multiple screens
 By default, fullscreen windows are opened on the primary display (typically
 set by the user in their operating system settings).  You can retrieve a list
 of attached screens and select one manually if you prefer.  This is useful for
-opening a fullscreen tilesView on each screen::
+opening a fullscreen window on each screen::
 
-    display = tilesView.get_platform().get_default_display()
+    display = window.get_platform().get_default_display()
     screens = display.get_screens()
     windows = []
     for screen in screens:
-        windows.append(tilesView.Window(fullscreen=True, screen=screen))
+        windows.append(window.Window(fullscreen=True, screen=screen))
 
-Specifying a screen has no effect if the tilesView is not fullscreen.
+Specifying a screen has no effect if the window is not fullscreen.
 
 Specifying the OpenGL context properties
 ----------------------------------------
 
-Each tilesView has its own context which is created when the tilesView is created.
+Each window has its own context which is created when the window is created.
 You can specify the properties of the context before it is created
 by creating a "template" configuration::
 
@@ -108,8 +108,8 @@ by creating a "template" configuration::
     config = gl.Config()
     config.stencil_size = 8
     config.aux_buffers = 4
-    # Create a tilesView using this config
-    win = tilesView.Window(config=config)
+    # Create a window using this config
+    win = window.Window(config=config)
 
 To determine if a given configuration is supported, query the screen (see
 above, "Working with multiple screens")::
@@ -118,7 +118,7 @@ above, "Working with multiple screens")::
     if not configs:
         # ... config is not supported
     else:
-        win = tilesView.Window(config=configs[0])
+        win = window.Window(config=configs[0])
 
 '''
 
@@ -138,7 +138,7 @@ import pyglet.window.event
 _is_epydoc = hasattr(sys, 'is_epydoc') and sys.is_epydoc
 
 class WindowException(Exception):
-    '''The root exception for all tilesView-related errors.'''
+    '''The root exception for all window-related errors.'''
     pass
 
 #XXX
@@ -172,7 +172,7 @@ class MouseCursor(object):
 
         The cursor should be drawn with the "hot" spot at the given
         coordinates.  The projection is set to the pyglet default (i.e., 
-        orthographic in tilesView-space), however no other aspects of the 
+        orthographic in window-space), however no other aspects of the 
         state can be assumed.
 
         :Parameters:
@@ -225,7 +225,7 @@ class ImageMouseCursor(MouseCursor):
 def _PlatformEventHandler(data):
     '''Decorator for platform event handlers.  
     
-    Apply giving the platform-specific data needed by the tilesView to associate
+    Apply giving the platform-specific data needed by the window to associate
     the method with an event.  See platform-specific subclasses of this
     decorator for examples.
 
@@ -251,7 +251,7 @@ def _ViewEventHandler(f):
     return f
 
 class _WindowMetaclass(type):
-    '''Sets the _platform_event_names class variable on the tilesView
+    '''Sets the _platform_event_names class variable on the window
     subclass.
     '''
     def __init__(cls, name, bases, dict):
@@ -265,10 +265,10 @@ class _WindowMetaclass(type):
         super(_WindowMetaclass, cls).__init__(name, bases, dict)
 
 class BaseWindow(EventDispatcher):
-    '''Platform-independent application tilesView.
+    '''Platform-independent application window.
 
-    A tilesView is a "heavyweight" object occupying operating system resources.
-    The "client" or "content" area of a tilesView is filled entirely with
+    A window is a "heavyweight" object occupying operating system resources.
+    The "client" or "content" area of a window is filled entirely with
     an OpenGL viewport.  Applications have no access to operating system
     widgets or controls; all rendering must be done via OpenGL.
 
@@ -277,18 +277,18 @@ class BaseWindow(EventDispatcher):
     decorated with a platform-specific frame (including, for example, the
     title bar, minimize and close buttons, resize handles, and so on).
 
-    While it is possible to set the location of a tilesView, it is recommended
+    While it is possible to set the location of a window, it is recommended
     that applications allow the platform to place it according to local
     conventions.  This will ensure it is not obscured by other windows,
     and appears on an appropriate screen for the user.
 
-    To render into a tilesView, you must first call `switch_to`, to make
-    it the current OpenGL context.  If you use only one tilesView in the
+    To render into a window, you must first call `switch_to`, to make
+    it the current OpenGL context.  If you use only one window in the
     application, there is no need to do this.
 
     :Ivariables:
         `has_exit` : bool
-            True if the user has attempted to close the tilesView.
+            True if the user has attempted to close the window.
 
             :deprecated: Windows are closed immediately by the default
                 `on_close` handler when `pyglet.app.event_loop` is being
@@ -301,13 +301,13 @@ class BaseWindow(EventDispatcher):
     # that are platform event handlers.
     _platform_event_names = set()
 
-    #: The default tilesView style.
+    #: The default window style.
     WINDOW_STYLE_DEFAULT = None
-    #: The tilesView style for pop-up dialogs.
+    #: The window style for pop-up dialogs.
     WINDOW_STYLE_DIALOG = 'dialog'
-    #: The tilesView style for tool windows.
+    #: The window style for tool windows.
     WINDOW_STYLE_TOOL = 'tool'
-    #: A tilesView style without any decoration.
+    #: A window style without any decoration.
     WINDOW_STYLE_BORDERLESS = 'borderless' 
 
     #: The default mouse cursor.
@@ -360,13 +360,13 @@ class BaseWindow(EventDispatcher):
     has_exit = False
 
     #: Window display contents validity.  The `pyglet.app` event loop
-    #: examines every tilesView each iteration and only dispatches the `on_draw`
+    #: examines every window each iteration and only dispatches the `on_draw`
     #: event to windows that have `invalid` set.  By default, windows always
     #: have `invalid` set to ``True``.
     #:
     #: You can prevent redundant redraws by setting this variable to ``False``
-    #: in the tilesView's `on_draw` handler, and setting it to True again in
-    #: response to any events that actually do require a tilesView contents
+    #: in the window's `on_draw` handler, and setting it to True again in
+    #: response to any events that actually do require a window contents
     #: update.
     #:
     #: :type: bool
@@ -392,7 +392,7 @@ class BaseWindow(EventDispatcher):
     _config = None
     _context = None
 
-    # Used to restore tilesView size and position after fullscreen
+    # Used to restore window size and position after fullscreen
     _windowed_size = None
     _windowed_location = None
 
@@ -427,7 +427,7 @@ class BaseWindow(EventDispatcher):
                  config=None,
                  context=None,
                  mode=None):
-        '''Create a tilesView.
+        '''Create a window.
 
         All parameters are optional, and reasonable defaults are assumed
         where they are not specified.
@@ -442,31 +442,31 @@ class BaseWindow(EventDispatcher):
         user specifying the attributes desired, or it can be a complete
         `config` as returned from `Screen.get_matching_configs` or similar.
 
-        The context will be active as soon as the tilesView is created, as if
+        The context will be active as soon as the window is created, as if
         `switch_to` was just called.
 
         :Parameters:
             `width` : int
-                Width of the tilesView, in pixels.  Defaults to 640, or the
+                Width of the window, in pixels.  Defaults to 640, or the
                 screen width if `fullscreen` is True.
             `height` : int
-                Height of the tilesView, in pixels.  Defaults to 480, or the
+                Height of the window, in pixels.  Defaults to 480, or the
                 screen height if `fullscreen` is True.
             `caption` : str or unicode
-                Initial caption (title) of the tilesView.  Defaults to
+                Initial caption (title) of the window.  Defaults to
                 ``sys.argv[0]``.
             `resizable` : bool
-                If True, the tilesView will be resizable.  Defaults to False.
+                If True, the window will be resizable.  Defaults to False.
             `style` : int
                 One of the ``WINDOW_STYLE_*`` constants specifying the
-                border style of the tilesView.
+                border style of the window.
             `fullscreen` : bool
-                If True, the tilesView will cover the entire screen rather
+                If True, the window will cover the entire screen rather
                 than floating.  Defaults to False.
             `visible` : bool
-                Determines if the tilesView is visible immediately after
+                Determines if the window is visible immediately after
                 creation.  Defaults to True.  Set this to False if you
-                would like to change attributes of the tilesView before
+                would like to change attributes of the window before
                 having it appear to the user.
             `vsync` : bool
                 If True, buffer flips are synchronised to the primary screen's
@@ -479,8 +479,8 @@ class BaseWindow(EventDispatcher):
                 Either a template from which to create a complete config,
                 or a complete config.
             `context` : `pyglet.gl.Context`
-                The context to attach to this tilesView.  The context must
-                not already be attached to another tilesView.
+                The context to attach to this window.  The context must
+                not already be attached to another window.
             `mode` : `ScreenMode`
                 The screen will be switched to this mode if `fullscreen` is
                 True.  If None, an appropriate mode is selected to accomodate
@@ -571,20 +571,20 @@ class BaseWindow(EventDispatcher):
         raise NotImplementedError('abstract')
 
     def _recreate(self, changes):
-        '''Recreate the tilesView with current attributes.
+        '''Recreate the window with current attributes.
 
         :Parameters:
             `changes` : list of str
                 List of attribute names that were changed since the last
                 `_create` or `_recreate`.  For example, ``['fullscreen']``
-                is given if the tilesView is to be toggled to or from fullscreen. 
+                is given if the window is to be toggled to or from fullscreen. 
         '''
         raise NotImplementedError('abstract')
 
     def flip(self):
         '''Swap the OpenGL front and back buffers.
 
-        Call this method on a double-buffered tilesView to update the
+        Call this method on a double-buffered window to update the
         visible display with the back buffer.  The contents of the back buffer
         is undefined after this operation.
 
@@ -594,10 +594,10 @@ class BaseWindow(EventDispatcher):
         raise NotImplementedError('abstract')
 
     def switch_to(self):
-        '''Make this tilesView the current OpenGL rendering context.
+        '''Make this window the current OpenGL rendering context.
 
         Only one OpenGL context can be active at a time.  This method sets
-        the current tilesView's context to be current.  You should use this
+        the current window's context to be current.  You should use this
         method in preference to `pyglet.gl.Context.set_current`, as it may
         perform additional initialisation functions.
         '''
@@ -614,31 +614,31 @@ class BaseWindow(EventDispatcher):
         If `width` and `height` are specified and `fullscreen` is True, the
         screen may be switched to a different resolution that most closely
         matches the given size.  If the resolution doesn't match exactly,
-        a higher resolution is selected and the tilesView will be centered
+        a higher resolution is selected and the window will be centered
         within a black border covering the rest of the screen.
 
         :Parameters:
             `fullscreen` : bool
-                True if the tilesView should be made fullscreen, False if it
+                True if the window should be made fullscreen, False if it
                 should be windowed.
             `screen` : Screen
-                If not None and fullscreen is True, the tilesView is moved to the
+                If not None and fullscreen is True, the window is moved to the
                 given screen.  The screen must belong to the same display as
-                the tilesView.
+                the window.
             `mode` : `ScreenMode`
                 The screen will be switched to the given mode.  The mode must
                 have been obtained by enumerating `Screen.get_modes`.  If
                 None, an appropriate mode will be selected from the given
                 `width` and `height`.
             `width` : int
-                Optional width of the tilesView.  If unspecified, defaults to the
-                previous tilesView size when windowed, or the screen size if
+                Optional width of the window.  If unspecified, defaults to the
+                previous window size when windowed, or the screen size if
                 fullscreen.
 
                 **Since:** pyglet 1.2
             `height` : int
-                Optional height of the tilesView.  If unspecified, defaults to
-                the previous tilesView size when windowed, or the screen size if
+                Optional height of the window.  If unspecified, defaults to
+                the previous window size when windowed, or the screen size if
                 fullscreen.
 
                 **Since:** pyglet 1.2
@@ -709,9 +709,9 @@ class BaseWindow(EventDispatcher):
         '''A default resize event handler.
 
         This default handler updates the GL viewport to cover the entire
-        tilesView and sets the ``GL_PROJECTION`` matrix to be orthogonal in
-        tilesView space.  The bottom-left corner is (0, 0) and the top-right
-        corner is the width and height of the tilesView in pixels.
+        window and sets the ``GL_PROJECTION`` matrix to be orthogonal in
+        window space.  The bottom-left corner is (0, 0) and the top-right
+        corner is the width and height of the window in pixels.
 
         Override this event handler with your own to create another
         projection, for example in perspective.
@@ -737,10 +737,10 @@ class BaseWindow(EventDispatcher):
             self.dispatch_event('on_close')
 
     def close(self):
-        '''Close the tilesView.
+        '''Close the window.
 
-        After closing the tilesView, the GL context will be invalid.  The
-        tilesView instance cannot be reused once closed (see also `set_visible`).
+        After closing the window, the GL context will be invalid.  The
+        window instance cannot be reused once closed (see also `set_visible`).
 
         The `pyglet.app.EventLoop.on_window_close` event is dispatched on
         `pyglet.app.event_loop` when this method is called.
@@ -794,28 +794,28 @@ class BaseWindow(EventDispatcher):
     # set_* methods to change them if applicable.
 
     caption = property(lambda self: self._caption,
-        doc='''The tilesView caption (title).  Read-only.
+        doc='''The window caption (title).  Read-only.
 
         :type: str
         ''')
     resizable = property(lambda self: self._resizable,
-        doc='''True if the tilesView is resizable.  Read-only.
+        doc='''True if the window is resizable.  Read-only.
 
         :type: bool
         ''')
     style = property(lambda self: self._style,
-        doc='''The tilesView style; one of the ``WINDOW_STYLE_*`` constants.
+        doc='''The window style; one of the ``WINDOW_STYLE_*`` constants.
         Read-only.
         
         :type: int
         ''')
     fullscreen = property(lambda self: self._fullscreen,
-        doc='''True if the tilesView is currently fullscreen.  Read-only.
+        doc='''True if the window is currently fullscreen.  Read-only.
         
         :type: bool
         ''')
     visible = property(lambda self: self._visible,
-        doc='''True if the tilesView is currently visible.  Read-only.
+        doc='''True if the window is currently visible.  Read-only.
         
         :type: bool
         ''')
@@ -826,22 +826,22 @@ class BaseWindow(EventDispatcher):
         :type: bool
         ''')
     display = property(lambda self: self._display,
-        doc='''The display this tilesView belongs to.  Read-only.
+        doc='''The display this window belongs to.  Read-only.
 
         :type: `Display`
         ''')
     screen = property(lambda self: self._screen,
-        doc='''The screen this tilesView is fullscreen in.  Read-only.
+        doc='''The screen this window is fullscreen in.  Read-only.
         
         :type: `Screen`
         ''')
     config = property(lambda self: self._config,
-        doc='''A GL config describing the context of this tilesView.  Read-only.
+        doc='''A GL config describing the context of this window.  Read-only.
         
         :type: `pyglet.gl.Config`
         ''')
     context = property(lambda self: self._context,
-        doc='''The OpenGL context attached to this tilesView.  Read-only.
+        doc='''The OpenGL context attached to this window.  Read-only.
         
         :type: `pyglet.gl.Context`
         ''')
@@ -849,23 +849,23 @@ class BaseWindow(EventDispatcher):
     # These are the only properties that can be set
     width = property(lambda self: self.get_size()[0],
                      lambda self, width: self.set_size(width, self.height),
-         doc='''The width of the tilesView, in pixels.  Read-write.
+         doc='''The width of the window, in pixels.  Read-write.
          
          :type: int
          ''')
 
     height = property(lambda self: self.get_size()[1],
                       lambda self, height: self.set_size(self.width, height),
-         doc='''The height of the tilesView, in pixels.  Read-write.
+         doc='''The height of the window, in pixels.  Read-write.
          
          :type: int
          ''')
 
     def set_caption(self, caption):
-        '''Set the tilesView's caption.
+        '''Set the window's caption.
 
-        The caption appears in the titlebar of the tilesView, if it has one,
-        and in the taskbar on Windows and many X11 tilesView managers.
+        The caption appears in the titlebar of the window, if it has one,
+        and in the taskbar on Windows and many X11 window managers.
 
         :Parameters:
             `caption` : str or unicode
@@ -875,91 +875,91 @@ class BaseWindow(EventDispatcher):
         raise NotImplementedError('abstract')
 
     def set_minimum_size(self, width, height):
-        '''Set the minimum size of the tilesView.
+        '''Set the minimum size of the window.
 
-        Once set, the user will not be able to resize the tilesView smaller
+        Once set, the user will not be able to resize the window smaller
         than the given dimensions.  There is no way to remove the
-        minimum size constraint on a tilesView (but you could set it to 0,0).
+        minimum size constraint on a window (but you could set it to 0,0).
 
         The behaviour is undefined if the minimum size is set larger than
-        the current size of the tilesView.
+        the current size of the window.
 
-        The tilesView size does not include the border or title bar.
+        The window size does not include the border or title bar.
 
         :Parameters:
             `width` : int
-                Minimum width of the tilesView, in pixels.
+                Minimum width of the window, in pixels.
             `height` : int
-                Minimum height of the tilesView, in pixels.
+                Minimum height of the window, in pixels.
 
         '''
         raise NotImplementedError('abstract')
 
     def set_maximum_size(self, width, height):
-        '''Set the maximum size of the tilesView.
+        '''Set the maximum size of the window.
 
-        Once set, the user will not be able to resize the tilesView larger
+        Once set, the user will not be able to resize the window larger
         than the given dimensions.  There is no way to remove the
-        maximum size constraint on a tilesView (but you could set it to a large
+        maximum size constraint on a window (but you could set it to a large
         value).
 
         The behaviour is undefined if the maximum size is set smaller than
-        the current size of the tilesView.
+        the current size of the window.
 
-        The tilesView size does not include the border or title bar.
+        The window size does not include the border or title bar.
 
         :Parameters:
             `width` : int
-                Maximum width of the tilesView, in pixels.
+                Maximum width of the window, in pixels.
             `height` : int
-                Maximum height of the tilesView, in pixels.
+                Maximum height of the window, in pixels.
 
         '''
         raise NotImplementedError('abstract')
 
     def set_size(self, width, height):
-        '''Resize the tilesView.
+        '''Resize the window.
         
-        The behaviour is undefined if the tilesView is not resizable, or if
+        The behaviour is undefined if the window is not resizable, or if
         it is currently fullscreen.
 
-        The tilesView size does not include the border or title bar.
+        The window size does not include the border or title bar.
 
         :Parameters:
             `width` : int
-                New width of the tilesView, in pixels.
+                New width of the window, in pixels.
             `height` : int
-                New height of the tilesView, in pixels.
+                New height of the window, in pixels.
 
         '''
         raise NotImplementedError('abstract')
 
     def get_size(self):
-        '''Return the current size of the tilesView.
+        '''Return the current size of the window.
 
-        The tilesView size does not include the border or title bar.
+        The window size does not include the border or title bar.
 
         :rtype: (int, int)
-        :return: The width and height of the tilesView, in pixels.
+        :return: The width and height of the window, in pixels.
         '''
         raise NotImplementedError('abstract')
 
     def set_location(self, x, y):
-        '''Set the position of the tilesView.
+        '''Set the position of the window.
 
         :Parameters:
             `x` : int
-                Distance of the left edge of the tilesView from the left edge
+                Distance of the left edge of the window from the left edge
                 of the virtual desktop, in pixels.
             `y` : int
-                Distance of the top edge of the tilesView from the top edge of
+                Distance of the top edge of the window from the top edge of
                 the virtual desktop, in pixels.
 
         '''
         raise NotImplementedError('abstract')
 
     def get_location(self):
-        '''Return the current position of the tilesView.
+        '''Return the current position of the window.
 
         :rtype: (int, int)
         :return: The distances of the left and top edges from their respective
@@ -968,36 +968,36 @@ class BaseWindow(EventDispatcher):
         raise NotImplementedError('abstract')
 
     def activate(self):
-        '''Attempt to restore keyboard focus to the tilesView.
+        '''Attempt to restore keyboard focus to the window.
 
-        Depending on the tilesView manager or operating system, this may not
+        Depending on the window manager or operating system, this may not
         be successful.  For example, on Windows XP an application is not
         allowed to "steal" focus from another application.  Instead, the
-        tilesView's taskbar icon will flash, indicating it requires attention.
+        window's taskbar icon will flash, indicating it requires attention.
         '''
         raise NotImplementedError('abstract')
 
     def set_visible(self, visible=True):    
-        '''Show or hide the tilesView.
+        '''Show or hide the window.
 
         :Parameters:
             `visible` : bool
-                If True, the tilesView will be shown; otherwise it will be
+                If True, the window will be shown; otherwise it will be
                 hidden.
 
         '''
         raise NotImplementedError('abstract')
 
     def minimize(self):
-        '''Minimize the tilesView.
+        '''Minimize the window.
         '''
         raise NotImplementedError('abstract')
 
     def maximize(self):
-        '''Maximize the tilesView.
+        '''Maximize the window.
 
         The behaviour of this method is somewhat dependent on the user's
-        display setup.  On a multi-monitor system, the tilesView may maximize
+        display setup.  On a multi-monitor system, the window may maximize
         to either a single screen or the entire virtual desktop.
         '''
         raise NotImplementedError('abstract')
@@ -1016,7 +1016,7 @@ class BaseWindow(EventDispatcher):
 
         With multi-monitor systems the secondary monitor cannot be
         synchronised to, so tearing and flicker cannot be avoided when the
-        tilesView is positioned outside of the primary display.  In this case
+        window is positioned outside of the primary display.  In this case
         it may be advisable to forcibly reduce the framerate (for example,
         using `pyglet.clock.set_fps_limit`).
 
@@ -1031,7 +1031,7 @@ class BaseWindow(EventDispatcher):
         '''Show or hide the mouse cursor.
 
         The mouse cursor will only be hidden while it is positioned within
-        this tilesView.  Mouse events will still be processed as usual.
+        this window.  Mouse events will still be processed as usual.
 
         :Parameters:
             `visible` : bool
@@ -1062,7 +1062,7 @@ class BaseWindow(EventDispatcher):
         '''Change the appearance of the mouse cursor.
 
         The appearance of the mouse cursor is only changed while it is
-        within this tilesView.
+        within this window.
 
         :Parameters:
             `cursor` : `MouseCursor`
@@ -1076,9 +1076,9 @@ class BaseWindow(EventDispatcher):
 
     def set_exclusive_mouse(self, exclusive=True):
         '''Hide the mouse cursor and direct all mouse events to this
-        tilesView.
+        window.
 
-        When enabled, this feature prevents the mouse leaving the tilesView.  It
+        When enabled, this feature prevents the mouse leaving the window.  It
         is useful for certain styles of games that require complete control of
         the mouse.  The position of the mouse as reported in subsequent events
         is meaningless when exclusive mouse is enabled; you should only use
@@ -1092,7 +1092,7 @@ class BaseWindow(EventDispatcher):
         raise NotImplementedError('abstract')
 
     def set_exclusive_keyboard(self, exclusive=True):
-        '''Prevent the user from switching away from this tilesView using
+        '''Prevent the user from switching away from this window using
         keyboard accelerators.
 
         When enabled, this feature disables certain operating-system specific
@@ -1126,7 +1126,7 @@ class BaseWindow(EventDispatcher):
         raise NotImplementedError()
 
     def set_icon(self, *images):
-        '''Set the tilesView icon.
+        '''Set the window icon.
 
         If multiple images are provided, one with an appropriate size 
         will be selected (if the correct size is not provided, the image
@@ -1137,16 +1137,16 @@ class BaseWindow(EventDispatcher):
 
         :Parameters:
             `images` : sequence of `pyglet.image.AbstractImage`
-                List of images to use for the tilesView icon.
+                List of images to use for the window icon.
         
         '''
         pass
 
     def clear(self):
-        '''Clear the tilesView.
+        '''Clear the window.
 
         This is a convenience method for clearing the color and depth
-        buffer.  The tilesView must be the active context (see `switch_to`).
+        buffer.  The window must be the active context (see `switch_to`).
         '''
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
     
@@ -1233,7 +1233,7 @@ class BaseWindow(EventDispatcher):
             mappings, and key repeats are handled correctly.
 
             The values that `motion` can take are defined in
-            `pyglet.tilesView.key`:
+            `pyglet.window.key`:
 
             * MOTION_UP
             * MOTION_RIGHT
@@ -1270,7 +1270,7 @@ class BaseWindow(EventDispatcher):
             have different default keyboard mappings, and key repeats are
             handled correctly.
 
-            The values that `motion` can take are defined in `pyglet.tilesView.key`:
+            The values that `motion` can take are defined in `pyglet.window.key`:
 
             * MOTION_UP
             * MOTION_RIGHT
@@ -1297,9 +1297,9 @@ class BaseWindow(EventDispatcher):
 
             :Parameters:
                 `x` : int
-                    Distance in pixels from the left edge of the tilesView.
+                    Distance in pixels from the left edge of the window.
                 `y` : int
-                    Distance in pixels from the bottom edge of the tilesView.
+                    Distance in pixels from the bottom edge of the window.
                 `dx` : int
                     Relative X position from the previous mouse position.
                 `dy` : int
@@ -1312,13 +1312,13 @@ class BaseWindow(EventDispatcher):
             '''The mouse was moved with one or more mouse buttons pressed.
 
             This event will continue to be fired even if the mouse leaves
-            the tilesView, so long as the drag buttons are continuously held down.
+            the window, so long as the drag buttons are continuously held down.
 
             :Parameters:
                 `x` : int
-                    Distance in pixels from the left edge of the tilesView.
+                    Distance in pixels from the left edge of the window.
                 `y` : int
-                    Distance in pixels from the bottom edge of the tilesView.
+                    Distance in pixels from the bottom edge of the window.
                 `dx` : int
                     Relative X position from the previous mouse position.
                 `dy` : int
@@ -1337,9 +1337,9 @@ class BaseWindow(EventDispatcher):
 
             :Parameters:
                 `x` : int
-                    Distance in pixels from the left edge of the tilesView.
+                    Distance in pixels from the left edge of the window.
                 `y` : int
-                    Distance in pixels from the bottom edge of the tilesView.
+                    Distance in pixels from the bottom edge of the window.
                 `button` : int
                     The mouse button that was pressed.
                 `modifiers` : int
@@ -1354,9 +1354,9 @@ class BaseWindow(EventDispatcher):
 
             :Parameters:
                 `x` : int
-                    Distance in pixels from the left edge of the tilesView.
+                    Distance in pixels from the left edge of the window.
                 `y` : int
-                    Distance in pixels from the bottom edge of the tilesView.
+                    Distance in pixels from the bottom edge of the window.
                 `button` : int
                     The mouse button that was released.
                 `modifiers` : int
@@ -1376,9 +1376,9 @@ class BaseWindow(EventDispatcher):
 
             :Parameters:
                 `x` : int
-                    Distance in pixels from the left edge of the tilesView.
+                    Distance in pixels from the left edge of the window.
                 `y` : int
-                    Distance in pixels from the bottom edge of the tilesView.
+                    Distance in pixels from the bottom edge of the window.
                 `scroll_x` : int
                     Number of "clicks" towards the right (left if negative).
                 `scroll_y` : int
@@ -1388,135 +1388,135 @@ class BaseWindow(EventDispatcher):
             '''
 
         def on_close():
-            '''The user attempted to close the tilesView.
+            '''The user attempted to close the window.
 
             This event can be triggered by clicking on the "X" control box in
-            the tilesView title bar, or by some other platform-dependent manner.
+            the window title bar, or by some other platform-dependent manner.
 
             The default handler sets `has_exit` to ``True``.  In pyglet 1.1, if
             `pyglet.app.event_loop` is being used, `close` is also called,
-            closing the tilesView immediately.
+            closing the window immediately.
 
             :event:
             '''
 
         def on_mouse_enter(x, y):
-            '''The mouse was moved into the tilesView.
+            '''The mouse was moved into the window.
 
             This event will not be trigged if the mouse is currently being
             dragged.
 
             :Parameters:
                 `x` : int
-                    Distance in pixels from the left edge of the tilesView.
+                    Distance in pixels from the left edge of the window.
                 `y` : int
-                    Distance in pixels from the bottom edge of the tilesView.
+                    Distance in pixels from the bottom edge of the window.
 
             :event:
             '''
 
         def on_mouse_leave(x, y):
-            '''The mouse was moved outside of the tilesView.
+            '''The mouse was moved outside of the window.
 
             This event will not be trigged if the mouse is currently being
             dragged.  Note that the coordinates of the mouse pointer will be
-            outside of the tilesView rectangle.
+            outside of the window rectangle.
 
             :Parameters:
                 `x` : int
-                    Distance in pixels from the left edge of the tilesView.
+                    Distance in pixels from the left edge of the window.
                 `y` : int
-                    Distance in pixels from the bottom edge of the tilesView.
+                    Distance in pixels from the bottom edge of the window.
 
             :event:
             '''
 
         def on_expose():
-            '''A portion of the tilesView needs to be redrawn.
+            '''A portion of the window needs to be redrawn.
 
-            This event is triggered when the tilesView first appears, and any time
-            the contents of the tilesView is invalidated due to another tilesView
+            This event is triggered when the window first appears, and any time
+            the contents of the window is invalidated due to another window
             obscuring it.
 
-            There is no way to determine which portion of the tilesView needs
+            There is no way to determine which portion of the window needs
             redrawing.  Note that the use of this method is becoming
-            increasingly uncommon, as newer tilesView managers composite windows
-            automatically and keep a backing store of the tilesView contents.
+            increasingly uncommon, as newer window managers composite windows
+            automatically and keep a backing store of the window contents.
 
             :event:
             '''
 
         def on_resize(width, height):
-            '''The tilesView was resized.
+            '''The window was resized.
 
-            The tilesView will have the GL context when this event is dispatched;
+            The window will have the GL context when this event is dispatched;
             there is no need to call `switch_to` in this handler.
 
             :Parameters:
                 `width` : int
-                    The new width of the tilesView, in pixels.
+                    The new width of the window, in pixels.
                 `height` : int
-                    The new height of the tilesView, in pixels.
+                    The new height of the window, in pixels.
 
             :event:
             '''
 
         def on_move(x, y):
-            '''The tilesView was moved.
+            '''The window was moved.
 
             :Parameters:
                 `x` : int
                     Distance from the left edge of the screen to the left edge
-                    of the tilesView.
+                    of the window.
                 `y` : int
                     Distance from the top edge of the screen to the top edge of
-                    the tilesView.  Note that this is one of few methods in pyglet
+                    the window.  Note that this is one of few methods in pyglet
                     which use a Y-down coordinate system.
 
             :event:
             '''
 
         def on_activate():
-            '''The tilesView was activated.
+            '''The window was activated.
 
             This event can be triggered by clicking on the title bar, bringing
             it to the foreground; or by some platform-specific method.
 
-            When a tilesView is "active" it has the keyboard focus.
+            When a window is "active" it has the keyboard focus.
 
             :event:
             '''
 
         def on_deactivate():
-            '''The tilesView was deactivated.
+            '''The window was deactivated.
 
             This event can be triggered by clicking on another application
-            tilesView.  When a tilesView is deactivated it no longer has the
+            window.  When a window is deactivated it no longer has the
             keyboard focus.
 
             :event:
             '''
 
         def on_show():
-            '''The tilesView was shown.
+            '''The window was shown.
 
-            This event is triggered when a tilesView is restored after being
+            This event is triggered when a window is restored after being
             minimised, or after being displayed for the first time.
 
             :event:
             '''
 
         def on_hide():
-            '''The tilesView was hidden.
+            '''The window was hidden.
 
-            This event is triggered when a tilesView is minimised or (on Mac OS X)
+            This event is triggered when a window is minimised or (on Mac OS X)
             hidden by the user.
 
             :event:
             '''
 
         def on_context_lost():
-            '''The tilesView's GL context was lost.
+            '''The window's GL context was lost.
             
             When the context is lost no more GL methods can be called until it
             is recreated.  This is a rare event, triggered perhaps by the user
@@ -1528,10 +1528,10 @@ class BaseWindow(EventDispatcher):
             '''
 
         def on_context_state_lost():
-            '''The state of the tilesView's GL context was lost.
+            '''The state of the window's GL context was lost.
 
-            pyglet may sometimes need to recreate the tilesView's GL context if
-            the tilesView is moved to another video device, or between fullscreen
+            pyglet may sometimes need to recreate the window's GL context if
+            the window is moved to another video device, or between fullscreen
             or windowed mode.  In this case it will try to share the objects
             (display lists, texture objects, shaders) between the old and new
             contexts.  If this is possible, only the current state of the GL
@@ -1541,17 +1541,17 @@ class BaseWindow(EventDispatcher):
             '''
 
         def on_draw():
-            '''The tilesView contents must be redrawn.
+            '''The window contents must be redrawn.
 
-            The `EventLoop` will dispatch this event when the tilesView
+            The `EventLoop` will dispatch this event when the window
             should be redrawn.  This will happen during idle time after
-            any tilesView events and after any scheduled functions were called.
+            any window events and after any scheduled functions were called.
 
-            The tilesView will already have the GL context, so there is no
-            need to call `switch_to`.  The tilesView's `flip` method will
+            The window will already have the GL context, so there is no
+            need to call `switch_to`.  The window's `flip` method will
             be called after this event, so your event handler should not.
 
-            You should make no assumptions about the tilesView contents when
+            You should make no assumptions about the window contents when
             this event is triggered; a resize or expose event may have
             invalidated the framebuffer since the last time it was drawn.
 
@@ -1585,18 +1585,18 @@ BaseWindow.register_event_type('on_context_state_lost')
 BaseWindow.register_event_type('on_draw')
 
 class FPSDisplay(object):
-    '''Display of a tilesView's framerate.
+    '''Display of a window's framerate.
 
     This is a convenience class to aid in profiling and debugging.  Typical
-    usage is to create an `FPSDisplay` for each tilesView, and draw the display
+    usage is to create an `FPSDisplay` for each window, and draw the display
     at the end of the windows' `on_draw` event handler::
 
-        tilesView = pyglet.tilesView.Window()
-        fps_display = FPSDisplay(tilesView)
+        window = pyglet.window.Window()
+        fps_display = FPSDisplay(window)
 
-        @tilesView.event
+        @window.event
         def on_draw():
-            # ... perform ordinary tilesView drawing operations ...
+            # ... perform ordinary window drawing operations ...
 
             fps_display.draw()
 
@@ -1617,23 +1617,23 @@ class FPSDisplay(object):
     update_period = 0.25
 
     def __init__(self, window):
-        from startTime import startTime
+        from time import time
         from pyglet.text import Label
         self.label = Label('', x=10, y=10, 
                            font_size=24, bold=True,
                            color=(127, 127, 127, 127))
 
-        self.tilesView = window
+        self.window = window
         self._window_flip = window.flip
         window.flip = self._hook_flip
 
         self.time = 0.0
-        self.last_time = startTime()
+        self.last_time = time()
         self.count = 0
 
     def update(self):
         '''Records a new data point at the current time.  This method
-        is called automatically when the tilesView buffer is flipped.
+        is called automatically when the window buffer is flipped.
         '''
         from time import time
         t = time()
@@ -1653,7 +1653,7 @@ class FPSDisplay(object):
 
         :Parameters:
             `fps` : float
-                Estimated framerate of the tilesView.
+                Estimated framerate of the window.
 
         '''
         self.label.text = '%.2f' % fps
@@ -1672,7 +1672,7 @@ class FPSDisplay(object):
         gl.glMatrixMode(gl.GL_PROJECTION)
         gl.glPushMatrix()
         gl.glLoadIdentity()
-        gl.glOrtho(0, self.tilesView.width, 0, self.tilesView.height, -1, 1)
+        gl.glOrtho(0, self.window.width, 0, self.window.height, -1, 1)
         
         self.label.draw()
 
@@ -1704,7 +1704,7 @@ else:
     else:
         # XXX HACK around circ problem, should be fixed after removal of
         # shadow nonsense
-        #pyglet.tilesView = sys.modules[__name__]
+        #pyglet.window = sys.modules[__name__]
         #import key, mouse
 
         from pyglet.window.xlib import XlibWindow as Window
@@ -1811,7 +1811,7 @@ else:
 
 
 # XXX remove
-# Create shadow tilesView. (trickery is for circular import)
+# Create shadow window. (trickery is for circular import)
 if not _is_epydoc:
-    pyglet.tilesView = sys.modules[__name__]
+    pyglet.window = sys.modules[__name__]
     gl._create_shadow_window()

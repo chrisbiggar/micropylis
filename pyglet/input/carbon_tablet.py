@@ -99,7 +99,7 @@ class CarbonTabletCanvas(TabletCanvas):
             )
             #x = point_rec.absX
             #y = point_rec.absY
-            x, y = self.tilesView._get_mouse_position(ev)
+            x, y = self.window._get_mouse_position(ev)
             pressure = point_rec.pressure / float(0xffff)
             #point_rec.tiltX,
             #point_rec.tiltY,

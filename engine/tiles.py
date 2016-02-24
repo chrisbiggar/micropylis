@@ -19,9 +19,9 @@ def getByName(name):
 
 
 def get(num):
-    if (num >= 0 and num < len(loc.tiles)):
+    try:
         return loc.tiles[num]
-    else:
+    except KeyError:
         return None
 
 

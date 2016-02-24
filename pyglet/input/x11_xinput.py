@@ -114,9 +114,9 @@ class XInputDevice(DeviceResponder, Device):
 
         if window is None:
             self.is_open = False
-            raise DeviceOpenException('XInput devices require a tilesView')
+            raise DeviceOpenException('XInput devices require a window')
 
-        if tilesView.display._display != self.display._display:
+        if window.display._display != self.display._display:
             self.is_open = False
             raise DeviceOpenException('Window and device displays differ')
 
@@ -172,7 +172,7 @@ class XInputDevice(DeviceResponder, Device):
 
 class XInputWindowEventDispatcher(object):
     def __init__(self, window):
-        self.tilesView = window
+        self.window = window
         self._responders = {}
 
     @staticmethod
@@ -196,7 +196,7 @@ class XInputWindowEventDispatcher(object):
         if not device.num_classes:
             return
 
-        # Bind matching extended tilesView events to bound instance methods
+        # Bind matching extended window events to bound instance methods
         # on this object.
         #
         # This is inspired by test.c of xinput package by Frederic
@@ -211,7 +211,7 @@ class XInputWindowEventDispatcher(object):
             _type = class_info.event_type_base + event
             _class = device_id << 8 | _type
             events.append(_class)
-            self.tilesView._event_handlers[_type] = handler
+            self.window._event_handlers[_type] = handler
 
         for i in range(device.num_classes):
             class_info = device.classes[i]
@@ -247,8 +247,8 @@ class XInputWindowEventDispatcher(object):
                 pass
 
         array = (xi.XEventClass * len(events))(*events)
-        xi.XSelectExtensionEvent(self.tilesView._x_display,
-                                 self.tilesView._window,
+        xi.XSelectExtensionEvent(self.window._x_display,
+                                 self.window._window,
                                  array,
                                  len(array))
 

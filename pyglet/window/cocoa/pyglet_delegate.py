@@ -16,7 +16,7 @@ class PygletDelegate_Implementation(object):
 
         # CocoaWindow object.
         self._window = window
-        tilesView._nswindow.setDelegate_(self)
+        window._nswindow.setDelegate_(self)
 
         # Register delegate for hide and unhide notifications so that we 
         # can dispatch the corresponding pyglet events.
@@ -30,7 +30,7 @@ class PygletDelegate_Implementation(object):
             self, get_selector('applicationDidUnhide:'), 
             NSApplicationDidUnhideNotification, None)
 
-        # Flag set when we pause exclusive mouse mode if tilesView loses key status.
+        # Flag set when we pause exclusive mouse mode if window loses key status.
         self.did_pause_exclusive_mouse = False
         return self
 
@@ -84,9 +84,9 @@ class PygletDelegate_Implementation(object):
         if self._window._is_mouse_exclusive:
             self._window.set_exclusive_mouse(False)
             self.did_pause_exclusive_mouse = True
-            # We need to prevent the tilesView from being unintentionally dragged
+            # We need to prevent the window from being unintentionally dragged
             # (by the call to set_mouse_position in set_exclusive_mouse) when
-            # the tilesView is reactivated by clicking on its title bar.
+            # the window is reactivated by clicking on its title bar.
             self._window._nswindow.setMovable_(False)  # Mac OS X 10.6 
         # Make sure that cursor is visible.
         self._window.set_mouse_platform_visible(True)

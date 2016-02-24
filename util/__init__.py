@@ -48,7 +48,7 @@ def createHollowRect(x,y,width,height,color,batch,group):
     return batch.add(numVertices,
                                 GL_LINE_STRIP,
                                 group,
-                                ('v2f', [x, y, x2, y, x2, y2, x, y2, x, y]),
+                                ('v2i', [x, y, x2, y, x2, y2, x, y2, x, y]),
                                 ('c4B', colorData))
 
 def createRect(x,y,width,height,color,batch,group):
@@ -63,7 +63,7 @@ def createRect(x,y,width,height,color,batch,group):
         i2 = i % numVertices
         colorData.append(color[i2])
     return batch.add(numVertices, GL_QUADS, group,
-                             ('v2f', [x, y, x2, y, x2, y2, x, y2]),
+                             ('v2i', [x, y, x2, y, x2, y2, x, y2]),
                              ('c4B', colorData))
     
 def createLine(x,y,x2,y2,color,width,batch,group):
@@ -77,5 +77,5 @@ def createLine(x,y,x2,y2,color,width,batch,group):
         colorData.append(color[i2])
     return batch.add(numVertices, GL_LINE_STRIP,
                      group,
-                     ('v2f', [x,y,x2,y2]),
+                     ('v2i', [x,y,x2,y2]),
                      ('c4B', colorData))

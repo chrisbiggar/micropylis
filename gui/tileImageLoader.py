@@ -102,8 +102,8 @@ class BorderedImageGrid(AbstractImage, AbstractImageSequence):
         self._update_items()
         if type(index) is tuple:
             row, column = index
-            assert row >= 0 and column >= 0 and \
-                   row < self.rows and column < self.columns
+            assert (0 <= row < self.rows and
+                    0 <= column < self.columns)
             return self._items[row * self.columns + column]
         else:
             return self._items[index]

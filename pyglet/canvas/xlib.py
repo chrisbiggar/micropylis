@@ -16,7 +16,7 @@ from base import Display, Screen, ScreenMode, Canvas
 import xlib_vidmoderestore
 
 # XXX
-#from pyglet.tilesView import NoSuchDisplayException
+#from pyglet.window import NoSuchDisplayException
 class NoSuchDisplayException(Exception):
     pass
 
@@ -152,13 +152,13 @@ class XlibDisplay(XlibSelectDevice, Display):
         while xlib.XPending(self._display):
             xlib.XNextEvent(self._display, e)
 
-            # Key events are filtered by the xlib tilesView event
+            # Key events are filtered by the xlib window event
             # handler so they get a shot at the prefiltered event.
             if e.xany.type not in (xlib.KeyPress, xlib.KeyRelease):
-                if xlib.XFilterEvent(e, e.xany.tilesView):
+                if xlib.XFilterEvent(e, e.xany.window):
                     continue
             try:
-                dispatch = self._window_map[e.xany.tilesView]
+                dispatch = self._window_map[e.xany.window]
             except KeyError:
                 continue
 

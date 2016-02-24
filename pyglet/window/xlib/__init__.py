@@ -118,15 +118,15 @@ class XlibWindow(BaseWindow):
     _x_display = None       # X display connection
     _x_screen_id = None     # X screen index
     _x_ic = None            # X input context
-    _window = None          # Xlib tilesView handle
+    _window = None          # Xlib window handle
     _minimum_size = None
     _maximum_size = None
     _override_redirect = False
 
     _x = 0
-    _y = 0                  # Last known tilesView position
+    _y = 0                  # Last known window position
     _width = 0
-    _height = 0             # Last known tilesView size
+    _height = 0             # Last known window size
     _mouse_exclusive_client = None  # x,y of "real" mouse during exclusive
     _mouse_buttons = [False] * 6 # State of each xlib button
     _keyboard_exclusive = False
@@ -170,13 +170,13 @@ class XlibWindow(BaseWindow):
             self.pressed_keys = set()
 
     def _recreate(self, changes):
-        # If flipping to/from fullscreen, need to recreate the tilesView.  (This
+        # If flipping to/from fullscreen, need to recreate the window.  (This
         # is the case with both override_redirect method and
         # _NET_WM_STATE_FULLSCREEN).
         #
-        # A possible improvement could be to just hide the top tilesView,
-        # destroy the GLX tilesView, and reshow it again when leaving fullscreen.
-        # This would prevent the floating tilesView from being moved by the
+        # A possible improvement could be to just hide the top window,
+        # destroy the GLX window, and reshow it again when leaving fullscreen.
+        # This would prevent the floating window from being moved by the
         # WM.
         if ('fullscreen' in changes or 'resizable' in changes):
             # clear out the GLX context
@@ -195,7 +195,7 @@ class XlibWindow(BaseWindow):
         self._create()
 
     def _create(self):
-        # Unmap existing tilesView if necessary while we fiddle with it.
+        # Unmap existing window if necessary while we fiddle with it.
         if self._window and self._mapped:
             self._unmap()
 
@@ -203,7 +203,7 @@ class XlibWindow(BaseWindow):
         self._x_screen_id = self.display.x_screen
 
 
-        # Create X tilesView if not already existing.
+        # Create X window if not already existing.
         if not self._window:
             root = xlib.XRootWindow(self._x_display, self._x_screen_id)
 
@@ -223,7 +223,7 @@ class XlibWindow(BaseWindow):
                     self._x_display, self._x_screen_id)
             window_attributes.bit_gravity = xlib.StaticGravity
 
-            # Issue 287: Compiz on Intel/Mesa doesn't draw tilesView decoration
+            # Issue 287: Compiz on Intel/Mesa doesn't draw window decoration
             #            unless CWBackPixel is given in mask.  Should have
             #            no effect on other systems, so it's set
             #            unconditionally.
@@ -263,7 +263,7 @@ class XlibWindow(BaseWindow):
             # Setting null background pixmap disables drawing the background,
             # preventing flicker while resizing (in theory).
             #
-            # Issue 287: Compiz on Intel/Mesa doesn't draw tilesView decoration if
+            # Issue 287: Compiz on Intel/Mesa doesn't draw window decoration if
             #            this is called.  As it doesn't seem to have any
             #            effect anyway, it's just commented out.
             #xlib.XSetWindowBackgroundPixmap(self._x_display, self._window, 0)
@@ -284,7 +284,7 @@ class XlibWindow(BaseWindow):
             xlib.XSetWMProtocols(self._x_display, self._window,
                                  protocols, len(protocols))
 
-            # Create tilesView resize sync counter
+            # Create window resize sync counter
             if self._enable_xsync:
                 value = xsync.XSyncValue()
                 self._sync_counter = xlib.XID(
@@ -297,7 +297,7 @@ class XlibWindow(BaseWindow):
                                      atom, XA_CARDINAL, 32,
                                      xlib.PropModeReplace,
                                      cast(ptr, POINTER(c_ubyte)), 1)
-        # Set tilesView attributes
+        # Set window attributes
         attributes = xlib.XSetWindowAttributes()
         attributes_mask = 0
 
@@ -406,7 +406,7 @@ class XlibWindow(BaseWindow):
         if self._mapped:
             return
 
-        # Map the tilesView, wait for map event before continuing.
+        # Map the window, wait for map event before continuing.
         xlib.XSelectInput(
             self._x_display, self._window, xlib.StructureNotifyMask)
         xlib.XMapRaised(self._x_display, self._window)
@@ -518,7 +518,7 @@ class XlibWindow(BaseWindow):
 
     def set_size(self, width, height):
         if self._fullscreen:
-            raise WindowException('Cannot set size of fullscreen tilesView.')
+            raise WindowException('Cannot set size of fullscreen window.')
         self._width = width
         self._height = height
         if not self._resizable:
@@ -534,16 +534,16 @@ class XlibWindow(BaseWindow):
 
     def get_size(self):
         # XGetGeometry and XWindowAttributes seem to always return the
-        # original size of the tilesView, which is wrong after the user
+        # original size of the window, which is wrong after the user
         # has resized it.
         # XXX this is probably fixed now, with fix of resize.
         return self._width, self._height
 
     def set_location(self, x, y):
         if self._is_reparented():
-            # Assume the tilesView manager has reparented our top-level tilesView
+            # Assume the window manager has reparented our top-level window
             # only once, in which case attributes.x/y give the offset from
-            # the frame to the content tilesView.  Better solution would be
+            # the frame to the content window.  Better solution would be
             # to use _NET_FRAME_EXTENTS, where supported.
             attributes = xlib.XWindowAttributes()
             xlib.XGetWindowAttributes(self._x_display, self._window,
@@ -620,8 +620,8 @@ class XlibWindow(BaseWindow):
 
     def set_mouse_position(self, x, y):
         xlib.XWarpPointer(self._x_display,
-            0,              # src tilesView
-            self._window,   # dst tilesView
+            0,              # src window
+            self._window,   # dst window
             0, 0,           # src x, y
             0, 0,           # src w, h
             x, self._height - y,
@@ -645,7 +645,7 @@ class XlibWindow(BaseWindow):
                     0,
                     xlib.CurrentTime)
 
-                # Move pointer to center of tilesView
+                # Move pointer to center of window
                 x = self._width // 2
                 y = self._height // 2
                 self._mouse_exclusive_client = x, y
@@ -826,7 +826,7 @@ class XlibWindow(BaseWindow):
         e.xclient.type = xlib.ClientMessage
         e.xclient.message_type = net_wm_state
         e.xclient.display = cast(self._x_display, POINTER(xlib.Display))
-        e.xclient.tilesView = self._window
+        e.xclient.window = self._window
         e.xclient.format = 32
         e.xclient.data.l[0] = xlib.PropModePrepend
         for i, atom in enumerate(atoms):
@@ -843,15 +843,15 @@ class XlibWindow(BaseWindow):
 
         e = xlib.XEvent()
 
-        # Cache these in case tilesView is closed from an event handler
+        # Cache these in case window is closed from an event handler
         _x_display = self._x_display
         _window = self._window
         _view = self._view
 
-        # Check for the events specific to this tilesView
+        # Check for the events specific to this window
         while xlib.XCheckWindowEvent(_x_display, _window,
                                      0x1ffffff, byref(e)):
-            # Key events are filtered by the xlib tilesView event
+            # Key events are filtered by the xlib window event
             # handler so they get a shot at the prefiltered event.
             if e.xany.type not in (xlib.KeyPress, xlib.KeyRelease):
                 if xlib.XFilterEvent(e, 0):
@@ -861,14 +861,14 @@ class XlibWindow(BaseWindow):
         # Check for the events specific to this view
         while xlib.XCheckWindowEvent(_x_display, _view,
                                      0x1ffffff, byref(e)):
-            # Key events are filtered by the xlib tilesView event
+            # Key events are filtered by the xlib window event
             # handler so they get a shot at the prefiltered event.
             if e.xany.type not in (xlib.KeyPress, xlib.KeyRelease):
                 if xlib.XFilterEvent(e, 0):
                     continue
             self.dispatch_platform_event_view(e)
 
-        # Generic events for this tilesView (the tilesView close event).
+        # Generic events for this window (the window close event).
         while xlib.XCheckTypedWindowEvent(_x_display, _window, 
                 xlib.ClientMessage, byref(e)):
             self.dispatch_platform_event(e) 
@@ -944,7 +944,7 @@ class XlibWindow(BaseWindow):
                                    byref(symbol), None)
 
         # Give XIM a shot
-        filtered = xlib.XFilterEvent(ev, ev.xany.tilesView)
+        filtered = xlib.XFilterEvent(ev, ev.xany.window)
 
         if ev.type == xlib.KeyPress and not filtered:
             status = c_int()
@@ -1138,7 +1138,7 @@ class XlibWindow(BaseWindow):
     @XlibEventHandler(xlib.MotionNotify)
     def _event_motionnotify(self, ev):
         # Window motion looks for drags that are outside the view but within
-        # the tilesView.
+        # the window.
         buttons = 0
         if ev.xmotion.state & xlib.Button1MotionMask:
             buttons |= mouse.LEFT
@@ -1197,7 +1197,7 @@ class XlibWindow(BaseWindow):
         button = 1 << (ev.xbutton.button - 1)  # 1, 2, 3 -> 1, 2, 4
         modifiers = self._translate_modifiers(ev.xbutton.state)
         if ev.type == xlib.ButtonPress:
-            # override_redirect issue: manually activate this tilesView if
+            # override_redirect issue: manually activate this window if
             # fullscreen.
             if self._override_redirect and not self._active:
                 self.activate()
