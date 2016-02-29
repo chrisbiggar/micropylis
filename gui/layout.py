@@ -1,3 +1,5 @@
+from __future__ import division
+
 import pyglet
 from pyglet.gl import *
 from pyglet.graphics import OrderedGroup
@@ -8,7 +10,7 @@ from util import createHollowRect,createRect
 from gui import GUI_FG_RENDER_ORDER
 
 (HALIGN_LEFT, HALIGN_CENTER, HALIGN_RIGHT,
- VALIGN_TOP, VALIGN_CENTER, VALIGN_BOTTOM) = range(6)
+ VALIGN_TOP, VALIGN_CENTER, VALIGN_BOTTOM) = list(xrange(6))
 
 '''
     Widget
@@ -393,7 +395,7 @@ class VerticalLayout(Layout):
                 top -= item.height + self.padding
         elif self.align == HALIGN_CENTER:
             for item in self.content:
-                item.layout(x + self.width / 2 - item.width / 2,
+                item.layout(x + self.width // 2 - item.width // 2,
                             top - item.height)
                 top -= item.height + self.padding
         else:  # HALIGN_LEFT
@@ -406,7 +408,7 @@ class VerticalLayout(Layout):
         equally between all spacers.
     """
     def expand(self, width, height):
-        available = int((height - self.height) / len(self.expandable))
+        available = (height - self.height) // len(self.expandable)
         remainder = height - self.height - len(self.expandable) * available
         for item in self.expandable:
             if remainder > 0:
@@ -463,13 +465,13 @@ class HorizontalLayout(VerticalLayout):
                 left += item.width + self.padding
         elif self.align == HALIGN_CENTER:
             for item in self.content:
-                item.layout(left, y + self.height / 2 - item.height / 2)
+                item.layout(left, y + self.height // 2 - item.height // 2)
                 left += item.width + self.padding
                 # print str(item) + str((item.x,item.y,item.width,item.height))
 
     def expand(self, width, height):
         # print self.expandable
-        available = int((width - self.width) / len(self.expandable))
+        available = int((width - self.width) // len(self.expandable))
         remainder = height - self.height - len(self.expandable) * available
         for item in self.expandable:
             if remainder > 0:

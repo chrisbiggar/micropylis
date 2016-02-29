@@ -247,7 +247,7 @@ class ItemMenu(VerticalLayout):
             names.append(option[0])
         self.align = align
         menu_options = self._make_options(options)
-        self.options = dict(zip(names, menu_options))
+        self.options = dict(list(zip(names, menu_options)))
         self.on_select = on_select
         self.selected = None
         VerticalLayout.__init__(self, menu_options,
@@ -290,7 +290,7 @@ class ItemMenu(VerticalLayout):
         self.delete()
         self.selected = None
         menu_options = self._make_options(options)
-        self.options = dict(zip(options, menu_options))
+        self.options = dict(list(zip(options, menu_options)))
         self.set(menu_options)
         self.saved_dialog.set_needs_layout()
 

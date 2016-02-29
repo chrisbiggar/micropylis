@@ -4,7 +4,7 @@ from pyglet.gl import *
 from pyglet.graphics import vertexdomain
 from pyglet.graphics.vertexdomain import VertexList
 
-from tileImageLoader import TileAnimation
+from .tileImageLoader import TileAnimation
 from util import create2dArray
 
 
@@ -41,7 +41,7 @@ class TileMapRenderer(object):
         vlist._set_attribute_data(1, texCoords)
         return vlist
 
-    def reset(self, eng):
+    def resetEng(self, eng):
         self.engine = eng
 
         self.animated = dict()
@@ -76,18 +76,23 @@ class TileMapRenderer(object):
                         y2 = int(y1 + TILESIZE)
                         vertices.extend([x1, y1, x2, y1, x2, y2, x1, y2])
                         if eng.testBounds(x, y):
-                            texCoords.extend(self.tileImagesLoader.getTileImage(eng.getTile(x, y)).tex_coords)
+                            try:
+                                texCoords.extend(self.tileImagesLoader.getTileImage(eng.getTile(x, y)).tex_coords)
+                            except AttributeError:
+                                tile = self.tileImagesLoader.getTileImage(eng.getTile(x, y))
+                                assert isinstance(tile, TileAnimation)
+                                texCoords.extend(tile.frames[0].image.tex_coords)
                         else:
                             texCoords.extend([0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.])
-                self.regions[row][column] = self._add(len(vertices) / 2, vertices, texCoords)
+                self.regions[row][column] = self._add(len(vertices) // 2, vertices, texCoords)
 
     def setVisibleRegion(self, screenX, screenY, width, height):
         screenX = int(screenX)
         screenY = int(screenY)
-        left = max(screenX / TILESIZE / self.regionSize - 1, 0)
-        right = min((screenX + int(width)) / TILESIZE / self.regionSize + 2, len(self.regions))
-        top = max(screenY / TILESIZE / self.regionSize - 1, 0)
-        bottom = min((screenY + int(height)) / TILESIZE / self.regionSize + 2, len(self.regions[0]))
+        left = max(screenX // TILESIZE // self.regionSize - 1, 0)
+        right = min((screenX + int(width)) / TILESIZE // self.regionSize + 2, len(self.regions))
+        top = max(screenY // TILESIZE // self.regionSize - 1, 0)
+        bottom = min((screenY + int(height)) // TILESIZE // self.regionSize + 2, len(self.regions[0]))
 
         changes = []
         for x in xrange(len(self.regions)):
@@ -134,8 +139,8 @@ class TileMapRenderer(object):
                 self.regions[x][y].migrate(self.nullDomain)
 
     def setTile(self, x, y, tileNum):
-        rX = x / self.regionSize
-        rY = y / self.regionSize
+        rX = x // self.regionSize
+        rY = y // self.regionSize
         tImg = self.tileImagesLoader.getTileImage(tileNum)
         try:
             curFrameImg = tImg.getCurrentFrameImg()
@@ -144,7 +149,7 @@ class TileMapRenderer(object):
                 return
             self.visibleAnimated[(x, y)] = tImg
             if not tImg.loop:
-                tImg.reset()
+                tImg.resetEng()
             self._setTile((x, y), curFrameImg)
         except AttributeError:
             if self.regionsVisible[rX][rY]:
@@ -159,9 +164,10 @@ class TileMapRenderer(object):
                 except KeyError:
                     pass
 
-    def _setTile(self, (x, y), texRegion):
-        rX = x / self.regionSize
-        rY = y / self.regionSize
+    def _setTile(self, pos, texRegion):
+        (x, y) = pos
+        rX = x // self.regionSize
+        rY = y // self.regionSize
         i = ((x % self.regionSize) * self.regionSize + (y % self.regionSize)) * 12
         self.regions[rX][rY].tex_coords[i:i+12] = texRegion.tex_coords
 
@@ -169,15 +175,11 @@ class TileMapRenderer(object):
         for anim in self.animations:
             anim.update()
         finished = []
-        for key, anim in self.visibleAnimated.iteritems():
+        for key, anim in self.visibleAnimated.items():
             if not anim.loop and anim.getCurrentFrameDuration() is None:
                 finished.append(key)
                 continue
-            # same code as in _setTile - make sure these are identical.
-            rX = key[0] / self.regionSize
-            rY = key[1] / self.regionSize
-            i = ((key[0] % self.regionSize) * self.regionSize + (key[1] % self.regionSize)) * 12
-            self.regions[rX][rY].tex_coords[i:i+12] = anim.getCurrentFrameImg().tex_coords
+            self._setTile(key, anim.getCurrentFrameImg())
         for key in finished:
             del self.visibleAnimated[key]
         #print len(self.visibleAnimated)

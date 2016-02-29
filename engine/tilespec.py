@@ -1,5 +1,5 @@
 import re
-from cityDimension import CityDimension
+from .cityDimension import CityDimension
 
 
 '''
@@ -229,7 +229,7 @@ class TileSpec(object):
     def handleBuildingPart(self, text, tileMap):
         parts = text.split(",")
         if len(parts) != 3:
-            print "invalid building-part spec"
+            print("invalid building-part spec")
             return
         self.owner = tileMap.get(parts[0])
         self.ownerOffsetX = int(parts[1])
@@ -253,7 +253,13 @@ class TileSpec(object):
         if v is not None:
             return int(v)
         elif self.owner is not None:
-            return self.owner.getPollutionValue()
+            if self.owner.tileNum == self.tileNum:
+                if v is not None:
+                    return int(v)
+                else:
+                    return 0
+            else:
+                return self.owner.getPollutionValue()
         else:
             return 0
 

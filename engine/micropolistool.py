@@ -3,14 +3,14 @@ Created on Oct 20, 2015
 
 @author: chris
 '''
-from bulldozer import Bulldozer
+from .bulldozer import Bulldozer
 from engine.buildingTool import BuildingTool
 from engine.lineTool import LineTool
 from engine.toolStroke import ToolStroke
 
 # Tool types:
 BULLDOZER, WIRE, ROADS, RAIL, RESIDENTIAL, COMMERCIAL, INDUSTRIAL, FIRE \
-    , POLICE, STADIUM, PARK, SEAPORT, POWERPLANT, NUCLEAR, AIRPORT, QUERY = range(16)
+    , POLICE, STADIUM, PARK, SEAPORT, POWERPLANT, NUCLEAR, AIRPORT, QUERY = list(xrange(16))
 
 
 class MicropylisTool(object):
@@ -26,7 +26,7 @@ class MicropylisTool(object):
         try:
             class_ = types[toolType]
         except KeyError:
-            print "toolType not found: " + toolType
+            print("toolType not found: " + toolType)
             return None
         return class_
 

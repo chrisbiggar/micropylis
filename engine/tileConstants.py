@@ -6,7 +6,7 @@ Created on Sep 24, 2015
 
 @author: chris
 '''
-import tiles
+from . import tiles
 
 CLEAR = -1
 DIRT = 0
@@ -352,6 +352,7 @@ def getPollutionValue(tile):
 
     spec = tiles.get(tile)
     if spec is not None:
+        #print(tile)
         return spec.getPollutionValue()
     else:
         return 0

@@ -110,7 +110,7 @@ class ToolStroke(object):
         bi = tiles.get(base).getBuildingInfo()
         if bi is None:
             # TODO throw error
-            print "error. cannot applyzone to #" + str(base)
+            print("error. cannot applyzone to #" + str(base))
             return False
 
         cost = self.tool.getToolCost()
@@ -151,7 +151,7 @@ class ToolStroke(object):
             self.fixZone(TranslatedToolEffect(eff, width - 1, y))
 
     def applyParkTool(self, eff):
-        print "park"
+        print("park")
 
     def fixZoneSpecific(self, xPos, yPos):
         eff = ToolEffect(self.engine, xPos, yPos)

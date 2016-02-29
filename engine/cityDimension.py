@@ -10,6 +10,13 @@ class CityDimension(object):
         self.width = width
         self.height = height
 
+    def chkMinSize(self, size):
+        #print(self.width,self.height)
+        if self.width >= size and self.height >= size:
+            return True
+        else:
+            return False
+
     def hashCode(self):
         return self.width * 33 + self.height
 

@@ -42,13 +42,13 @@ class Properties(object):
         if type(key) is str and type(value) is str:
             self.processPair(key, value)
         else:
-            raise TypeError,'both key and value should be strings!'
+            raise TypeError('both key and value should be strings!')
         
     def size(self):
         return len(self._props)
         
     def propertyNames(self):
-        return self._props.keys()
+        return list(self._props.keys())
     
     def __getitem__(self, name):
         return self.getProperty(name)
@@ -118,7 +118,7 @@ class Properties(object):
         
         self._props[key] = value.strip()
         
-        if self._keyMap.has_key(key):
+        if key in self._keyMap:
             oldKey = self._keyMap.get(key)
             self._origProps[oldKey] = oldValue.strip()
         else:
@@ -127,15 +127,16 @@ class Properties(object):
         
     
     def load(self, stream):
-        if type(stream) is not file:
-            raise TypeError,'Argument should be a file object!'
+        '''if type(stream) is not file:
+            raise TypeError('Argument should be a file object!')'''
         if stream.mode != 'r':
-            raise ValueError,'Stream should be opened in read-only mode'
+            raise ValueError('Stream should be opened in read-only mode')
         
         try:
             lines = stream.readlines()
             self.__parse(lines)
-        except IOError, e:
+
+        except IOError as e:
             raise
         
         

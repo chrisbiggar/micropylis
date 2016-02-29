@@ -1,8 +1,4 @@
-'''
-Created on Oct 19, 2015
-
-@author: chris
-'''
+from __future__ import division
 from random import randint
 
 from engine import tileConstants
@@ -14,7 +10,7 @@ import tiles
 
 RESIDENTIAL, HOSPITAL_CHURCH, COMMERCIAL, INDUSTRIAL, COAL, NUCLEAR, \
 FIRESTATION, POLICESTATION, STADIUM_EMPTY, \
-STADIUM_FULL, AIRPORT, SEAPORT = range(6, 18)
+STADIUM_FULL, AIRPORT, SEAPORT = list(xrange(6, 18))
 
 '''
     MapScanner
@@ -192,7 +188,7 @@ class MapScanner(TileBehaviour):
     def doResidentialIn(self, pop, value):
         assert 0 <= value <= 3
         #print "do res in: " + str(pop) + " " + str(value)
-        z = self.city.pollutionMem[self.y/2][self.x/2]
+        z = self.city.pollutionMem[self.y//2][self.x//2]
         if z > 128:
             return
         #print "z not higher than 128"
@@ -215,7 +211,7 @@ class MapScanner(TileBehaviour):
 
         if pop < 40:
             #print "pop < 40: resPlop"
-            self.residentialPlop(pop / 8 - 1, value)
+            self.residentialPlop(pop // 8 - 1, value)
             self.adjustROG(8)
 
 
@@ -225,7 +221,7 @@ class MapScanner(TileBehaviour):
             self.adjustROG(8)
 
     def doCommercialIn(self, pop, value):
-        z = self.city.getLandValue(self.x, self.y) / 32
+        z = self.city.getLandValue(self.x, self.y) // 32
         if pop > z:
             return
 
@@ -234,15 +230,15 @@ class MapScanner(TileBehaviour):
             self.adjustROG(8)
 
     def residentialPlop(self, density, value):
-        base = (value * 4 + density) * 9 + tileConstants.RZB
+        base = int((value * 4 + density) * 9 + tileConstants.RZB)
         self.zonePlop(base)
 
     def comPlop(self, density, value):
-        base = (value * 5 + density) * 9 + CZB
+        base = int((value * 5 + density) * 9 + CZB)
         self.zonePlop(base)
 
     def indPlop(self, density, value):
-        base = (value * 4 + density) * 9 + IZB
+        base = int((value * 4 + density) * 9 + IZB)
         self.zonePlop(base)
 
     '''
@@ -317,7 +313,7 @@ class MapScanner(TileBehaviour):
 
         if pop > 16:
             # downgrade to a lower-density full-size residential
-            self.residentialPlop((pop - 24) / 8, value)
+            self.residentialPlop((pop - 24) // 8, value)
             self.adjustROG(-8)
             return
 
@@ -379,7 +375,7 @@ class MapScanner(TileBehaviour):
             return -3000
 
         value = self.city.getLandValue(self.x, self.y)
-        value -= self.city.pollutionMem[self.y/2][self.x/2]
+        value -= self.city.pollutionMem[self.y//2][self.x//2]
         #print value
 
         if value < 0:
@@ -403,7 +399,7 @@ class MapScanner(TileBehaviour):
         if traf < 0:
             return -3000
 
-        return self.city.comRate[self.y / 8][self.x / 8]
+        return self.city.comRate[self.y // 8][self.x // 8]
 
 
     '''
@@ -414,7 +410,7 @@ class MapScanner(TileBehaviour):
     '''
     def getCRValue(self):
         lVal = self.city.getLandValue(self.x, self.y)
-        lVal -= self.city.pollutionMem[self.y/2][self.x/2]
+        lVal -= self.city.pollutionMem[self.y//2][self.x//2]
 
         if lVal < 30:
             return 0
@@ -432,7 +428,7 @@ class MapScanner(TileBehaviour):
         +/- 8 amount corresponds to a full-size zone.
     '''
     def adjustROG(self, amount):
-        self.city.rateOGMem[self.y/8][self.x/8] += 4 * amount
+        self.city.rateOGMem[self.y//8][self.x//8] += 4 * amount
 
     def doHospitalChurch(self):
         powerOn = self.checkZonePower()
@@ -560,14 +556,14 @@ class MapScanner(TileBehaviour):
         if powerOn:
             z = self.city.policeEffect
         else:
-            z = self.city.policeEffect / 2
+            z = self.city.policeEffect // 2
 
         self.traffic.mapX = self.x
         self.traffic.mapY = self.y
         if not self.traffic.findParameterRoad():
-            z /= 2
+            z //= 2
 
-        #self.city.policeMap[self.y / 8][self.x / 8] += z
+        #self.city.policeMap[self.y // 8][self.x // 8] += z
 
     def doStadiumEmpty(self):
         powerOn = self.checkZonePower()

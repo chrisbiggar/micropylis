@@ -1,9 +1,12 @@
+from __future__ import division
 from random import randint
 
 from pyglet.gl import *
 from pyglet.graphics import OrderedGroup
 from pyglet.sprite import Sprite
 from pyglet.window import key
+
+
 
 import layout
 import microWindow
@@ -42,8 +45,8 @@ class ViewportGroup(OrderedGroup):
     def __init__(self, order):
         super(ViewportGroup, self).__init__(order)
 
-        self.zoomSpeed = float(gui.config.get('misc', 'ZOOM_TRANSITION_SPEED'))
-        self.zoomInFactor = float(gui.config.get('misc', 'ZOOM_INCREMENT'))
+        self.zoomSpeed = 1 #float(gui.config.get('misc', 'ZOOM_TRANSITION_SPEED'))
+        self.zoomInFactor = 1.1 # float(gui.config.get('misc', 'ZOOM_INCREMENT'))
         self.zoomOutFactor = 1 / self.zoomInFactor
         self.zoomLevel = 1
         self.targetZoom = self.zoomLevel
@@ -88,8 +91,8 @@ class ViewportGroup(OrderedGroup):
         self.widgetWidth = width
         self.widgetHeight = height
 
-        x = self.zoomX or (self.widgetWidth / 2)
-        y = self.zoomY or (self.widgetHeight / 2)
+        x = self.zoomX or (self.widgetWidth // 2)
+        y = self.zoomY or (self.widgetHeight // 2)
         self._setZoom(x, y, None)
 
     def gotoSpot(self, x, y, zoom):
@@ -135,11 +138,11 @@ class ViewportGroup(OrderedGroup):
     def getViewport(self):
         newZoomLevel = self.targetZoom
         if not self.zoomX or not self.zoomY:
-            self.zoomX = self.left + (self.widgetWidth/2)
-            self.zoomY = self.bottom + (self.widgetHeight/2)
+            self.zoomX = self.left + (self.widgetWidth // 2)
+            self.zoomY = self.bottom + (self.widgetHeight // 2)
 
-        mouseX = self.zoomX / float(self.renderWidth)
-        mouseY = self.zoomY / float(self.renderHeight)
+        mouseX = self.zoomX // float(self.renderWidth)
+        mouseY = self.zoomY // float(self.renderHeight)
 
         mouseXInWorld = self.left + mouseX * self.zoomedWidth
         mouseYInWorld = self.bottom + mouseY * self.zoomedHeight
@@ -232,6 +235,7 @@ class ViewportGroup(OrderedGroup):
 
     def setZoom(self, x, y, newZoomLevel, keepFocus=False):
         self.targetZoom = newZoomLevel
+        #print x,y
         self.zoomX = x
         self.zoomY = y
         self.keepFocus = keepFocus
@@ -295,8 +299,8 @@ class ViewportGroup(OrderedGroup):
         mouse_x_in_world = self.left + mouse_x * self.zoomedWidth
         mouse_y_in_world = self.bottom + mouse_y * self.zoomedHeight
 
-        return CityLocation(int(mouse_x_in_world / TILESIZE),
-                            int(mouse_y_in_world / TILESIZE))
+        return CityLocation(int(mouse_x_in_world // TILESIZE),
+                            int(mouse_y_in_world // TILESIZE))
 
     '''
         sets the viewport
@@ -443,7 +447,7 @@ class CityView(layout.Spacer):
         self.engine = None
 
         self.keys = microWindow.Keys(self)
-        self.scrollSpeed = int(gui.config.get('misc', 'KEYBOARD_SCROLL_SPEED'))
+        self.scrollSpeed = 12 # int(gui.config.get('misc', 'KEYBOARD_SCROLL_SPEED'))
 
     def setRenderSize(self, width, height):
         self.renderWidth = width
@@ -465,14 +469,14 @@ class CityView(layout.Spacer):
 
     '''
 
-    def reset(self, eng):
+    def resetEng(self, eng):
         self.viewportGroup.setFocus(0, 0)
         self.toolPreview = None
         self.deletePowerIndicators()
         self.deleteToolCursor()
 
         self.engine = eng
-        self.tileMapRenderer.reset(eng)
+        self.tileMapRenderer.resetEng(eng)
 
         if self.engine is not None:
             eng.push_handlers(self)
@@ -505,7 +509,6 @@ class CityView(layout.Spacer):
             y = tile[1]
             cell = self.engine.getTile(x, y)
             self.tileMapRenderer.setTile(x, y, cell)
-
 
     def on_power_indicator_changed(self, pos):
         x = pos[0]
@@ -580,7 +583,7 @@ class CityView(layout.Spacer):
 
         # tc.borderColor = (0, 200, 200)
         roadsBg = gui.config.get('tools.bgcolor', tool.name)
-        newCursor.fillColor = map(int, tuple(roadsBg.split(',')))
+        newCursor.fillColor = list(map(int, tuple(roadsBg.split(','))))
 
         self.setToolCursor(newCursor)
 
@@ -618,10 +621,10 @@ class CityView(layout.Spacer):
     '''
 
     def expandMapCoords(self, rect):
-        x = self.toolCursor.rect.x * TILESIZE
-        y = (self.toolCursor.rect.y - 1) * TILESIZE + TILESIZE
-        x2 = x + self.toolCursor.rect.width * TILESIZE
-        y2 = y + self.toolCursor.rect.height * TILESIZE
+        x = int(rect.x * TILESIZE)
+        y = int((rect.y - 1) * TILESIZE + TILESIZE)
+        x2 = int(x + rect.width * TILESIZE)
+        y2 = int(y + rect.height * TILESIZE)
         return (x, y, x2, y2)
 
     '''
@@ -665,10 +668,10 @@ class CityView(layout.Spacer):
         assert newValue or increment and not (newValue and increment)
 
         if increment:
-            self.viewportGroup.changeZoom(self.width / 2, self.height / 2,
+            self.viewportGroup.changeZoom(self.width // 2, self.height // 2,
                                           -increment)
         else:
-            self.viewportGroup.setZoom(self.width / 2, self.height / 2,
+            self.viewportGroup.setZoom(self.width // 2, self.height // 2,
                                        newValue)
 
         self.tileMapRenderer.setVisibleRegion(*self.viewportGroup.getViewport())

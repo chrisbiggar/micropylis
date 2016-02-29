@@ -9,7 +9,7 @@ from engine import tileConstants
 from engine.tileBehaviour import TileBehaviour
 from engine.tileConstants import isCombustible, isZoneCenter, isConductive, isOverWater
 
-FIRE, FLOOD, RADIOACTIVE, ROAD, RAIL, EXPLOSION = range(6)
+FIRE, FLOOD, RADIOACTIVE, ROAD, RAIL, EXPLOSION = list(xrange(6))
 
 
 class TerrainBehaviour(TileBehaviour):

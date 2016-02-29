@@ -16,7 +16,7 @@ def tupleFromString(string):
     
     
 def create2dArray(width, height, fillValue=0):
-    return [[fillValue for y in range(height)] for x in range(width)]
+    return [[fillValue for y in xrange(height)] for x in xrange(width)]
 
 def writeShort(aFile, short):
     pass

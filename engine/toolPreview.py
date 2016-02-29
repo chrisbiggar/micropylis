@@ -1,6 +1,6 @@
 from engine.cityRect import CityRect
 from engine.tileConstants import CLEAR
-from toolResult import ToolResult
+from .toolResult import ToolResult
 from util import create2dArray
 
 '''

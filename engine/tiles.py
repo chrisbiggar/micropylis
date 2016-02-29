@@ -1,4 +1,4 @@
-from tilespec import parseTileSpec, generateTilenames
+from .tilespec import parseTileSpec, generateTilenames
 from util.properties import Properties
 
 '''

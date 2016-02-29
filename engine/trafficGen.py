@@ -1,7 +1,7 @@
 from random import randint
 
-from cityLocation import CityLocation
-from tileConstants import (ROADBASE,LASTRAIL,POWERBASE,LASTPOWER,
+from .cityLocation import CityLocation
+from .tileConstants import (ROADBASE,LASTRAIL,POWERBASE,LASTPOWER,
                            COMBASE,NUCLEAR,LHTHR,PORT)
 
 
@@ -138,7 +138,7 @@ class TrafficGen(object):
             low = LHTHR
             high = COMBASE
         else:
-            print "unreachable"
+            print("unreachable")
 
         if self.mapY > 0:
             tile = self.city.getTile(self.mapX, self.mapY - 1)

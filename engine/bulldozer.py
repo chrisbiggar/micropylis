@@ -6,9 +6,9 @@ Created on Oct 24, 2015
 from random import randint
 
 import micropolistool
-from toolStroke import ToolStroke
-from translatedToolEffect import TranslatedToolEffect
-from tileConstants import (isZoneCenter, getZoneSizeFor, isOverWater, RIVER, DIRT,
+from .toolStroke import ToolStroke
+from .translatedToolEffect import TranslatedToolEffect
+from .tileConstants import (isZoneCenter, getZoneSizeFor, isOverWater, RIVER, DIRT,
                             CLEAR, RADTILE, TINYEXP)
 
 

@@ -1,8 +1,5 @@
-'''
-Created on Dec 31, 2015
+from __future__ import division
 
-@author: chris
-'''
 import pyglet
 from pyglet.gl import *
 from pyglet.window import mouse
@@ -16,9 +13,9 @@ from engine import Engine, micropolistool, tiles
 import gui
 from gui.speed import speeds
 from gui.cityView import CityView
-from gui.controlPanel import ControlPanel
-from layout import LayoutWindow, HorizontalLayout
-import dialogs
+from gui.controlView import ControlView
+from .layout import LayoutWindow, HorizontalLayout
+from . import dialogs
 
 
 class Keys(pyglet.window.key.KeyStateHandler):
@@ -74,13 +71,13 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.engine = None
 
         self.cityView = CityView()
-        self.controlPanel = ControlPanel(self, self.cityView)
+        self.controlView = ControlView(self, self.cityView)
         self.push_handlers(self.cityView,
-                           self.controlPanel,
+                           self.controlView,
                            self.cityView.keys)
         LayoutWindow.__init__(self, HorizontalLayout([
             self.cityView,
-            self.controlPanel],
+            self.controlView],
             padding=0))
 
         # tool vars:
@@ -101,10 +98,8 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         # setup kytten and main dialog:
         dialogs.window = self
         self.register_event_type('on_update')  # called in our update method
-        self.mainDialog = dialogs.ToolDialog(self)
-        self.push_handlers(self.mainDialog)
-        self.cityLoaded = False
-        # MainMenuDialog.toggle()
+        self.toolDialog = dialogs.ToolDialog(self)
+        self.push_handlers(self.toolDialog)
 
         for (name, font) in gui.config.items('font_files'):
             pyglet.font.add_file(font)
@@ -125,23 +120,30 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         #music = pyglet.media.load('res/music.mp3')
         #music.play()
 
+    def cityLoaded(self):
+        return False if self.engine is None else True
+
     def newCity(self, gLvl):
-        self.cityLoaded = True
+        if self.engine is not None:
+            pyglet.clock.unschedule(self.engine.simulate)
         self.engine = Engine()
         self.engine.setGameLevel(gLvl)
         self.engine.setFunds(gameLevel.getStartingFunds(gLvl))
-        self.cityView.reset(self.engine)
-        self.controlPanel.reset(self, self.engine)
-        self.engine.newCity()
+        self.cityView.resetEng(self.engine)
+        self.controlView.resetEng(self.engine)
         self.setSpeed(speeds['Paused'])
 
     def loadCity(self, filePath):
-        self.cityLoaded = True
-        self.engine = Engine()
-        self.cityView.reset(self.engine)
-        self.controlPanel.reset(self, self.engine)
-        self.engine.loadCity(filePath)
-        self.setSpeed(speeds['Paused'])
+        if self.engine is not None:
+            pyglet.clock.unschedule(self.engine.simulate)
+        newSpeedInt, self.engine = Engine.loadCity(filePath)
+        self.cityView.resetEng(self.engine)
+        self.controlView.resetEng(self.engine)
+        if 0 <= newSpeedInt < len(speeds):
+            print speeds.items()[newSpeedInt][0]
+            self.setSpeed(speeds.items()[newSpeedInt][1])
+        else:
+            self.setSpeed(speeds['Paused'])
 
     def toggleFullscreen(self):
         if not self._fullscreen:
@@ -231,9 +233,9 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         pyglet.window.Window.set_mouse_cursor(self, cursor)
 
     def incrementSpeed(self):
-        curSpeedIndex = speeds.keys().index(self.speed.name)
-        newSpeedNum = (curSpeedIndex + 1) % len(speeds)
-        self.setSpeed(speeds.items()[newSpeedNum][1])
+        curSpeedAsInt = list(speeds.keys()).index(self.speed.name)
+        newSpeedAsInt = (curSpeedAsInt + 1) % len(speeds)
+        self.setSpeed(list(speeds.items())[newSpeedAsInt][1])
 
     def setSpeed(self, newSpeed):
         if newSpeed == self.speed:
@@ -242,16 +244,15 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.dispatch_event('speed_changed', newSpeed)
         pyglet.clock.unschedule(self.engine.simulate)
         self.cityView.setSpeed(self.speed)
-        #print self.speed.animCoefficient
-        #return
-        if self.speed != speeds['Paused']:
+        print newSpeed, speeds['Paused']
+        if self.speed is not speeds['Paused']:
             pyglet.clock.schedule_interval(self.engine.simulate, newSpeed.delay)
 
     def update(self, dt):
         self.dispatch_event('on_update', dt)  # kytten needs this
         LayoutWindow.update(self, self.width, self.height)
         self.cityView.update(dt)
-        self.controlPanel.update(dt)
+        self.controlView.update(dt)
 
     def on_draw(self):
         self.clear()
@@ -284,6 +285,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         
         '''
         loc = self.cityView.screenCoordsToCityLocation(x, y)
+        #print(loc)
         self.lastX = loc.x
         self.lastY = loc.y
         self.drag = False
@@ -311,6 +313,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             self.cityView.moveView(dx, dy)
             return
         loc = self.cityView.screenCoordsToCityLocation(x, y)
+        #print(loc)
         tx = loc.x
         ty = loc.y
         if tx == self.lastX and ty == self.lastY:
@@ -326,6 +329,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             self.doQueryTool(tx, ty)
 
     def onToolUp(self, x, y, button, modifiers):
+        #print button,modifiers
         if self.toolStroke is not None:
             self.cityView.setToolPreview(None)
             self.showToolResult(self.toolStroke.getLocation(),
@@ -348,7 +352,8 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             return
 
         loc = self.cityView.screenCoordsToCityLocation(x, y)
-        # print loc
+        #print(loc)
+        # print(loc)
         x = loc.x
         y = loc.y
         w = self.currentTool.getWidth()
@@ -378,15 +383,15 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         if result.value == ToolResult.SUCCESS:
             formatString = gui.cityMessages.get('toolresults', 'SUCCESS')
             msg = formatString.format(cost=str(result.cost))
-            self.controlPanel.addInfoMessage(msg)
+            self.controlView.addInfoMessage(msg)
         elif result.value == ToolResult.INSUFFICIENT_FUNDS:
-            self.controlPanel.addInfoMessage(
+            self.controlView.addInfoMessage(
                 gui.cityMessages.get('toolresults', 'INSUFFICIENT_FUNDS'))
         elif result.value == ToolResult.UH_OH:
-            self.controlPanel.addInfoMessage(
+            self.controlView.addInfoMessage(
                 gui.cityMessages.get('toolresults', 'BULLDOZE_FIRST'))
         elif result.value == ToolResult.NONE:
-            self.controlPanel.addInfoMessage(
+            self.controlView.addInfoMessage(
                 gui.cityMessages.get('toolresults', 'NONE'))
 
     def doQueryTool(self, xPos, yPos):
@@ -400,4 +405,4 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             str(xPos), str(yPos), str(self.engine.hasPower(xPos, yPos)))
         '''queryMsg = "Power of ({0},{1}): {2}".format(
                 str(xPos), str(yPos), str(self.engine.getTile(xPos, yPos)))'''
-        self.controlPanel.addInfoMessage(queryMsg)
+        self.controlView.addInfoMessage(queryMsg)

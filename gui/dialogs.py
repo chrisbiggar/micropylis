@@ -6,6 +6,8 @@ All kytten dialog classes are in this module.
 
 @author: chris
 '''
+from __future__ import division
+
 import os
 
 import pyglet
@@ -19,8 +21,10 @@ from kytten.layout import VerticalLayout
 from kytten.widgets import Label, Spacer
 from pyglet.graphics import Batch
 
-import widgets
+from . import widgets
 import gui
+
+from engine import gameLevel
 
 def on_escape(dialog):
     '''
@@ -60,6 +64,7 @@ class SingularDialog(Dialog):
 
     @classmethod
     def toggle(cls):
+        print cls.current
         if cls.current is None:
             cls()
         else:
@@ -103,7 +108,6 @@ nothing interesting here.
 
 class MainMenuDialog(SingularDialog):
     def __init__(self):
-        print "mainmenu"
         self.onCreation(self.__class__)
         frame = self.createLayout()
         super(MainMenuDialog, self).__init__(frame,
@@ -115,7 +119,7 @@ class MainMenuDialog(SingularDialog):
 
     def createLayout(self):
         title = Label(text="Micropylis")
-        if window.cityLoaded:
+        if window.cityLoaded():
             options = ["Back", "New City", "Load City",
                        "Save City", "Options", "Credits", "Quit"]
         else:
@@ -135,12 +139,15 @@ class MainMenuDialog(SingularDialog):
 
         def on_save_select(filePath):
             # window.saveCity(filePath)
-            print "save city as " + filePath
+            print("save city as " + filePath)
             saveDialog.tearDown()
             self.teardown()
 
         if choice == "Back":
             self.on_cancel()
+        elif choice == "New City":
+            window.newCity(gameLevel.MIN_LEVEL)
+            self.teardown()
         elif choice == "Load City":
             loadDialog = FileLoadDialog(
                 os.getcwd() + '\cities',
@@ -319,15 +326,15 @@ class ToolDialog(Dialog):
                                          batch=batch,
                                          anchor=kytten.ANCHOR_TOP_LEFT,
                                          theme=theme)
-        firstToolId = self.toolSection.options.itervalues().next().id
+        firstToolId = 'Pan'
         self.toolSection.select(firstToolId)
         self.width = 300
 
     def createLayout(self):
         iconSize = int(gui.config.get('tools', 'TOOLICONSIZE'))
         iconSheet = pyglet.image.load(self.iconsheetFilename)
-        rows = iconSheet.height / iconSize
-        columns = iconSheet.width / iconSize
+        rows = iconSheet.height // iconSize
+        columns = iconSheet.width // iconSize
         iconSheet = pyglet.image.TextureGrid(
             pyglet.image.ImageGrid(
                 iconSheet, rows, columns))
@@ -337,7 +344,7 @@ class ToolDialog(Dialog):
         with open("res/toolsorder") as tOFile:
             for line in tOFile:
                 name = line.strip().lower().title()
-                row = rows - 1 - (i / columns)
+                row = rows - 1 - (i // columns)
                 column = i % columns
                 toolSet.append((name, iconSheet[row, column]))
                 i += 1

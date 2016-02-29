@@ -3,6 +3,7 @@ Created on Oct 24, 2015
 
 @author: chris
 '''
+
 import micropolistool
 from engine.cityRect import CityRect
 from engine.translatedToolEffect import TranslatedToolEffect
@@ -176,7 +177,7 @@ class LineTool(ToolStroke):
 
         else:
             if tile != DIRT:
-                print self.engine.autoBulldoze
+                print(self.engine.autoBulldoze)
                 if canAutoBulldozeRRW(tile) and self.engine.autoBulldoze:
                     cost += 1
                 else:

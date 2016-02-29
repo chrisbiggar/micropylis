@@ -21,11 +21,11 @@ class Speed(object):
         self.name = None  # set by key string in speeds
 
 speeds = OrderedDict((('Paused', Speed(None, 999)),
-                       ('Slow', Speed(0.625, 0.6)),
-                       ('Normal', Speed(0.125, 0.3)),
-                       ('Fast', Speed(0.025, 0.1)),
-                       ('Super Fast', Speed(0.025, 0.02))))
+                       ('Slow', Speed(0.625, 1.25)),
+                       ('Normal', Speed(0.125, 0.25)),
+                       ('Fast', Speed(0.025, 0.05)),
+                       ('Super Fast', Speed(0.025, 0.025))))
 
 
-for speedKey in speeds.keys():
+for speedKey in list(speeds.keys()):
     speeds[speedKey].name = speedKey

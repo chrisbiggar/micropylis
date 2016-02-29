@@ -3,6 +3,8 @@ Created on Aug 30, 2015
 
 @author: chris
 '''
+from __future__ import division
+
 import pyglet
 from pyglet.image import (TextureGrid, AbstractImage,
     AbstractImageSequence, TextureRegion, UniformTextureSequence,
@@ -253,7 +255,7 @@ class BorderedAnimatedTextureGrid(TextureRegion, UniformTextureSequence):
 
                 result = []
                 i = row1 * self.columns
-                for row in range(row1, row2):
+                for row in xrange(row1, row2):
                     result += self.items[i + col1:i + col2]
                     i += self.columns
                 return result
@@ -307,8 +309,8 @@ class TileImageLoader(object):
 
     def loadTileImages(self):
         tileSheet = pyglet.image.load(self._tileSheetFilename)
-        rows = tileSheet.height / (self.tileSize + self.padding)
-        columns = tileSheet.width / (self.tileSize + self.padding)
+        rows = tileSheet.height // (self.tileSize + self.padding)
+        columns = tileSheet.width // (self.tileSize + self.padding)
         return BorderedAnimatedTextureGrid(
             self.DEFAULT_ANIMATION_DELAY,
             BorderedImageGrid(tileSheet, rows, columns,

@@ -4,8 +4,8 @@ Created on Oct 22, 2015
 @author: chris
 '''
 from engine.tileConstants import CLEAR
-from toolPreview import ToolPreview
-from toolResult import ToolResult
+from .toolPreview import ToolPreview
+from .toolResult import ToolResult
 
 '''
     ToolEffect

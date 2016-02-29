@@ -1,3 +1,5 @@
+from __future__ import division
+
 import pyglet
 from pyglet.gl import *
 from pyglet.text import Label
@@ -6,11 +8,11 @@ from pyglet.text.layout import TextLayout
 from pyglet.sprite import Sprite
 
 import gui
-from dialogs import CityEvalDialog, BudgetDialog
+from .dialogs import CityEvalDialog, BudgetDialog
 from gui import GUI_BG_RENDER_ORDER, GUI_FG_RENDER_ORDER
 from gui.dialogs import MainMenuDialog
 from gui.layout import LayoutLabel
-from layout import Widget, Frame, VerticalLayout, \
+from .layout import Widget, Frame, VerticalLayout, \
     HALIGN_RIGHT, Spacer, ButtonLabel
 
 from util import createRect, createHollowRect
@@ -64,13 +66,11 @@ class MessageQueue(Widget):
     def __init__(self, padding=0):
         super(MessageQueue, self).__init__()
 
-        self.engine = None
-
         self.font = gui.config.get('control_panel', 'MSG_QUEUE_FONT')
         self.titleLabelText = gui.config.get('control_panel_strings', 'MSG_QUEUE_TITLE')
 
         bgColorStr = gui.config.get('control_panel', 'MSG_QUEUE_BG_COLOR')
-        self.bgColor = map(int, tuple(bgColorStr.split(',')))
+        self.bgColor = list(map(int, tuple(bgColorStr.split(','))))
 
         self.titleLabel = None
         self.textLayout = None
@@ -84,12 +84,11 @@ class MessageQueue(Widget):
         self.currentPos = 0
         self.numMsgs = 0
 
-        self.doc = None
-        self.msgs = None
-        self.reset()
+        self.doc = FormattedDocument()
+        self.msgs = list()
 
     def reset(self):
-        self.doc = FormattedDocument()
+        self.doc.text = ""
         self.msgs = list()
 
     def delete(self):
@@ -179,6 +178,7 @@ class MessageQueue(Widget):
                 msg.index -= len(item)
 
     def addMessage(self, message):
+        #print message
         if len(self.msgs) and message == self.msgs[0].string:
             return
 
@@ -197,7 +197,7 @@ class MessageQueue(Widget):
 
         if self.textLayout is not None:
             while (self.textLayout.content_height >= self.height
-                - self.titleLabel.content_height + 14):
+                    - self.titleLabel.content_height + 14):
                 item = self.msgs[len(self.msgs) - 1]
                 self.deleteMsg(item)
 
@@ -292,15 +292,15 @@ class DemandIndicator(Widget):
 
         resValve = -self.engine.resValve
         ry0 = self.LOWER_EDGE if resValve <= 0 else self.UPPER_EDGE
-        ry1 = ry0 - resValve / 100
+        ry1 = ry0 - resValve // 100
 
         comValve = -self.engine.comValve
         cy0 = self.LOWER_EDGE if comValve <= 0 else self.UPPER_EDGE
-        cy1 = cy0 - comValve / 100
+        cy1 = cy0 - comValve // 100
 
         indValve = -self.engine.indValve
         iy0 = self.LOWER_EDGE if indValve <= 0 else self.UPPER_EDGE
-        iy1 = iy0 - indValve / 100
+        iy1 = iy0 - indValve // 100
 
         if ry1 - ry0 > self.MAX_LENGTH:
             ry1 = ry0 + self.MAX_LENGTH
@@ -354,6 +354,7 @@ class MenuView(pyglet.event.EventDispatcher):
 class CityMenu(MenuView):
     def __init__(self, controlPanel, microWindow):
         self.microWindow = microWindow
+        microWindow.push_handlers(self)
 
         self.months = []
         for (name, month) in gui.config.items('month_strings'):
@@ -406,11 +407,11 @@ class CityMenu(MenuView):
                               padding=6,
                               fillWidth=True)
 
-    def reset(self, eng):
-        self.on_funds_changed(eng.budget.funds)
+    def resetEng(self, eng):
+        eng.push_handlers(self)
+        self.on_funds_changed(eng.getFunds())
         self.on_census_changed(0)
-        self.lastCityTime = eng.cityTime - 4
-        self.on_date_changed(eng.cityTime)
+        self.on_date_changed(eng.getCityTime(), force=True)
         self.demandIndicator.reset(eng)
 
     def speedAction(self):
@@ -434,16 +435,16 @@ class CityMenu(MenuView):
     def speed_changed(self, newSpeed):
         self.speedButton.set_text(newSpeed.name + self.speedText)
 
-    def on_date_changed(self, cityTime):
-        if cityTime - self.lastCityTime >= 4:
+    def on_date_changed(self, cityTime, force=False):
+        if cityTime - self.lastCityTime >= 4 or force:
             self.lastCityTime = cityTime
-            d = self.formatGameDate(cityTime)
             if self.dateButton is not None:
-                self.dateButton.set_text(d)
+                self.dateButton.set_text(self.formatGameDate(cityTime))
+        print self.lastCityTime, cityTime
 
     def formatGameDate(self, cityTime):
-        year = 1900 + cityTime / 48
-        month = self.months[(cityTime % 48) / 4]
+        year = 1900 + cityTime // 48
+        month = self.months[(cityTime % 48) // 4]
         # d = "Week " + str((cityTime % 4) + 1)
         return "{} {}".format(month, year)
 
@@ -659,7 +660,7 @@ class DataVisualsMenu(MenuView):
 '''
 
 
-class ControlPanel(Frame, pyglet.event.EventDispatcher):
+class ControlView(Frame, pyglet.event.EventDispatcher):
     WIDTH = 300
     DEFAULT_MENU = 'CityMenu'
 
@@ -675,19 +676,18 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
             'CityMenu': self.cityMenu,
             'DataVisualsMenu': DataVisualsMenu(self, cityView)}
 
-        self.setLayout(self.DEFAULT_MENU)
-        super(ControlPanel, self).__init__(self.content)
+        self._setLayout(self.DEFAULT_MENU)
+        super(ControlView, self).__init__(self.content)
 
         self.minWindowWidth = int(gui.config.get('control_panel', 'MIN_WINDOW_WIDTH'))
         bgColorStr = gui.config.get('control_panel', 'BG_COLOR')
-        self.bgColor = map(int, tuple(bgColorStr.split(',')))
+        self.bgColor = list(map(int, tuple(bgColorStr.split(','))))
 
-    def reset(self, window, eng):
+    def resetEng(self, eng):
         self.msgs.reset()
         if eng:
-            self.cityMenu.reset(eng)
-            eng.push_handlers(self, self.cityMenu)
-            window.push_handlers(self, self.cityMenu)
+            self.cityMenu.resetEng(eng)
+            eng.push_handlers(self)
 
     def speed_changed(self, newSpeed):
         self.addInfoMessage(newSpeed.name + " Speed")
@@ -700,7 +700,7 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
         if frame.width >= self.minWindowWidth:
             self.enable()
         if self.enabled:
-            super(ControlPanel, self).size(frame)
+            super(ControlView, self).size(frame)
             self.width, self.height = self.WIDTH, frame.height
 
     def expand(self, width, height):
@@ -708,33 +708,33 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
         self.width = self.WIDTH
 
     def layout(self, x, y):
-        super(ControlPanel, self).layout(x, y)
+        super(ControlView, self).layout(x, y)
         if self.enabled:
             self.createBg() # immutatable
             # print self.content.content[0].width
 
     '''
-        Will add specified menu to layout, removing the old.
+        adds specified menu to layout, removing the old.
 
         :param viewName: string name of menu
     '''
     def switchMenu(self, viewName=None):
         oldContent = self.content
         oldContent.delete()
-        self.setLayout(viewName)
+        self._setLayout(viewName)
         self.setNeedsLayout()
 
     '''
         Returns a new layout object with the specified menu inserted.
     '''
-    def setLayout(self, menuName):
+    def _setLayout(self, menuName):
 
         if not menuName:
             menuName = 'CityMenu'
         try:
             self.currentView = self.views[menuName].getLayout()
         except KeyError:
-            print "Invalid MenuView Name"
+            print("Invalid MenuView Name")
             return
         self.content = VerticalLayout([self.currentView,
                                        Spacer(height=10),
@@ -748,7 +748,7 @@ class ControlPanel(Frame, pyglet.event.EventDispatcher):
         if self.border is not None:
             self.border.delete()
             self.border = None
-        super(ControlPanel, self).delete()
+        super(ControlView, self).delete()
 
     def createBg(self):
         self.bg = createRect(self.x, self.y,

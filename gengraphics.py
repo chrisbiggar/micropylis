@@ -17,10 +17,10 @@ def main():
     
     if args.tiles:
         makeTiles.make(16, 'res/tiles.rc', 'res/tiles')
-        print "Gen Tilesheets Done."
+        print("Gen Tilesheets Done.")
     if args.toolicons:
         makeToolIcons.make("res/toolicons", 38, 38, 2)
-        print "Gen ToolIcons Done."
+        print("Gen ToolIcons Done.")
     
 
 

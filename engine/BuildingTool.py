@@ -37,4 +37,4 @@ class BuildingTool(ToolStroke):
         elif self.tool.type == micropolistool.AIRPORT:
             return self.applyZone(eff, tileConstants.AIRPORT)
         else:
-            print "Unexpected Tool #: " + str(self.tool.type)
+            print("Unexpected Tool #: " + str(self.tool.type))
