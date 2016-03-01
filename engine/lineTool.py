@@ -177,7 +177,6 @@ class LineTool(ToolStroke):
 
         else:
             if tile != DIRT:
-                print(self.engine.autoBulldoze)
                 if canAutoBulldozeRRW(tile) and self.engine.autoBulldoze:
                     cost += 1
                 else:

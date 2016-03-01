@@ -18,5 +18,6 @@ if __name__ == '__main__':
     '''import os, psutil
     p = psutil.Process(os.getpid())
     p.nice(psutil.HIGH_PRIORITY_CLASS)'''
+
     app = MicroWindow()
     pyglet.app.run()

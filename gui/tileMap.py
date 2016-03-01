@@ -18,7 +18,7 @@ TILESIZE = 16
 
 class TileMapRenderer(object):
     def __init__(self, tileImagesLoader, group):
-        self.engine = None
+        self._engine = None
         self.tileImagesLoader = tileImagesLoader
         self.texture = self.tileImagesLoader.getTexture()
         self.animations = self.tileImagesLoader.getAnimations()
@@ -42,28 +42,26 @@ class TileMapRenderer(object):
         return vlist
 
     def resetEng(self, eng):
-        self.engine = eng
-
+        self._engine = eng
         self.animated = dict()
         self.visibleAnimated = dict()
-
-        if eng is None:
-            return
-
         self.domain = vertexdomain.create_domain(*('v2i', 't3f'))
         self.nullDomain = vertexdomain.create_domain(*('v2i', 't3f'))
 
-        rows = int(math.ceil(float(eng.getWidth()) / self.regionSize))
-        columns = int(math.ceil(float(eng.getHeight()) / self.regionSize))
         if self.regions is not None:
-            for row in xrange(rows):
-                for column in xrange(columns):
+            for row in xrange(self.rows):
+                for column in xrange(self.columns):
                     self.regions[row][column].delete()
 
-        self.regions = create2dArray(rows, columns)
-        self.regionsVisible = create2dArray(rows, columns, True)
-        for row in xrange(rows):
-            for column in xrange(columns):
+        if eng is None:
+            return
+        self.rows = int(math.ceil(float(eng.getWidth()) / self.regionSize))
+        self.columns = int(math.ceil(float(eng.getHeight()) / self.regionSize))
+
+        self.regions = create2dArray(self.rows, self.columns)
+        self.regionsVisible = create2dArray(self.rows, self.columns, True)
+        for row in xrange(self.rows):
+            for column in xrange(self.columns):
                 texCoords = []
                 vertices = []
                 sX = row * self.regionSize
@@ -74,15 +72,17 @@ class TileMapRenderer(object):
                         y1 = int(y * TILESIZE)
                         x2 = int(x1 + TILESIZE)
                         y2 = int(y1 + TILESIZE)
-                        vertices.extend([x1, y1, x2, y1, x2, y2, x1, y2])
                         if eng.testBounds(x, y):
+                            vertices.extend([x1, y1, x2, y1, x2, y2, x1, y2])
+                            tImg = self.tileImagesLoader.getTileImage(eng.getTile(x, y))
                             try:
-                                texCoords.extend(self.tileImagesLoader.getTileImage(eng.getTile(x, y)).tex_coords)
+                                texCoords.extend(tImg.tex_coords)
                             except AttributeError:
-                                tile = self.tileImagesLoader.getTileImage(eng.getTile(x, y))
-                                assert isinstance(tile, TileAnimation)
-                                texCoords.extend(tile.frames[0].image.tex_coords)
+                                assert isinstance(tImg, TileAnimation)
+                                texCoords.extend(tImg.frames[0].image.tex_coords)
+                                self.visibleAnimated[(x, y)] = tImg
                         else:
+                            vertices.extend([0, 0, 0, 0, 0, 0, 0, 0])
                             texCoords.extend([0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.])
                 self.regions[row][column] = self._add(len(vertices) // 2, vertices, texCoords)
 
@@ -120,12 +120,10 @@ class TileMapRenderer(object):
                 # update tiles:
                 sX = x * self.regionSize
                 sY = y * self.regionSize
-                # print sX, sY
                 for iX in xrange(sX, sX + self.regionSize):
                     for iY in xrange(sY, sY + self.regionSize):
-                        if self.engine.testBounds(iX,iY):
-                            self.setTile(iX, iY, self.engine.getTile(iX, iY))
-                            # print iX,iY,self.engine.getTile(iX, iY)
+                        if self._engine.testBounds(iX, iY):
+                            self.setTile(iX, iY, self._engine.getTile(iX, iY))
                             if (iX, iY) in self.animated:
                                 self.visibleAnimated[(iX, iY)] = self.animated.pop((iX, iY))
                 self.regions[x][y].migrate(self.domain)
@@ -138,38 +136,45 @@ class TileMapRenderer(object):
                             self.animated[(iX, iY)] = self.visibleAnimated.pop((iX, iY))
                 self.regions[x][y].migrate(self.nullDomain)
 
+    def resetTile(self, x, y):
+        self.setTile(x, y, self._engine.getTile(x, y))
+
     def setTile(self, x, y, tileNum):
         rX = x // self.regionSize
         rY = y // self.regionSize
         tImg = self.tileImagesLoader.getTileImage(tileNum)
+
         try:
             curFrameImg = tImg.getCurrentFrameImg()
+            anim = True
+        except AttributeError:
+            anim = False
+
+        if anim:
             if not self.regionsVisible[rX][rY]:
                 self.animated[(x, y)] = tImg
                 return
-            self.visibleAnimated[(x, y)] = tImg
+            else:
+                self.visibleAnimated[(x, y)] = tImg
             if not tImg.loop:
-                tImg.resetEng()
-            self._setTile((x, y), curFrameImg)
-        except AttributeError:
+                tImg.reset()
+            tImg = curFrameImg
+        else:
             if self.regionsVisible[rX][rY]:
                 try:
                     del self.visibleAnimated[(x, y)]
                 except KeyError:
                     pass
-                self._setTile((x, y), tImg)
             else:
                 try:
                     del self.animated[(x, y)]
                 except KeyError:
                     pass
+        self._setTile((x, y), tImg)
 
     def _setTile(self, pos, texRegion):
-        (x, y) = pos
-        rX = x // self.regionSize
-        rY = y // self.regionSize
-        i = ((x % self.regionSize) * self.regionSize + (y % self.regionSize)) * 12
-        self.regions[rX][rY].tex_coords[i:i+12] = texRegion.tex_coords
+        i = ((pos[0] % self.regionSize) * self.regionSize + (pos[1] % self.regionSize)) * 12
+        self.regions[pos[0] // self.regionSize][pos[1] // self.regionSize].tex_coords[i:i+12] = texRegion.tex_coords
 
     def update(self, dt):
         for anim in self.animations:
@@ -182,7 +187,6 @@ class TileMapRenderer(object):
             self._setTile(key, anim.getCurrentFrameImg())
         for key in finished:
             del self.visibleAnimated[key]
-        #print len(self.visibleAnimated)
 
     def draw(self):
         self.group.set_state()

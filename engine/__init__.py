@@ -365,7 +365,7 @@ class Engine(EventDispatcher):
                 # clear 6 most significant bits (leaving 10 lsb's)
                 z &= ~(1024 | 2048 | 4096 | 8192 | 16384)
                 self.map[y][x] = z
-                self.updatedTiles.append((x, y))
+                self.updatedTiles.append((x, y, z))
 
     '''
         Will setup the power system in a newly loaded city save.
@@ -420,17 +420,15 @@ class Engine(EventDispatcher):
     def setTile(self, x, y, newTile):
         if (newTile & LOMASK) == newTile:
             self.map[y][x] = newTile
-            if (x, y) not in self.updatedTiles:
-                self.updatedTiles.append((x, y))
+            if (x, y, newTile) not in self.updatedTiles:
+                self.updatedTiles.append((x, y, newTile))
 
     def setTilePower(self, x, y, power):
-        # print "MAP: " + str(self.map[y][x])
         if power:
             d = PWRBIT
         else:
             d = 0
         self.map[y][x] = self.map[y][x] & (~PWRBIT) | d
-        # print "MAP: " + str(self.map[y][x])
 
     def setValves(self):
         normResPop = self.resPop // 8
@@ -719,7 +717,6 @@ class Engine(EventDispatcher):
         while len(self.powerPlants) != 0:
             loc = self.powerPlants.pop()
             aDir = 4
-            conNum = 0
             while True:
                 numPower += 1
                 if numPower > maxPower:
@@ -996,7 +993,7 @@ class Engine(EventDispatcher):
     '''
 
     def tileUpdateCheck(self):
-        if (len(self.updatedTiles) != 0):
+        if len(self.updatedTiles) != 0:
             self.dispatch_event("on_map_changed", self.updatedTiles)
             self.updatedTiles = list()
 
@@ -1048,10 +1045,10 @@ class Engine(EventDispatcher):
     def setTilePowerIndicator(self, x, y, value):
         if not self.noPowerIndicators[x][y] and value:
             self.noPowerIndicators[x][y] = True
-            self.dispatch_event("on_power_indicator_changed", (x, y))
+            self.dispatch_event("on_power_indicator_changed", (x, y, True))
         elif self.noPowerIndicators[x][y] and not value:
             self.noPowerIndicators[x][y] = False
-            self.dispatch_event("on_power_indicator_changed", (x, y))
+            self.dispatch_event("on_power_indicator_changed", (x, y, False))
 
     def getTileIndicator(self, x, y):
         return self.noPowerIndicators[x][y]

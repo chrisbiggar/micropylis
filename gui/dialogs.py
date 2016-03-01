@@ -64,7 +64,6 @@ class SingularDialog(Dialog):
 
     @classmethod
     def toggle(cls):
-        print cls.current
         if cls.current is None:
             cls()
         else:

@@ -440,7 +440,6 @@ class CityMenu(MenuView):
             self.lastCityTime = cityTime
             if self.dateButton is not None:
                 self.dateButton.set_text(self.formatGameDate(cityTime))
-        print self.lastCityTime, cityTime
 
     def formatGameDate(self, cityTime):
         year = 1900 + cityTime // 48
@@ -708,8 +707,8 @@ class ControlView(Frame, pyglet.event.EventDispatcher):
         self.width = self.WIDTH
 
     def layout(self, x, y):
-        super(ControlView, self).layout(x, y)
         if self.enabled:
+            super(ControlView, self).layout(x, y)
             self.createBg() # immutatable
             # print self.content.content[0].width
 

@@ -16,6 +16,7 @@ from gui.cityView import CityView
 from gui.controlView import ControlView
 from .layout import LayoutWindow, HorizontalLayout
 from . import dialogs
+import sound
 
 
 class Keys(pyglet.window.key.KeyStateHandler):
@@ -113,12 +114,16 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             pyglet.window.key._5: speeds['Super Fast']}
         self.speed = None
 
-        #self.newCity(gameLevel.MIN_LEVEL)
+        self.newCity(gameLevel.MIN_LEVEL)
 
-        self.loadCity('cities/kyoto.cty')
+        #self.loadCity('cities/kyoto.cty')
 
-        #music = pyglet.media.load('res/music.mp3')
-        #music.play()
+        sounds = [
+            sound.Sound('music', 'res/sound/music.mp3', True)
+        ]
+        self.sounds = sound.Sounds(sounds)
+        self.sounds.setEnabled(False)
+        #self.sounds.playSound('music')
 
     def cityLoaded(self):
         return False if self.engine is None else True
@@ -140,7 +145,6 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.cityView.resetEng(self.engine)
         self.controlView.resetEng(self.engine)
         if 0 <= newSpeedInt < len(speeds):
-            print speeds.items()[newSpeedInt][0]
             self.setSpeed(speeds.items()[newSpeedInt][1])
         else:
             self.setSpeed(speeds['Paused'])
@@ -244,7 +248,6 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.dispatch_event('speed_changed', newSpeed)
         pyglet.clock.unschedule(self.engine.simulate)
         self.cityView.setSpeed(self.speed)
-        print newSpeed, speeds['Paused']
         if self.speed is not speeds['Paused']:
             pyglet.clock.schedule_interval(self.engine.simulate, newSpeed.delay)
 
