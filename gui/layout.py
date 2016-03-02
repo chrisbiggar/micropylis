@@ -218,14 +218,13 @@ class ButtonGraphic(LayoutGraphic):
 
 
 class LayoutLabel(Widget):
-
-
-    def __init__(self, text="", fontName=None, fontSize=None):
+    def __init__(self, text="", fontName=None, fontSize=None, color=(255,255,255,255)):
         super(LayoutLabel, self).__init__()
         self.text = text
         self.label = None
         self.fontName = fontName
         self.fontSize = fontSize
+        self.color = color
 
     def delete(self):
         self.active = False
@@ -245,7 +244,8 @@ class LayoutLabel(Widget):
                                batch=self.parentFrame.batch,
                                group=self.parentFrame.fgGroup,
                                font_name=self.fontName,
-                               font_size=self.fontSize)
+                               font_size=self.fontSize,
+                               color=self.color)
 
             font = self.label.document.get_font()
             self.width = self.label.content_width
@@ -277,13 +277,15 @@ class ButtonLabel(LayoutLabel):
                  text=None,
                  fontName=None,
                  fontSize=None,
+                 color=(255,255,255,255),
                  action=None):
         super(ButtonLabel, self).__init__(text=text,
                                           fontName=fontName,
-                                          fontSize=fontSize)
+                                          fontSize=fontSize,
+                                          color=color)
         self.action = action
         self.border = None
-        self.color = (255, 255, 255, 255)
+        self.color = color
         self.pressedColor = (0, 0, 0, 255)
         self.borderColor = (255, 255, 255, 255)
         self.pressed = False

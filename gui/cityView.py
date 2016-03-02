@@ -434,12 +434,11 @@ class CityView(layout.Spacer):
         self.tileImageLoader = TileImageLoader(
             gui.config.get('misc', 'TILES_FILE'),
             TILESIZE, flipTilesVert=True, padding=2)
-        self.tbatch = pyglet.graphics.Batch()
+        self.tBatch = pyglet.graphics.Batch()
 
         self.viewportGroup = ViewportGroup(BG_RENDER_ORDER)
         self.blinkingGroup = BlinkingGroup(MG_RENDER_ORDER, self.viewportGroup)
-        self.toolCursorGroup = ToolCursorGroup(
-            FG_RENDER_ORDER, self.viewportGroup)
+        self.toolCursorGroup = ToolCursorGroup(FG_RENDER_ORDER, self.viewportGroup)
 
         self.tileMapRenderer = TileMapRenderer(self.tileImageLoader, self.viewportGroup)
         self.toolCursor = None
@@ -569,9 +568,10 @@ class CityView(layout.Spacer):
         newCursor = ToolCursor()
         newCursor.rect = newRect
 
-        # tc.borderColor = (0, 200, 200)
-        roadsBg = gui.config.get('tools.bgcolor', tool.name)
-        newCursor.fillColor = list(map(int, tuple(roadsBg.split(','))))
+        borderColor = gui.config.get('tools.bordercolor', tool.name)
+        newCursor.borderColor = list(map(int, tuple(borderColor.split(','))))
+        bgColor = gui.config.get('tools.bgcolor', tool.name)
+        newCursor.fillColor = list(map(int, tuple(bgColor.split(','))))
 
         self.setToolCursor(newCursor)
 

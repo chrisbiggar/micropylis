@@ -56,7 +56,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
     sized and positioned within this window.
     '''
 
-    def __init__(self):
+    def __init__(self, skipToCity=None, soundEnabled=True):
         self.register_event_type('speed_changed')
 
         self.DEFAULT_WIDTH = int(gui.config.get('window', 'DEFAULT_WIDTH'))
@@ -114,16 +114,27 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             pyglet.window.key._5: speeds['Super Fast']}
         self.speed = None
 
-        self.newCity(gameLevel.MIN_LEVEL)
-
-        #self.loadCity('cities/kyoto.cty')
-
         sounds = [
             sound.Sound('music', 'res/sound/music.mp3', True)
         ]
         self.sounds = sound.Sounds(sounds)
-        self.sounds.setEnabled(False)
+        self.sounds.setEnabled(soundEnabled)
         #self.sounds.playSound('music')
+
+        if skipToCity is not None:
+            if skipToCity.lower() == "new":
+                self.newCity(gameLevel.MIN_LEVEL)
+            else:
+                self.loadCity('cities/' + skipToCity)
+        else:
+            assert False, "Start Menu Screen Not Implemented - Skip To City Must Be Specified"
+            pass
+            # do start menu screen/state
+
+
+
+
+
 
     def cityLoaded(self):
         return False if self.engine is None else True

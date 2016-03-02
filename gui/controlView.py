@@ -164,7 +164,7 @@ class MessageQueue(Widget):
                                  mgGroup)
 
         self.border = createRect(self.x, self.y + self.height,
-                                 self.width, 1,
+                                 self.width, 2,
                                  (0, 0, 0, 255),
                                  self.parentFrame.batch,
                                  highlightGroup)
@@ -178,7 +178,6 @@ class MessageQueue(Widget):
                 msg.index -= len(item)
 
     def addMessage(self, message):
-        #print message
         if len(self.msgs) and message == self.msgs[0].string:
             return
 
@@ -363,8 +362,8 @@ class CityMenu(MenuView):
                                              'POPULATION')
         self.fundsText = gui.config.get('control_panel_strings', 'FUNDS')
         self.speedText = " Speed"
-
-        self.lastCityTime = -4  # one month in past
+        self.lastCityTime = -4
+        self.textColor = controlPanel.textColor
 
         super(CityMenu, self).__init__(controlPanel, self.createLayout())
 
@@ -374,26 +373,32 @@ class CityMenu(MenuView):
         self.mainMenuButton = ButtonLabel(text=mainMenuText,
                                           fontName=fontName,
                                           fontSize=fontSize,
+                                          color=self.textColor,
                                           action=self.mainMenuAction)
         self.speedButton = ButtonLabel(text="",
                                        fontName=fontName,
                                        fontSize=fontSize,
+                                       color=self.textColor,
                                        action=self.speedAction)
         self.dataViewButton = ButtonLabel(text="Data Menu",
                                           fontName=fontName,
                                           fontSize=fontSize,
+                                          color=self.textColor,
                                           action=self.dataViewAction)
         self.fundsButton = ButtonLabel(text="",
                                        fontName=fontName,
                                        fontSize=fontSize,
+                                       color=self.textColor,
                                        action=self.fundsAction)
         self.dateButton = ButtonLabel(text="",
                                       fontName=fontName,
                                       fontSize=fontSize,
+                                      color=self.textColor,
                                       action=self.dateAction)
         self.populationButton = ButtonLabel(text="",
                                             fontName=fontName,
                                             fontSize=fontSize,
+                                            color=self.textColor,
                                             action=self.populationAction)
         return VerticalLayout([self.demandIndicator,
                                self.mainMenuButton,
@@ -665,8 +670,11 @@ class ControlView(Frame, pyglet.event.EventDispatcher):
 
     def __init__(self, microWindow, cityView):
         self.fgGroup = fgGroup
+        self.bgImg = pyglet.image.load('res/controlviewbg.png')
         self.bg = None
         self.border = None
+        textColorStr = gui.config.get('control_panel', 'TEXT_COLOR')
+        self.textColor = list(map(int, tuple(textColorStr.split(','))))
 
         self.msgs = MessageQueue(padding=3)
 
@@ -701,6 +709,10 @@ class ControlView(Frame, pyglet.event.EventDispatcher):
         if self.enabled:
             super(ControlView, self).size(frame)
             self.width, self.height = self.WIDTH, frame.height
+            self.bg = pyglet.sprite.Sprite(self.bgImg, batch=self.batch, group=bgGroup)
+            #TODO get rid of this hack - work this into actual image
+            self.bg.color = (140,175,140)
+            self.bg.opacity = 228
 
     def expand(self, width, height):
         Frame.expand(self, width, height)
@@ -710,7 +722,8 @@ class ControlView(Frame, pyglet.event.EventDispatcher):
         if self.enabled:
             super(ControlView, self).layout(x, y)
             self.createBg() # immutatable
-            # print self.content.content[0].width
+            self.bg.x = x
+            self.bg.y = y
 
     '''
         adds specified menu to layout, removing the old.
@@ -750,13 +763,14 @@ class ControlView(Frame, pyglet.event.EventDispatcher):
         super(ControlView, self).delete()
 
     def createBg(self):
-        self.bg = createRect(self.x, self.y,
+
+        '''self.bg = createRect(self.x, self.y,
                              self.width, self.height,
                              self.bgColor,
                              self.parentFrame.batch,
-                             bgGroup)
+                             bgGroup)'''
         self.border = createRect(self.x, self.y,
-                                 1, self.height,
+                                 2, self.height,
                                  (0, 0, 0, 255),
                                  self.parentFrame.batch,
                                  highlightGroup)
