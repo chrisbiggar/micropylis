@@ -259,10 +259,9 @@ class LayoutLabel(Widget):
             self.label.y = int(y - font.descent)
 
     def set_text(self, text):
-        # print text
         self.text = text
-        self.delete()
-        # print "set text: " + text
+        if self.label:
+            self.label.text = text
         if self.parentFrame is not None:
             self.parentFrame.setNeedsLayout()
 

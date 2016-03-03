@@ -107,12 +107,6 @@ class MessageQueue(Widget):
     def size(self, frame):
         super(MessageQueue, self).size(frame)
 
-        if self.textLayout is not None:
-            self.textLayout.delete()
-        if self.titleLabel is not None:
-            self.titleLabel.delete()
-            self.titleLabel = None
-
         self.width = frame.width or 200
         self.height = 200
 
@@ -195,8 +189,8 @@ class MessageQueue(Widget):
                                           'bold': True})
 
         if self.textLayout is not None:
-            while (self.textLayout.content_height >= self.height
-                    - self.titleLabel.content_height + 14):
+            while (self.textLayout.content_height >=
+                    self.height - self.titleLabel.content_height + 14):
                 item = self.msgs[len(self.msgs) - 1]
                 self.deleteMsg(item)
 
@@ -731,8 +725,7 @@ class ControlView(Frame, pyglet.event.EventDispatcher):
         :param viewName: string name of menu
     '''
     def switchMenu(self, viewName=None):
-        oldContent = self.content
-        oldContent.delete()
+        self.currentView.delete()
         self._setLayout(viewName)
         self.setNeedsLayout()
 
@@ -764,11 +757,6 @@ class ControlView(Frame, pyglet.event.EventDispatcher):
 
     def createBg(self):
 
-        '''self.bg = createRect(self.x, self.y,
-                             self.width, self.height,
-                             self.bgColor,
-                             self.parentFrame.batch,
-                             bgGroup)'''
         self.border = createRect(self.x, self.y,
                                  2, self.height,
                                  (0, 0, 0, 255),
@@ -779,7 +767,6 @@ class ControlView(Frame, pyglet.event.EventDispatcher):
         Adds a message to the message queue.
     '''
     def addInfoMessage(self, msg):
-
         self.msgs.addMessage(msg)
 
     def city_message(self, msg):

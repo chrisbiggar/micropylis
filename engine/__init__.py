@@ -153,6 +153,7 @@ class Engine(EventDispatcher):
 
         self.cityTime = 0  # 1 week game time per "cityTime"
         self.totalPop = 0
+        self.lastCityPop = 0
 
         self.pollutionMaxLocationX = 0
         self.pollutionMaxLocationY = 0
@@ -590,7 +591,7 @@ class Engine(EventDispatcher):
                 if self.cityTime % (self.CENSUSRATE * 12) == 0:
                     self.takeCensus2()
 
-                self.dispatch_event("on_census_changed", self.totalPop)
+                self.dispatch_event("on_census_changed", self.lastCityPop)
 
             self.collectTaxPartial()
 
@@ -1235,9 +1236,15 @@ class Engine(EventDispatcher):
     def getPopulationDensity(self, xPos, yPos):
         return self.popDensity[yPos // 2][xPos // 2]
 
+    def checkGrowth(self):
+        if self.cityTime % 4 == 0:
+            newPop = (self.resPop + self.comPop * 8 + self.indPop * 8) * 20
+
+            self.lastCityPop = newPop
+
     def doMessages(self):
 
-        # self.checkGrowth()
+        self.checkGrowth()
 
         totalZoneCount = self.resZoneCount + self.comZoneCount + self.indZoneCount
         powerCount = self.nuclearCount + self.coalCount

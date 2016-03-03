@@ -91,6 +91,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
 
         # window stuff
         self.icon = pyglet.image.load(gui.config.get('window', 'ICON_FILE'))  # icon is set at resize
+        self.set_icon(self.icon)
         self.set_location(40, 40)
         self.set_minimum_size(640, 480)
         self.set_caption(gui.config.get('window', 'CAPTION'))
@@ -114,10 +115,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             pyglet.window.key._5: speeds['Super Fast']}
         self.speed = None
 
-        sounds = [
-            sound.Sound('music', 'res/sound/music.mp3', True)
-        ]
-        self.sounds = sound.Sounds(sounds)
+        self.sounds = sound.Sounds()
         self.sounds.setEnabled(soundEnabled)
         #self.sounds.playSound('music')
 

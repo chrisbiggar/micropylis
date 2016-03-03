@@ -7,11 +7,12 @@ class Sound(object):
         self.file = file
         self.stream = stream
 
-
+sounds = [
+    Sound('music', 'res/sound/music.mp3', True)
+]
 
 class Sounds(object):
-
-    def __init__(self, sounds):
+    def __init__(self):
         self.player = Player()
         self.sounds = dict()
         self.loadSounds(sounds)
