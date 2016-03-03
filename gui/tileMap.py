@@ -26,7 +26,7 @@ class TileMapRenderer(object):
         self.animated = dict()
         self.visibleAnimated = dict()
 
-        self.domain = None
+        self.domain = vertexdomain.create_domain(*('v2i', 't3f'))
         self.nullDomain = None
         self.group = group
 
@@ -45,6 +45,7 @@ class TileMapRenderer(object):
         self._engine = eng
         self.animated = dict()
         self.visibleAnimated = dict()
+        del self.domain
         self.domain = vertexdomain.create_domain(*('v2i', 't3f'))
         self.nullDomain = vertexdomain.create_domain(*('v2i', 't3f'))
 
