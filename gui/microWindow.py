@@ -117,7 +117,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
 
         self.sounds = sound.Sounds()
         self.sounds.setEnabled(soundEnabled)
-        #self.sounds.playSound('music')
+        #self.sounds.playSound("music")
 
         if skipToCity is not None:
             if skipToCity.lower() == "new":

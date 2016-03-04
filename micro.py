@@ -3,7 +3,7 @@ Created on Aug 29, 2015
 
 @author: chris
 '''
-import imp, sys
+import imp, sys, os
 import argparse
 import pyglet
 pyglet.options['debug_graphics_batch'] = False
@@ -22,7 +22,7 @@ def mainIsFrozen():
 
 
 def doHighPriorityProcess():
-    import os, psutil
+    import psutil
     p = psutil.Process(os.getpid())
     p.nice(psutil.HIGH_PRIORITY_CLASS)
 
@@ -32,6 +32,7 @@ if __name__ == '__main__':
         skipToCity = 'kyoto.cty'
         disableSound = False
         pyglet.options['debug_gl'] = False
+        printToFile = "micro_log_"
 
     else:  # running directly from python script
         parser = argparse.ArgumentParser()
@@ -43,14 +44,20 @@ if __name__ == '__main__':
         parser.add_argument('--skip-to-city', dest='skipToCity')
         args = parser.parse_args()
 
-        if args.printToFile:
-            sys.stdout = open(args.printToFile, 'w')
         if not args.debugMode:
             pyglet.options['debug_gl'] = False
         skipToCity = args.skipToCity
         disableSound = args.disableSound
+        printToFile = args.printToFile
 
-    # doHighPriorityProcess()
+    if printToFile:
+            logFile = printToFile + "0"
+            n = 1
+            while os.path.isfile(logFile):
+                logFile = printToFile + str(n)
+                n += 1
+            sys.stdout = open(logFile, 'w')
+
     from gui.microWindow import MicroWindow
     app = MicroWindow(skipToCity, not disableSound)
     pyglet.app.run()
