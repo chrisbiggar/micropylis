@@ -49,8 +49,10 @@ class Bulldozer(ToolStroke):
         eff.spend(1)
 
         # make sounds here
-        '''if dim.width * dim.height < 16:
-            eff.'''
+        if dim.width * dim.height < 16:
+            eff.makeSound(0, 0, "EXPLOSION_SMALL")
+        else:
+            eff.makeSound(0, 0, "EXPLOSION_BIG")
 
         self.engine.setTilePowerIndicator(eff.dX, eff.dY, False)
         self.putRubble(TranslatedToolEffect(eff, -1, -1), dim.width, dim.height)

@@ -101,6 +101,7 @@ class Engine(EventDispatcher):
         self.register_event_type("on_power_indicator_changed")
         self.register_event_type("on_city_message")
         self.register_event_type("on_options_changed")
+        self.register_event_type("on_city_sound")
 
         if width == None:
             width = self.DEFAULT_WIDTH
@@ -1304,3 +1305,6 @@ class Engine(EventDispatcher):
 
     def getCityTime(self):
         return self.cityTime
+
+    def makeSound(self, soundTuple):
+        self.dispatch_event("on_city_sound", soundTuple)

@@ -29,3 +29,6 @@ class TranslatedToolEffect(object):
 
     def toolResult(self, tr):
         self.base.toolResult(tr)
+
+    def makeSound(self, x, y, sound):
+        self.base.makeSound(x, y, sound)

@@ -436,7 +436,7 @@ class PaletteOption(Control):
 
 class PaletteMenu(GridLayout):
 
-    def __init__(self, options=[[]], padding=2, on_select=None):
+    def __init__(self, options=[[]], padding=2, on_select=None, initialSelection=None):
         # ~ menu_options = self._make_options(options)
 
         GridLayout.__init__(self, options, padding=padding)
@@ -448,10 +448,9 @@ class PaletteMenu(GridLayout):
                 self.options[option.id] = option
                 if option is not None:
                     option.palette = self
-        if options[0][0] is not None:
-            self.select(options[0][0].id)
-            # self.on_select(self.get(0, 0).id)
-            # print self.selected
+        if initialSelection:
+            self.selected = self.options[initialSelection]
+            self.selected.select()
 
     '''
     #~ def _make_options(self, options):

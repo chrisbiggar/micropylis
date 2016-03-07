@@ -44,6 +44,9 @@ class ToolEffect(object):
     def toolResult(self, tr):
         self.preview.setToolResult(tr)
 
+    def makeSound(self, dx, dy, sound):
+        self.preview.makeSound(dx, dy, sound)
+
     def apply(self):
         ''' actually apply the effect to the map
             
@@ -66,6 +69,9 @@ class ToolEffect(object):
                                         self.originY + y - self.preview.offsetY,
                                         c)
                     anyFound = True
+
+        for sound in set(self.preview.sounds):  # only do unique sounds
+            self.engine.makeSound(sound)
 
         if anyFound and self.preview.cost != 0:
             self.engine.spend(self.preview.cost)

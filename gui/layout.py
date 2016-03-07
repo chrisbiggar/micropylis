@@ -65,13 +65,6 @@ class Widget(object):
             self.enabled = False
             self.parentFrame.setNeedsLayout()
 
-    '''
-    This is where sub-classes will create mutatable gui objects.
-    (immutable resources have to wait until after layout to be created)
-
-
-    :param frame: this widgets parent frame
-    '''
     def size(self, frame):
 
         self.parentFrame = frame
@@ -539,8 +532,6 @@ class Frame(Widget):
 
 
 class LayoutWindow():
-
-
     def __init__(self, content):
         self.content = content
         self.needsLayout = True
@@ -558,6 +549,9 @@ class LayoutWindow():
         if self.content.is_expandable():
             self.content.expand(width, height)
         self.content.layout(0, 0)
+
+
+        #while content
 
     def getWidgetAtPoint(self, x, y):
         content = self.content
@@ -581,15 +575,16 @@ class LayoutWindow():
                 return None
 
     def onMousePress(self, x, y, button, modifiers):
-        widget = self.getWidgetAtPoint(x, y)
-        if widget:
-            widget.onMousePress(x, y, button, modifiers)
+        widgetAtSpot = self.getWidgetAtPoint(x, y)
+        if widgetAtSpot:
+            widgetAtSpot.onMousePress(x, y, button, modifiers)
+        return widgetAtSpot
 
     def onMouseRelease(self, x, y, button, modifiers):
-        widget = self.getWidgetAtPoint(x, y)
         if self.focus and not self.focus.hitTest(x, y):
             self.focus.unFocus()
             self.focus = None
+        widget = self.getWidgetAtPoint(x, y)
         if widget:
             widget.onMouseRelease(x, y, button, modifiers)
 

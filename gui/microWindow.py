@@ -16,6 +16,7 @@ from gui.cityView import CityView
 from gui.controlView import ControlView
 from .layout import LayoutWindow, HorizontalLayout
 from . import dialogs
+from dialogs import MainMenuDialog
 import sound
 
 
@@ -69,7 +70,12 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         # load in tile specs
         tiles.readTilesSpec(gui.config.get('misc', 'TILES_SPEC_FILE'))
 
-        self.engine = None
+
+
+        self.soundPlayer = sound.SoundPlayer("res/sound/")
+        self.soundPlayer.setMute(soundEnabled)
+        self.soundPlayer.soundEffectVolume = float(gui.config.get('sound', 'DEFAULT_EFFECTS_VOL'))
+        self.soundPlayer.musicVolume = float(gui.config.get('sound', 'DEFAULT_MUSIC_VOL'))
 
         self.cityView = CityView()
         self.controlView = ControlView(self, self.cityView)
@@ -100,7 +106,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         # setup kytten and main dialog:
         dialogs.window = self
         self.register_event_type('on_update')  # called in our update method
-        self.toolDialog = dialogs.ToolDialog(self)
+        self.toolDialog = dialogs.ToolDialog()
         self.push_handlers(self.toolDialog)
 
         for (name, font) in gui.config.items('font_files'):
@@ -115,24 +121,27 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             pyglet.window.key._5: speeds['Super Fast']}
         self.speed = None
 
-        self.sounds = sound.Sounds()
-        self.sounds.setEnabled(soundEnabled)
-        #self.sounds.playSound("music")
 
+        self.engine = None
         if skipToCity is not None:
             if skipToCity.lower() == "new":
                 self.newCity(gameLevel.MIN_LEVEL)
             else:
                 self.loadCity('cities/' + skipToCity)
         else:
-            assert False, "Start Menu Screen Not Implemented - Skip To City Must Be Specified"
-            pass
-            # do start menu screen/state
+            self.soundPlayer.playEffect("STARTUP")
+            MainMenuDialog.toggle()
 
+    def makeSoundEffect(self, soundName):
+        self.soundPlayer.playEffect(soundName)
 
+    def on_city_sound(self, soundTup):
+        x = soundTup[0]
+        y = soundTup[1]
+        soundName = soundTup[2]
+        # if car honk sound, but not on screen: return
 
-
-
+        self.soundPlayer.playEffect(soundName)
 
     def cityLoaded(self):
         return False if self.engine is None else True
@@ -146,6 +155,8 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.cityView.resetEng(self.engine)
         self.controlView.resetEng(self.engine)
         self.setSpeed(speeds['Paused'])
+        self.engine.push_handlers(self)
+        self.soundPlayer.playMusic("MUSIC")
 
     def loadCity(self, filePath):
         if self.engine is not None:
@@ -157,6 +168,8 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             self.setSpeed(speeds.items()[newSpeedInt][1])
         else:
             self.setSpeed(speeds['Paused'])
+        self.engine.push_handlers(self)
+        self.soundPlayer.playMusic("MUSIC")
 
     def toggleFullscreen(self):
         if not self._fullscreen:
@@ -180,6 +193,10 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         gl.glOrtho(0, width, 0, height, -1, 1)
         gl.glMatrixMode(gl.GL_MODELVIEW)
 
+    def on_close(self):
+        self.soundPlayer.shutdown()
+        pyglet.window.Window.on_close(self)
+
     def on_resize(self, width, height):
         self.set_icon(self.icon)
         self.initGL(width, height)
@@ -190,6 +207,10 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         if (symbol == pyglet.window.key.X):
             # self.engine.testChange()
             self.loadCity('cities/hawkins.cty')
+        if symbol == pyglet.window.key.T:
+            self.soundPlayer.playMusic("MUSIC")
+        if symbol == pyglet.window.key.E:
+            self.soundPlayer.playMusic("OMUSIC")
         if (symbol == pyglet.window.key.C):
             self.newCity(gameLevel.MIN_LEVEL)
         elif (symbol == pyglet.window.key.S):
@@ -218,7 +239,10 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             self.onToolHover(x, y)
 
     def on_mouse_press(self, x, y, button, modifiers):
-        LayoutWindow.onMousePress(self, x, y, button, modifiers)
+        widgetAtSpot = LayoutWindow.onMousePress(self, x, y, button, modifiers)
+
+        if widgetAtSpot and widgetAtSpot.isClickable():
+            self.soundPlayer.playEffect("MENUCLICK")
 
         self.dragStart = (x, y)
         if self.engine and self.cityView.hitTest(x, y):
@@ -281,8 +305,8 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             accepts a string specifying what tool should
             be currently active. returns tool type object
         '''
-        if self.currentTool is not None and \
-                        toolType == self.currentTool.name:
+        if (self.currentTool is not None and
+                toolType == self.currentTool.name):
             return
         if toolType == "Pan":
             self.currentTool = None
@@ -293,11 +317,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         return tool
 
     def onToolDown(self, x, y, button, modifiers):
-        '''
-        
-        '''
         loc = self.cityView.screenCoordsToCityLocation(x, y)
-        #print(loc)
         self.lastX = loc.x
         self.lastY = loc.y
         self.drag = False
@@ -321,11 +341,10 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             return
         self.drag = True
         if (self.currentTool is None or
-                    buttons & mouse.RIGHT):
+                buttons & mouse.RIGHT):
             self.cityView.moveView(dx, dy)
             return
         loc = self.cityView.screenCoordsToCityLocation(x, y)
-        #print(loc)
         tx = loc.x
         ty = loc.y
         if tx == self.lastX and ty == self.lastY:
@@ -341,7 +360,6 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
             self.doQueryTool(tx, ty)
 
     def onToolUp(self, x, y, button, modifiers):
-        #print button,modifiers
         if self.toolStroke is not None:
             self.cityView.setToolPreview(None)
             self.showToolResult(self.toolStroke.getLocation(),
@@ -358,14 +376,12 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         # TODO conditionally show budget window here?
 
     def onToolHover(self, x, y):
-        if self.currentTool is None or \
-                        self.currentTool.type == micropolistool.QUERY:
+        if (self.currentTool is None or
+                self.currentTool.type == micropolistool.QUERY):
             self.cityView.setToolCursor(None)
             return
 
         loc = self.cityView.screenCoordsToCityLocation(x, y)
-        #print(loc)
-        # print(loc)
         x = loc.x
         y = loc.y
         w = self.currentTool.getWidth()
@@ -393,16 +409,20 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         Creates string from toolresult and adds it to controlpanel's messages
         '''
         if result.value == ToolResult.SUCCESS:
+            self.soundPlayer.playEffect("ZONEPLOP")
             formatString = gui.cityMessages.get('toolresults', 'SUCCESS')
             msg = formatString.format(cost=str(result.cost))
             self.controlView.addInfoMessage(msg)
         elif result.value == ToolResult.INSUFFICIENT_FUNDS:
+            self.soundPlayer.playEffect("NOTALLOWED")
             self.controlView.addInfoMessage(
                 gui.cityMessages.get('toolresults', 'INSUFFICIENT_FUNDS'))
         elif result.value == ToolResult.UH_OH:
+            self.soundPlayer.playEffect("NOTALLOWED")
             self.controlView.addInfoMessage(
                 gui.cityMessages.get('toolresults', 'BULLDOZE_FIRST'))
         elif result.value == ToolResult.NONE:
+            self.soundPlayer.playEffect("NOTALLOWED")
             self.controlView.addInfoMessage(
                 gui.cityMessages.get('toolresults', 'NONE'))
 

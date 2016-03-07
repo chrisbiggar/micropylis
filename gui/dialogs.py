@@ -133,22 +133,25 @@ class MainMenuDialog(SingularDialog):
     def on_select_menu(self, choice):
         def on_load_select(filePath):
             window.loadCity(filePath)
-            loadDialog.teardown()
+            self.loadDialog.teardown()
             self.teardown()
 
         def on_save_select(filePath):
             # window.saveCity(filePath)
             print("save city as " + filePath)
-            saveDialog.tearDown()
+            self.saveDialog.tearDown()
             self.teardown()
+
+        window.makeSoundEffect("MENUCLICK")
 
         if choice == "Back":
             self.on_cancel()
         elif choice == "New City":
+            on_escape(self)
             window.newCity(gameLevel.MIN_LEVEL)
-            self.teardown()
         elif choice == "Load City":
-            loadDialog = FileLoadDialog(
+            on_escape(self)
+            self.loadDialog = FileLoadDialog(
                 os.getcwd() + '\cities',
                 extensions=['.cty'],
                 window=window,
@@ -157,7 +160,8 @@ class MainMenuDialog(SingularDialog):
                 theme=theme,
                 on_escape=on_escape)
         elif choice == "Save City":
-            saveDialog = FileSaveDialog(
+            on_escape(self)
+            self.saveDialog = FileSaveDialog(
                 os.getcwd() + '\cities',
                 extensions=['.cty'],
                 window=window,
@@ -315,21 +319,19 @@ Name and cost of selected tool is displayed as well.
 
 
 class ToolDialog(Dialog):
-    def __init__(self, mainWindow):
-        self.tilesView = mainWindow
+    def __init__(self):
         self.selectedToolLabel = None
         self.iconsheetFilename = gui.config.get('tools', 'ICONSHEET_FILENAME')
-        frame = self.createLayout()
+        initialMenuSelection = 'Pan'
+        frame = self.createLayout(initialMenuSelection)
         super(ToolDialog, self).__init__(frame,
-                                         window=mainWindow,
+                                         window=window,
                                          batch=batch,
                                          anchor=kytten.ANCHOR_TOP_LEFT,
                                          theme=theme)
-        firstToolId = 'Pan'
-        self.toolSection.select(firstToolId)
-        self.width = 300
+        self.selectTool(initialMenuSelection)
 
-    def createLayout(self):
+    def createLayout(self, initialMenuSelection):
         iconSize = int(gui.config.get('tools', 'TOOLICONSIZE'))
         iconSheet = pyglet.image.load(self.iconsheetFilename)
         rows = iconSheet.height // iconSize
@@ -356,7 +358,8 @@ class ToolDialog(Dialog):
             option = widgets.PaletteOption(name=pair[0], image=pair[1], padding=2)
             # Build column down, 3 rows
             palette_options[i % 8].append(option)
-        self.toolSection = widgets.PaletteMenu(palette_options, on_select=self.onToolSelect)
+        self.toolMenu = widgets.PaletteMenu(palette_options, on_select=self.onToolMenuSelect,
+                                            initialSelection=initialMenuSelection)
 
         self.selectedToolLabel = Label("")
         self.selectedToolPriceLabel = Label("")
@@ -364,12 +367,16 @@ class ToolDialog(Dialog):
         return Frame(VerticalLayout([
             self.selectedToolLabel,
             self.selectedToolPriceLabel,
-            self.toolSection,
+            self.toolMenu,
             Spacer(height=4)
         ]))
 
-    def onToolSelect(self, toolId):
-        tool = self.tilesView.selectTool(toolId.strip())
+    def onToolMenuSelect(self, toolId):
+        window.makeSoundEffect("MENUCLICK")
+        self.selectTool(toolId)
+
+    def selectTool(self, toolId):
+        tool = window.selectTool(toolId.strip())
         if self.selectedToolLabel is not None:
             self.selectedToolLabel.set_text(toolId)
             # pan is only tool not in micropolistool types

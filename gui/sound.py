@@ -6,45 +6,125 @@ from pyglet.media import Player
 
 import gui
 
-class Sound(object):
-    def __init__(self, name, file, stream=False):
-        self.name = name
-        self.file = file
-        self.stream = stream
-
-sounds = []
-soundNames = []
-searchPath = "res/sound/"
-for f in os.listdir(searchPath):
-    name = os.path.splitext(f)
-    sounds.append(Sound(name[0], searchPath + f))
-    soundNames.append(name[0])
-
-assert len(soundNames) == len(set(soundNames)),\
-        "Duplicate Sound File Names. There are two files with same base name excluding extension."
 
 
-class Sounds(object):
-    def __init__(self):
-        self.player = Player()
+class SoundPlayer(object):
+    def __init__(self, soundDirPath):
+        self.soundDirPath = soundDirPath
+        self.loadSounds()
+        self.musicPlayer = Player()
+        self.queue = False
+        self.queuePlayer = None
+        self.enabled = True
+        self.soundEffectVolume = 1.0  # between 0.0 and 1.0
+        self._musicVolume = 1.0  # between 0.0 and 1.0
+
+    '''
+        loads sounds from gui config file into dict.
+        maps name to pyglet sound object.
+        if ',stream' exists after filename in config file,
+         will stream file instead of loading the whole thing in once.
+    '''
+    def loadSounds(self):
         self.sounds = dict()
-        self.loadSounds(sounds)
+        soundTypes = dict(gui.config.items('sound_events'))
+        for key in soundTypes:
+            self._loadSoundResource(key)
 
-    def setEnabled(self, value):
-        if value:
-            self.player.volume = 1.0
+    @staticmethod
+    def _loadSoundEntry(key):
+        entry = gui.config.get('sound_events', key)
+        if ',' in entry:
+            sp = entry.split(",")
+            fileName = sp[0]
+            if sp[1] == "stream":
+                stream = True
         else:
-            self.player.volume = 0.0
+            fileName = entry
+            stream = False
+        return fileName, stream
 
-    def loadSounds(self, sounds):
-        for sound in sounds:
-            self.sounds[sound.name] = pyglet.media.load(sound.file, streaming=sound.stream)
+    def _loadSoundResource(self, key):
+        fileName, stream = self._loadSoundEntry(key)
+        if key in self.sounds:
+            self.sounds[key].delete()
+        self.sounds[key] = pyglet.media.load(self.soundDirPath + fileName, streaming=stream)
 
-    def playSound(self, sound):
+    def shutdown(self):
+        self.musicPlayer.next_source()
+        self.musicPlayer.delete()
+
+    @property
+    def musicVolume(self):
+        return self._soundEffectVolume
+
+    @musicVolume.setter
+    def musicVolume(self, value):
+        self.musicPlayer.volume = value
+        self._musicVolume = self.musicPlayer.volume
+
+    def setMute(self, value):
+        self.enabled = value
+
+    def getSound(self, soundName):
         try:
-            key = gui.config.get("sounds", sound)
-        except ConfigParser.NoOptionError:
+            snd = self.sounds[soundName.lower()]
+        except KeyError:
             print "Sound requsted to be played does not exist in config file."
+            return None
+        return snd
+
+    def playMusic(self, soundName):
+        if not self.enabled:
             return
-        self.player.queue(self.sounds[key])
-        self.player.play()
+        soundName = soundName.lower()
+        snd = self.getSound(soundName)
+        assert snd
+        if self.musicPlayer.playing and self.musicPlayer.source == snd:
+            self.musicPlayer.seek(0)
+            return
+        else:
+            # reload sound and reset Player obj
+            # (streaming sounds needs to be reloaded every time)
+            if isinstance(snd, pyglet.media.StreamingSource):
+                self._loadSoundResource(soundName)
+            self.musicPlayer.delete()
+            self.musicPlayer = Player()
+            self.musicPlayer.volume = self._musicVolume
+        looper = pyglet.media.SourceGroup(snd.audio_format, None)
+        looper.loop = True
+        looper.queue(snd)
+        self.musicPlayer.queue(looper)
+        self.musicPlayer.play()
+
+    def playEffect(self, soundName):
+        if not self.enabled:
+            return
+        soundName = soundName.lower()
+        snd = self.getSound(soundName)
+        assert snd
+        p = Player()
+        p.volume = self.soundEffectVolume
+        p.queue(snd)
+        p.play()
+
+    def startEffectsQueue(self):
+        self.queue = True
+        self.queuePlayer = Player()
+
+    def queueEffect(self, soundName):
+        if not self.enabled:
+            return
+        soundName = soundName.lower()
+        snd = self.getSound(soundName)
+        assert snd
+        self.queuePlayer.queue(snd)
+
+    '''
+        Plays the queue and resets queue state.
+    '''
+    def playEffectsQueue(self):
+        self.queuePlayer.volume = self.soundEffectVolume
+        self.queuePlayer.play()
+        self.queue = False
+        self.queuePlayer = None

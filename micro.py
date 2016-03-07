@@ -29,7 +29,7 @@ def doHighPriorityProcess():
 
 if __name__ == '__main__':
     if mainIsFrozen():  # running from .exe
-        skipToCity = 'kyoto.cty'
+        skipToCity = None
         disableSound = False
         pyglet.options['debug_gl'] = False
         printToFile = "micro_log_"

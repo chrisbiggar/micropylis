@@ -16,14 +16,10 @@ shutil.rmtree("dist/cities")
 shutil.copytree("cities", "dist/cities")
 shutil.rmtree("dist/res")
 shutil.copytree("res", "dist/res")
-
 print "Done Copying Files"
 
 setup(
-    options = {'py2exe': {"optimize": 2,
-                          'bundle_files': 1}},
-    windows = [{
-            "script":"micro.py",
-            "icon_resources": [(1, "res/micro.ico")],
-            "dest_base":"Micropylis"
-            }])
+    options={'py2exe': {"optimize": 2, 'bundle_files': 1}},
+    windows=[{"script": "micro.py",
+              "icon_resources": [(1, "res/micro.ico")],
+              "dest_base": "Micropylis"}])

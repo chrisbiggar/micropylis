@@ -16,7 +16,7 @@ class ToolPreview(object):
         self.offsetX = 0  # ?
         self.offsetY = 0  # ?
         self.tiles = create2dArray(0, 0, CLEAR)
-        # sounds here
+        self.sounds = []
         self.toolResult = ToolResult.NONE
         self.cost = 0
 
@@ -114,7 +114,8 @@ class ToolPreview(object):
             self.tiles = newTiles
             self.offsetY += addl
 
-    ''' def makeSound '''
+    def makeSound(self, dx, dy, sound):
+        self.sounds.append((dx, dy, sound))
 
     def setTile(self, dx, dy, tileValue):
         self.expandTo(dx, dy)
