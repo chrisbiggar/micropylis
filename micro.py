@@ -8,6 +8,7 @@ import argparse
 import pyglet
 pyglet.options['debug_graphics_batch'] = False
 
+
 tempDir = os.path.join(tempfile.gettempdir(), "micropylis")
 
 
@@ -16,8 +17,8 @@ def mainIsFrozen():
         Returns True if running from .exe
     '''
     return (hasattr(sys, "frozen") or # new py2exe
-           hasattr(sys, "importers") # old py2exe
-           or imp.is_frozen("__main__")) # tools/freeze
+            hasattr(sys, "importers") # old py2exe
+            or imp.is_frozen("__main__")) # tools/freeze
 
 
 def doHighPriorityProcess():
@@ -114,6 +115,8 @@ if __name__ == '__main__':
         disableSound = False
         pyglet.options['debug_gl'] = False
         logFile = "micro_log_"
+        loggingLevel = logging.ERROR
+        overwriteLogFile = False
 
     else:  # running directly from python script
         parser = argparse.ArgumentParser()
@@ -121,9 +124,10 @@ if __name__ == '__main__':
                             default=False, action="store_true")
         parser.add_argument('--log-file', dest='logFile',
                             default=None)
+        parser.add_argument('--log-level', dest='logLevel',
+                            default='ERROR')
         parser.add_argument('--disable-sound', dest='disableSound',
                             default=False, action="store_true")
-        parser.add_argument('--print-to-file', dest='printToFile')
         parser.add_argument('--skip-to-city', dest='skipToCity')
         args = parser.parse_args()
 
@@ -131,16 +135,18 @@ if __name__ == '__main__':
         skipToCity = args.skipToCity
         disableSound = args.disableSound
         logFile = args.logFile
+        loggingLevel = args.logLevel.upper()
+        overwriteLogFile = False
 
-    logFileName = initLogger(logFile, overwrite=True, level=logging.DEBUG)
+    logFileName = initLogger(logFile, overwrite=overwriteLogFile, level=loggingLevel)
 
     zippedResources = checkResources("res.zip", tempDir)
     if zippedResources:
         avbinDir = tempDir
+        pyglet.resource.path = [tempDir, '']
     else:
         avbinDir = ""
-
-    pyglet.resource.path = ['', tempDir]
+        pyglet.resource.path = ['']
     pyglet.resource.reindex()
 
     avbinLib = pyglet.lib.load_library(os.path.join(avbinDir, 'avbin'))

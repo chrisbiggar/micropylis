@@ -6,9 +6,6 @@ from pyglet.media import Player
 
 import gui
 
-import logging
-logger = logging.getLogger(__name__)
-
 
 class SoundPlayer(object):
     def __init__(self, soundDirPath):

@@ -19,8 +19,6 @@ from . import dialogs
 from dialogs import MainMenuDialog
 import sound
 
-import logging
-log = logging.getLogger(__name__)
 
 class Keys(pyglet.window.key.KeyStateHandler):
     '''

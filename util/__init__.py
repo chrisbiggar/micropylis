@@ -1,12 +1,14 @@
 import struct
-import pyglet
+import logging
 from pyglet.gl import GL_LINE_STRIP,GL_QUADS
-
 
 ''' 
 
 #  misc functions
 '''
+def getMicroLogger(moduleName):
+    return logging.getLogger("__main__." + moduleName)
+
 def tupleFromString(string):
     l = string.lstrip('(').rstrip(')').split(',')
     intL = []
