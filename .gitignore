@@ -1,5 +1,6 @@
 
 # specific files and folders to be not included in micropylis src:
+countlines.cmd
 etc/cloc-1.64.exe
 test.py
 dist/

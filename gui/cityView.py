@@ -45,8 +45,8 @@ class ViewportGroup(OrderedGroup):
     def __init__(self, order):
         super(ViewportGroup, self).__init__(order)
 
-        self.zoomSpeed = float(gui.config.get('misc', 'ZOOM_TRANSITION_SPEED'))
-        self.zoomInFactor = float(gui.config.get('misc', 'ZOOM_INCREMENT'))
+        self.zoomSpeed = gui.config.getFloat('misc', 'ZOOM_TRANSITION_SPEED')
+        self.zoomInFactor = gui.config.getFloat('misc', 'ZOOM_INCREMENT')
         self.zoomOutFactor = 1 / self.zoomInFactor
         self.zoomLevel = 1
         self.targetZoom = self.zoomLevel
@@ -447,7 +447,7 @@ class CityView(layout.Spacer):
         self.noPowerIndicatorImg = self.tileImageLoader.getTileImage(tileConstants.LIGHTNINGBOLT)
 
         self.keys = microWindow.Keys(self)
-        self.scrollSpeed = int(gui.config.get('misc', 'KEYBOARD_SCROLL_SPEED'))
+        self.scrollSpeed = gui.config.getInt('misc', 'KEYBOARD_SCROLL_SPEED')
 
     def setRenderSize(self, width, height):
         self.renderWidth = width

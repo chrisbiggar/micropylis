@@ -1,12 +1,12 @@
 import os, sys, logging
-import ConfigParser
 import pyglet
+from util.config import Config
 
 global config
 global cityMessages
-config = ConfigParser.ConfigParser()
+config = Config()
 config.readfp(pyglet.resource.file('res/gui.cfg'))
-cityMessages = ConfigParser.ConfigParser()
+cityMessages = Config()
 cityMessages.readfp(pyglet.resource.file('res/citymessages.cfg'))
 
 BG_RENDER_ORDER = 1

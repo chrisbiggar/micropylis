@@ -65,8 +65,8 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
 
         self.register_event_type('speed_changed')
 
-        self.DEFAULT_WIDTH = int(gui.config.get('window', 'DEFAULT_WIDTH'))
-        self.DEFAULT_HEIGHT = int(gui.config.get('window', 'DEFAULT_HEIGHT'))
+        self.DEFAULT_WIDTH = gui.config.getInt('window', 'DEFAULT_WIDTH')
+        self.DEFAULT_HEIGHT = gui.config.getInt('window', 'DEFAULT_HEIGHT')
         pyglet.window.Window.__init__(self, width=self.DEFAULT_WIDTH,
                                       height=self.DEFAULT_HEIGHT,
                                       resizable=True,
@@ -75,12 +75,10 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         # load in tile specs
         tiles.readTilesSpec(gui.config.get('misc', 'TILES_SPEC_FILE'))
 
-
-
         self.soundPlayer = sound.SoundPlayer("res/sound/")
         self.soundPlayer.setMute(soundEnabled)
-        self.soundPlayer.soundEffectVolume = float(gui.config.get('sound', 'DEFAULT_EFFECTS_VOL'))
-        self.soundPlayer.musicVolume = float(gui.config.get('sound', 'DEFAULT_MUSIC_VOL'))
+        self.soundPlayer.soundEffectVolume = gui.config.getFloat('sound', 'DEFAULT_EFFECTS_VOL')
+        self.soundPlayer.musicVolume = gui.config.getFloat('sound', 'DEFAULT_MUSIC_VOL')
 
         self.cityView = CityView()
         self.controlView = ControlView(self, self.cityView)

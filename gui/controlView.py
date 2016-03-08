@@ -680,7 +680,7 @@ class ControlView(Frame, pyglet.event.EventDispatcher):
         self._setLayout(self.DEFAULT_MENU)
         super(ControlView, self).__init__(self.content)
 
-        self.minWindowWidth = int(gui.config.get('control_panel', 'MIN_WINDOW_WIDTH'))
+        self.minWindowWidth = gui.config.getFloat('control_panel', 'MIN_WINDOW_WIDTH')
         bgColorStr = gui.config.get('control_panel', 'BG_COLOR')
         self.bgColor = list(map(int, tuple(bgColorStr.split(','))))
 

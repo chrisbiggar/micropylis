@@ -337,7 +337,7 @@ class ToolDialog(Dialog):
         self.selectTool(initialMenuSelection)
 
     def createLayout(self, initialMenuSelection):
-        iconSize = int(gui.config.get('tools', 'TOOLICONSIZE'))
+        iconSize = gui.config.getInt('tools', 'TOOLICONSIZE')
         iconSheet = pyglet.resource.image(self.iconsheetFilename)
         rows = iconSheet.height // iconSize
         columns = iconSheet.width // iconSize
