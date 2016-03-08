@@ -19,6 +19,8 @@ from . import dialogs
 from dialogs import MainMenuDialog
 import sound
 
+import logging
+log = logging.getLogger(__name__)
 
 class Keys(pyglet.window.key.KeyStateHandler):
     '''
@@ -58,6 +60,9 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
     '''
 
     def __init__(self, skipToCity=None, soundEnabled=True):
+
+        log.info("e")
+
         self.register_event_type('speed_changed')
 
         self.DEFAULT_WIDTH = int(gui.config.get('window', 'DEFAULT_WIDTH'))
@@ -96,7 +101,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.drag = False
 
         # window stuff
-        self.icon = pyglet.image.load(gui.config.get('window', 'ICON_FILE'))  # icon is set at resize
+        self.icon = pyglet.resource.texture(gui.config.get('window', 'ICON_FILE')).get_image_data()  # icon is set at resize
         self.set_icon(self.icon)
         self.set_location(40, 40)
         self.set_minimum_size(640, 480)
@@ -110,7 +115,7 @@ class MicroWindow(pyglet.window.Window, LayoutWindow):
         self.push_handlers(self.toolDialog)
 
         for (name, font) in gui.config.items('font_files'):
-            pyglet.font.add_file(font)
+            pyglet.resource.add_font(font)
 
         pyglet.clock.schedule_interval(self.update, 1 / 60.)
         self.speedKeyMap = {

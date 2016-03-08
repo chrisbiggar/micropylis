@@ -1,3 +1,5 @@
+import pyglet
+
 from .tilespec import parseTileSpec, generateTilenames
 from util.properties import Properties
 
@@ -27,7 +29,7 @@ def get(num):
 
 def readTilesSpec(tilesSpecFile):
     tilesRc = Properties()
-    tilesRc.load(open(tilesSpecFile))
+    tilesRc.load(pyglet.resource.file(tilesSpecFile, 'r'))
     tileNames = generateTilenames(tilesRc)
 
     tiles = [0 for i in xrange(len(tileNames))]

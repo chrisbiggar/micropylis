@@ -4,7 +4,6 @@
 '''
 from __future__ import division
 import ConfigParser
-from array import *
 from random import randint
 
 from pyglet.event import EventDispatcher
@@ -16,6 +15,7 @@ from .micropylisMessage import MicropylisMessage
 from .mapScanner import MapScanner
 from util import readShort, readInt, create2dArray
 from . import gameLevel
+
 
 class CityBudget(object):
     def __init__(self):
@@ -200,7 +200,6 @@ class Engine(EventDispatcher):
 
         self.clearCensus()
         self.initTileBehaviours()
-
 
     def cityMessage(self, category, stringOption):
         self.dispatch_event("on_city_message",

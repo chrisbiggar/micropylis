@@ -8,10 +8,7 @@ All kytten dialog classes are in this module.
 '''
 from __future__ import division
 
-import os
-
 import pyglet
-
 
 import kytten
 from kytten import FileLoadDialog, FileSaveDialog
@@ -26,6 +23,7 @@ import gui
 
 from engine import gameLevel
 
+
 def on_escape(dialog):
     '''
         tears down specified dialog
@@ -33,7 +31,13 @@ def on_escape(dialog):
     dialog.teardown()
 
 
-theme = kytten.theme.Theme('res/kyttentheme', override={
+normalPath = 'res/kyttentheme'
+if gui.tempDir is None:
+    path = normalPath
+else:
+    import os
+    path = os.path.join(gui.tempDir, normalPath)
+theme = kytten.theme.Theme(path, override={
     "gui_color": [64, 128, 255, 255],
     "font_size": 16
 })
@@ -143,6 +147,7 @@ class MainMenuDialog(SingularDialog):
             self.teardown()
 
         window.makeSoundEffect("MENUCLICK")
+        print "menu"
 
         if choice == "Back":
             self.on_cancel()
@@ -333,7 +338,7 @@ class ToolDialog(Dialog):
 
     def createLayout(self, initialMenuSelection):
         iconSize = int(gui.config.get('tools', 'TOOLICONSIZE'))
-        iconSheet = pyglet.image.load(self.iconsheetFilename)
+        iconSheet = pyglet.resource.image(self.iconsheetFilename)
         rows = iconSheet.height // iconSize
         columns = iconSheet.width // iconSize
         iconSheet = pyglet.image.TextureGrid(
@@ -342,7 +347,7 @@ class ToolDialog(Dialog):
 
         toolSet = []
         i = 0
-        with open("res/toolsorder") as tOFile:
+        with pyglet.resource.file("res/toolsorder") as tOFile:
             for line in tOFile:
                 name = line.strip().lower().title()
                 row = rows - 1 - (i // columns)

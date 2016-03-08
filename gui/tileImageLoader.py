@@ -308,7 +308,7 @@ class TileImageLoader(object):
         return self._tiles.texture
 
     def loadTileImages(self):
-        tileSheet = pyglet.image.load(self._tileSheetFilename)
+        tileSheet = pyglet.resource.image(self._tileSheetFilename)
         rows = tileSheet.height // (self.tileSize + self.padding)
         columns = tileSheet.width // (self.tileSize + self.padding)
         return BorderedAnimatedTextureGrid(

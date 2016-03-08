@@ -212,7 +212,7 @@ class MessageQueue(Widget):
 class DemandIndicator(Widget):
     def __init__(self):
         super(DemandIndicator, self).__init__()
-        self.bgImg = pyglet.image.load('res/demandind.png')
+        self.bgImg = pyglet.resource.image('res/demandind.png')
         self.engine = None
         self.bgSprite = None
         self.resRect = None
@@ -664,7 +664,7 @@ class ControlView(Frame, pyglet.event.EventDispatcher):
 
     def __init__(self, microWindow, cityView):
         self.fgGroup = fgGroup
-        self.bgImg = pyglet.image.load('res/controlviewbg.png')
+        self.bgImg = pyglet.resource.image('res/controlviewbg.png')
         self.bg = None
         self.border = None
         textColorStr = gui.config.get('control_panel', 'TEXT_COLOR')

@@ -6,6 +6,8 @@ from pyglet.media import Player
 
 import gui
 
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SoundPlayer(object):
@@ -48,11 +50,16 @@ class SoundPlayer(object):
         fileName, stream = self._loadSoundEntry(key)
         if key in self.sounds:
             self.sounds[key].delete()
-        self.sounds[key] = pyglet.media.load(self.soundDirPath + fileName, streaming=stream)
+        self.sounds[key] = pyglet.resource.media(self.soundDirPath + fileName, streaming=stream)
 
     def shutdown(self):
-        self.musicPlayer.next_source()
+        from pyglet.media import avbin
+        if self.musicPlayer.source is not None:
+            avbin.av.avbin_close_file(self.musicPlayer.source._file)  # hack to ensure avbin closes properly.
         self.musicPlayer.delete()
+        toDel = self.sounds.keys()
+        for snd in toDel:
+            del self.sounds[snd]
 
     @property
     def musicVolume(self):
